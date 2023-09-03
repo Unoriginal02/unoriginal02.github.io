@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<style>
+  :root {
+    --neon-color: #0cf;
+    /* neon blue */
+  }
+
+  body {
+    background-color: #121212;
+    color: #ffffff;
+    /* neon blue text */
+    font-family: 'Courier New', monospace;
+  }
+
+  .container {
+    margin: 20px;
+  }
+
+  .new-task-btn,
+  .accept-btn {
+    background-color: var(--neon-color);
+    /* neon blue background */
+    border: none;
+    color: black;
+    padding: 4px 8px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    /* neon glow */
+  }
+
+  .task-form {
+    margin-top: 10px;
+  }
+
+  .form-label {
+    margin-right: 10px;
+  }
+
+  input[type=text],
+  input[type=number] {
+    background-color: #000000;
+    border: 1px solid var(--neon-color);
+    /* neon blue border */
+    color: #ffffff;
+    /* neon blue text */
+  }
+
+  .task-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .task-table th,
+  .task-table td {
+    border: 1px solid var(--neon-color);
+    /* neon blue border */
+    text-align: left;
+    padding: 8px;
+  }
+
+  .task-table tr:nth-child(even) {
+    background-color: #111;
+  }
+
+  .task-table tr:nth-child(odd) {
+    background-color: #222;
+  }
+
+  .task-table th {
+    background-color: #333;
+  }
+
+  .task-table td {
+    font-weight: bold;
+    /* font-size: 24px; */
+  }
+
+  .dataForm {
+    margin-bottom: 16px;
+  }
+
+  /* New CSS */
+  .task-form-popup {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: 300px;
+    height: auto;
+    padding: 20px;
+    background-color: #222;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    z-index: 2;
+  }
+
+  .task-form-content label,
+  .task-form-content input,
+  .task-form-content button {
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .bottomButtons {
+    margin-top: 16px;
+    margin-right: 8px;
+  }
+
+  #bgMask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    /* 50% black */
+    z-index: 0;
+    /* Make sure this is below your popup */
+  }
+
+  .red {
+    background-color: red;
+  }
+</style>
+<html>
+
+<head>
+  <title>Task Chronometer</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+
+<body>
+  <div class="container">
+    <div id="bgMask" style="display:none;"></div>
+    <button class="new-task-btn dataForm" onclick="toggleForm()">New Task</button>
+
+    <div id="taskForm" class="task-form-popup" style="display:none;">
+      <div class="task-form-content">
+        <label class="form-label" for="newEventName">Task:</label>
+        <input type="text" id="newEventName" placeholder="">
+        <label class="form-label" for="newHours">Hours:</label>
+        <input type="number" id="newHours" placeholder="" value="">
+        <label class="form-label" for="newMinutes">Minutes:</label>
+        <input type="number" id="newMinutes" placeholder="" value="">
+        <label class="form-label" for="newSeconds">Seconds:</label>
+        <input type="number" id="newSeconds" placeholder="" value="">
+        <button class="accept-btn" onclick="addRow()">Accept</button>
+      </div>
+    </div>
+
+    <table id="taskTable" class="task-table">
+      <tr>
+        <th>Task</th>
+        <th>Estimated</th>
+        <th>Current</th>
+        <th>Difference</th>
+        <th>Actions</th>
+      </tr>
+
+      <tr id="totalRow">
+        <td colspan="3">Total</td>
+        <td id="totalDifference">0:00:00</td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+
+</html>
+
+
+<script>
+  let timers = {};
+
+  function updateTotalDifference() {
+    const table = document.getElementById("taskTable");
+    const rows = table.rows;
+    let totalDifferenceInSeconds = 0;
+
+    // Start from 1 to skip the header row
+    for (let i = 1; i < rows.length; i++) {
+      const differenceCell = rows[i].cells[3];
+      if (differenceCell) {
+        const differenceTime = timeToSeconds(differenceCell.innerText);
+        totalDifferenceInSeconds += differenceTime;
+      }
+    }
+
+    // Update the total difference cell
+    const totalDifferenceCell = document.getElementById("totalDifference");
+    if (totalDifferenceCell) {
+      const formattedTime = formatTime(totalDifferenceInSeconds);
+
+      // Add "+" sign for positive total difference
+      totalDifferenceCell.innerText = totalDifferenceInSeconds > 0 ? "+" + formattedTime : formattedTime;
+
+      // Add this new block to change the color based on the total difference
+      if (totalDifferenceInSeconds < 0) {
+        totalDifferenceCell.style.color = '#00ff00'; // green
+      } else if (totalDifferenceInSeconds > 0) {
+        totalDifferenceCell.style.color = '#FF0000'; // red
+      } else {
+        totalDifferenceCell.style.color = '#ffffff'; // white or default
+      }
+    }
+  }
+
+  // Set an interval to constantly update the total difference
+  setInterval(updateTotalDifference, 10000); // updates every 1 second
+
+  // Helper function to convert a formatted time string (HH:MM:SS) to total seconds
+  function timeToSeconds(timeString) {
+    const isNegative = timeString[0] === '-';
+    const timeParts = timeString.replace(/^-/, '').split(':').map(Number);
+    const seconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+    return isNegative ? -seconds : seconds;
+  }
+
+  function toggleForm() {
+    const form = document.getElementById("taskForm");
+    const bgMask = document.getElementById("bgMask"); // get the background mask element
+    const taskNameInput = document.getElementById("newEventName");
+
+    if (form.style.display === "none" || form.style.display === "") {
+      form.style.display = "block";
+      bgMask.style.display = "block"; // show the background mask
+      taskNameInput.focus();
+    } else {
+      form.style.display = "none";
+      bgMask.style.display = "none"; // hide the background mask
+    }
+  }
+
+
+  // Add this function
+  function closeFormIfClickedOutside(event) {
+    const form = document.getElementById("taskForm");
+    const newTaskButton = document.querySelector('.new-task-btn');
+
+    if (form.style.display === "block" && !form.contains(event.target) && event.target !== newTaskButton) {
+      toggleForm();
+    }
+  }
+
+  // Add this line
+  document.addEventListener('click', closeFormIfClickedOutside);
+
+  function formatTime(seconds) {
+    const sign = seconds < 0 ? '-' : '';
+    const absSeconds = Math.abs(seconds);
+    const h = Math.floor(absSeconds / 3600);
+    const m = Math.floor((absSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(absSeconds % 60).toString().padStart(2, '0');
+    return `${sign}${h}:${m}:${s}`;
+  }
+
+  function addRow() {
+    const eventName = document.getElementById("newEventName").value;
+    const hours = parseFloat(document.getElementById("newHours").value) || 0;
+    const minutes = parseFloat(document.getElementById("newMinutes").value) || 0;
+    const seconds = parseFloat(document.getElementById("newSeconds").value) || 0;
+    const estimatedTime = (hours * 3600) + (minutes * 60) + seconds;
+
+    addSavedRow(-1, eventName, formatTime(estimatedTime), "0:00:00", "0:00:00");
+
+    // Reset the form values to their default
+    document.getElementById("newEventName").value = "";
+    document.getElementById("newHours").value = "";
+    document.getElementById("newMinutes").value = "";
+    document.getElementById("newSeconds").value = "";
+
+    toggleForm();
+  }
+
+  function addSavedRow(rowIndex, taskName, estimatedTime, time, difference) {
+    const table = document.getElementById("taskTable");
+    const row = table.insertRow(table.rows.length - 1);
+
+    const cell1 = row.insertCell(0);
+    const cell2 = row.insertCell(1);
+    const cell3 = row.insertCell(2);
+    const cell4 = row.insertCell(3);
+    const cell5 = row.insertCell(4);
+
+    const estimatedTimeInSeconds = timeToSeconds(estimatedTime);
+    const savedTime = timeToSeconds(time);
+
+    cell1.innerHTML = taskName;
+    cell1.contentEditable = "true"; // Makes cell editable
+
+    cell2.innerHTML = estimatedTime;
+    cell2.contentEditable = "true"; // Makes cell editable
+
+    cell3.innerHTML = `<span id="time_${row.rowIndex}">${time}</span>`;
+    cell3.contentEditable = "true"; // Makes cell editable
+
+    cell4.innerHTML = `<span id="difference_${row.rowIndex}">${difference}</span>`;
+
+    cell5.innerHTML = `<button class="new-task-btn" onclick="toggleTimer(${row.rowIndex}, ${estimatedTimeInSeconds}, ${savedTime})">Start</button>
+    <button class="new-task-btn" onclick="resetTimer(${row.rowIndex})">Reset</button>
+    <button class="new-task-btn" onclick="deleteRow(${row.rowIndex})">Delete</button>`;
+
+    cell1.addEventListener('blur', saveState);
+    cell2.addEventListener('blur', saveState);
+    cell3.addEventListener('blur', saveState);
+  }
+
+
+  function toggleTimer(rowIndex, estimatedTime) {
+    const button = event.target;
+
+    const currentTimeSpan = document.getElementById(`time_${rowIndex}`);
+    let savedTime = timeToSeconds(currentTimeSpan.innerText);
+
+    if (timers[rowIndex]) {
+      clearInterval(timers[rowIndex]);
+      delete timers[rowIndex];
+      button.innerHTML = "Start";
+    } else {
+      let startTime = Date.now() - (savedTime * 1000);  // This line allows resuming from savedTime
+      timers[rowIndex] = setInterval(function () {
+        const estimatedTime = timeToSeconds(document.getElementById(`taskTable`).rows[rowIndex].cells[1].innerText);
+
+        const currentTime = (Date.now() - startTime) / 1000;
+        const differenceTime = currentTime - estimatedTime;
+        const differenceElement = document.getElementById(`difference_${rowIndex}`);
+
+        const formattedCurrentTime = formatTime(currentTime);
+        let formattedDifferenceTime = formatTime(differenceTime);
+
+        if (differenceTime > 0) {
+          formattedDifferenceTime = "+" + formattedDifferenceTime;
+        }
+
+        document.getElementById(`time_${rowIndex}`).innerHTML = formattedCurrentTime;
+
+        differenceElement.innerHTML = formattedDifferenceTime;
+        if (differenceTime < 0) {
+          const threshold = estimatedTime * 0.25;
+          if (Math.abs(differenceTime) < threshold) {
+            differenceElement.style.color = '#FFA500'; // orange
+          } else {
+            differenceElement.style.color = '#00ff00'; // green
+          }
+        } else {
+          differenceElement.style.color = '#FF0000'; // red
+        }
+      }, 1000);
+
+      button.innerHTML = "Stop";
+    }
+  }
+
+  setInterval(() => {
+    const buttons = document.querySelectorAll('button'); // Assuming all buttons need to be checked
+    buttons.forEach(button => {
+      if (button.innerHTML === "Stop") {
+        button.classList.add('red');
+      } else if (button.innerHTML === "Start") {
+        button.classList.remove('red');
+      }
+    });
+  }, 500); // Checks every 500 milliseconds
+
+  function resetTimer(rowIndex) {
+    if (timers[rowIndex]) {
+      clearInterval(timers[rowIndex]);
+      delete timers[rowIndex];
+    }
+    document.getElementById(`time_${rowIndex}`).innerHTML = "0:00:00";
+    document.getElementById(`difference_${rowIndex}`).innerHTML = "0:00:00";
+  }
+
+  function deleteRow(rowIndex) {
+    if (timers[rowIndex]) {
+      clearInterval(timers[rowIndex]);
+      delete timers[rowIndex];
+    }
+    const table = document.getElementById("taskTable");
+    table.deleteRow(rowIndex);
+  }
+
+  function saveState() {
+    const table = document.getElementById("taskTable");
+    const rowsData = Array.from(table.rows)
+      .slice(1, -1) // Exclude the header and totals rows
+      .map((row, rowIndex) => {
+        const cells = row.cells;
+        return {
+          taskName: cells[0].innerText,
+          estimatedTime: cells[1].innerText,
+          time: cells[2].innerText,
+          difference: cells[3].innerText,
+          timerRunning: !!timers[rowIndex + 1] // +1 to align with row index in table
+        };
+      });
+
+    const currentTime = new Date().toISOString();
+    localStorage.setItem('currentSavedTime', currentTime);
+    localStorage.setItem('taskRows', JSON.stringify(rowsData));
+  }
+
+  function loadState() {
+    const savedRows = JSON.parse(localStorage.getItem('taskRows') || '[]');
+    const table = document.getElementById("taskTable");
+
+    while (table.rows.length > 2) {
+      table.deleteRow(1);
+    }
+
+    savedRows.forEach((row, index) => {
+      addSavedRow(-1, row.taskName, row.estimatedTime, row.time, row.difference);
+
+      // Additional code to set the difference color
+      const differenceElement = document.getElementById(`difference_${index + 1}`);
+      const differenceTimeInSeconds = timeToSeconds(row.difference);
+      const estimatedTimeInSeconds = timeToSeconds(row.estimatedTime);
+
+      if (differenceTimeInSeconds < 0) {
+        const threshold = estimatedTimeInSeconds * 0.25;  // Calculate the threshold
+        if (Math.abs(differenceTimeInSeconds) < threshold) {
+          differenceElement.style.color = '#FFA500';  // orange
+        } else {
+          differenceElement.style.color = '#00ff00';  // green
+        }
+      } else {
+        differenceElement.style.color = '#FF0000';  // red
+      }
+
+      // Restart the timer if it was running when saved
+      if (row.timerRunning) {
+        const estimatedTimeInSeconds = timeToSeconds(row.estimatedTime);
+        const savedTime = timeToSeconds(row.time);
+        toggleTimer(index + 1, estimatedTimeInSeconds, savedTime);
+
+        setTimeout(() => {
+          const button = document.querySelector(`button[onclick^="toggleTimer(${index + 1},"]`);
+          if (button) {
+            button.innerHTML = "Stop";
+          }
+        }, 1000);
+      }
+    });
+
+    // Retrieve the saved time
+    const savedTimeStr = localStorage.getItem('currentSavedTime');
+    const savedTime = new Date(savedTimeStr);
+
+    // Get the current time
+    const currentTime = new Date();
+
+    // Calculate the difference in seconds
+    const timeDifferenceInSeconds = (currentTime - savedTime) / 1000;
+
+    // Apply the difference to your timers
+    Object.keys(timers).forEach(rowIndex => {
+      const currentTimeSpan = document.getElementById(`time_${rowIndex}`);
+      let savedTime = timeToSeconds(currentTimeSpan.innerText);
+      savedTime += timeDifferenceInSeconds; // Add the difference
+      currentTimeSpan.innerHTML = formatTime(savedTime);
+
+      // Adjust the startTime for the timer
+      let adjustedStartTime = Date.now() - (savedTime * 1000);
+      clearInterval(timers[rowIndex]);  // Clear the old timer
+      // Start a new timer with the adjusted start time
+      startTimerWithAdjustedStartTime(rowIndex, adjustedStartTime);
+    });
+  }
+
+  function startTimerWithAdjustedStartTime(rowIndex, adjustedStartTime) {
+    timers[rowIndex] = setInterval(function () {
+      const estimatedTime = timeToSeconds(document.getElementById(`taskTable`).rows[rowIndex].cells[1].innerText);
+      const currentTime = (Date.now() - adjustedStartTime) / 1000;
+      const differenceTime = currentTime - estimatedTime;
+      const differenceElement = document.getElementById(`difference_${rowIndex}`);
+
+      const formattedCurrentTime = formatTime(currentTime);
+      let formattedDifferenceTime = formatTime(differenceTime);
+
+      if (differenceTime > 0) {
+        formattedDifferenceTime = "+" + formattedDifferenceTime;
+      }
+
+      document.getElementById(`time_${rowIndex}`).innerHTML = formattedCurrentTime;
+      differenceElement.innerHTML = formattedDifferenceTime;
+
+      if (differenceTime < 0) {
+        const threshold = estimatedTime * 0.25;
+        if (Math.abs(differenceTime) < threshold) {
+          differenceElement.style.color = '#FFA500'; // orange
+        } else {
+          differenceElement.style.color = '#00ff00'; // green
+        }
+      } else {
+        differenceElement.style.color = '#FF0000'; // red
+      }
+    }, 1000);
+
+    // Make sure to update the corresponding button to show "Stop"
+    const button = document.querySelector(`button[onclick^="toggleTimer(${rowIndex},"]`);
+    if (button) {
+      button.innerHTML = "Stop";
+    }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    const form = document.getElementById("taskForm");
+    if (e.keyCode === 13 && e.location === 3 && form.style.display === "block") {
+      e.preventDefault();
+      addRow();
+    }
+  });
+
+  // Add Save State and Load State buttons
+  document.addEventListener("DOMContentLoaded", function () {
+    const container = document.querySelector(".container");
+    const saveStateBtn = document.createElement("button");
+    // const loadStateBtn = document.createElement("button");
+    const wipeDataBtn = document.createElement("button");
+
+    saveStateBtn.innerHTML = "Save State";
+    saveStateBtn.onclick = saveState;
+    saveStateBtn.className = "new-task-btn bottomButtons";
+
+    // loadStateBtn.innerHTML = "Load State";
+    // loadStateBtn.onclick = loadState;
+    // loadStateBtn.className = "new-task-btn bottomButtons";
+
+    wipeDataBtn.innerHTML = "Wipe Data";
+    wipeDataBtn.onclick = wipeData;
+    wipeDataBtn.className = "new-task-btn";
+
+    container.appendChild(saveStateBtn);
+    // container.appendChild(loadStateBtn);
+    container.appendChild(wipeDataBtn);
+    // Load saved state when the document is ready
+    loadState();
+  });
+
+  const wipeDataBtn = document.createElement("button");
+  wipeDataBtn.innerHTML = "Wipe Data";
+  wipeDataBtn.onclick = wipeData;
+  wipeDataBtn.className = "new-task-btn";
+
+  function wipeData() {
+    // Clear local storage
+    localStorage.removeItem('taskRows');
+
+    // Clear table rows
+    const table = document.getElementById("taskTable");
+    while (table.rows.length > 2) {
+      table.deleteRow(1);
+    }
+
+    // Clear any active timers
+    Object.keys(timers).forEach(timerKey => {
+      clearInterval(timers[timerKey]);
+    });
+    timers = {};
+  }
+
+  // Autosave every two minutes (60000 milliseconds)
+  setInterval(saveState, 60000); // 1 minutes in milliseconds
+
+</script>
