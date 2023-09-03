@@ -10,6 +10,7 @@
     color: #ffffff;
     /* neon blue text */
     font-family: 'Courier New', monospace;
+    font-size: 14px;
   }
 
   .container {
@@ -155,10 +156,10 @@
     <table id="taskTable" class="task-table">
       <tr>
         <th>Task</th>
-        <th>Estimated</th>
-        <th>Current</th>
-        <th>Difference</th>
-        <th>Actions</th>
+        <th>Est.</th>
+        <th>Curr.</th>
+        <th>Diff.</th>
+        <th>Acti.</th>
       </tr>
 
       <tr id="totalRow">
@@ -302,8 +303,8 @@
     cell4.innerHTML = `<span id="difference_${row.rowIndex}">${difference}</span>`;
 
     cell5.innerHTML = `<button class="new-task-btn" onclick="toggleTimer(${row.rowIndex}, ${estimatedTimeInSeconds}, ${savedTime})">Start</button>
-    <button class="new-task-btn" onclick="resetTimer(${row.rowIndex})">Reset</button>
-    <button class="new-task-btn" onclick="deleteRow(${row.rowIndex})">Delete</button>`;
+    <button class="new-task-btn" onclick="resetTimer(${row.rowIndex})">R</button>
+    <button class="new-task-btn" onclick="deleteRow(${row.rowIndex})">D</button>`;
 
     cell1.addEventListener('blur', saveState);
     cell2.addEventListener('blur', saveState);
