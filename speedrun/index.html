@@ -12,6 +12,7 @@
     /* neon blue text */
     font-family: 'Courier New', monospace;
     font-size: 14px !important;
+    padding: 4px;
   }
 
   .container {
@@ -344,7 +345,7 @@
 
         differenceElement.innerHTML = formattedDifferenceTime;
         if (differenceTime < 0) {
-          const threshold = estimatedTime * 0.25;
+          const threshold = estimatedTime * 0.05;
           if (Math.abs(differenceTime) < threshold) {
             differenceElement.style.color = '#FFA500'; // orange
           } else {
@@ -425,7 +426,7 @@
       const estimatedTimeInSeconds = timeToSeconds(row.estimatedTime);
 
       if (differenceTimeInSeconds < 0) {
-        const threshold = estimatedTimeInSeconds * 0.25;  // Calculate the threshold
+        const threshold = estimatedTimeInSeconds * 0.05;  // Calculate the threshold
         if (Math.abs(differenceTimeInSeconds) < threshold) {
           differenceElement.style.color = '#FFA500';  // orange
         } else {
@@ -493,7 +494,7 @@
       differenceElement.innerHTML = formattedDifferenceTime;
 
       if (differenceTime < 0) {
-        const threshold = estimatedTime * 0.25;
+        const threshold = estimatedTime * 0.05;
         if (Math.abs(differenceTime) < threshold) {
           differenceElement.style.color = '#FFA500'; // orange
         } else {
