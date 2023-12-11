@@ -6,31 +6,35 @@
     <title>Time Blind Timer</title>
     <!-- Bootstrap CSS CDN -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
+
         body {
-        	
             background-color: #222222; /* Dark background */
             color: #f8f9fa; /* Light text color */
         }
         h1 {
-        	font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Bebas Neue', sans-serif;
             text-align: center;
         }
         #countdown-display {
-        	font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Bebas Neue', sans-serif;
             font-size: 128px;
+            text-align: center; /* Center the countdown display */
+            margin-top: 0; /* Remove the top margin to place it at the top */
+            margin-bottom: -2rem;
+            color: #eeeeee;
         }
         .content-container {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            height: 90vh;
+            height: 100vh;
         }
         .content-group {
-           /* margin-top: -8rem;  Adjust as needed for centering */
+            /* margin-top: -8rem;  Adjust as needed for centering */
         }
         .shaking {
             animation: shake 0.3s infinite;
@@ -48,26 +52,112 @@
             90% { transform: translate(1px, 2px) rotate(0deg); }
             100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
-    </style>
+        #time-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr); /* 10 columns */
+            grid-gap: 5px;
+            max-width: 260px;
+        }
 
+        .time-square {
+            width: 16px;
+            height: 16px;
+            background-color: #eeeeee; /* Very light gray replacing green */
+        }
+
+        .time-square.yellow {
+            background-color: #ffc107; /* Bootstrap orange */
+        }
+
+        .time-square.red {
+            background-color: #dc3545; /* Bootstrap red */
+        }
+
+        .content-wrapper{
+            display: flex;
+            height: 100%;
+            border: 1px solid #eeeeee;
+            margin: 1rem 0;
+            padding: 2rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button-wrapper {
+            display: flex;
+            justify-content: stretch;
+        }
+
+
+        .brutalButton {
+            border: 1px solid #eeeeee;
+            background-color: #222222;
+            color: #eeeeee;
+            flex: 1; /* Flex grow to fill available space */
+            margin-right: -1px; /* Overlap borders */
+            padding: .5rem 0; 
+        }
+
+        .brutalButton:hover{
+            background-color: #333333;
+        }        
+
+        .brutalButton:last-child {
+             margin-right: 0;
+        }
+
+        .brutalInput {
+            border: 1px solid #eeeeee;
+            background-color: #222222;
+            color: #eeeeee;
+            padding: .5rem .5rem;
+            height: 42px;
+            margin-right: -1px; /* Overlap borders */
+            border-radius: 0; 
+        }
+
+        .brutalInput:focus {
+            background-color: #333333;
+            color: #eeeeee; /* Change text color to light gray when focused */
+            outline: none; /* Remove the default focus outline */
+        }
+
+        .brutalInput::placeholder { /* Change the color of placeholders */
+            color: #bbbbbb;
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 100%;
+            }
+        }
+
+    </style>
 </head>
 <body>
     
     <div class="container content-container">
-        <div class="row justify-content-center content-group">
-            <div class="col-md-6 text-center">
-                <div id="input-group">
-                    <div class="d-flex justify-content-center mt-3">
-                        <input type="number" id="hours-input" class="form-control" placeholder="Hours" min="0" style="width: 100px; margin-right: 10px;" required>
-                        <input type="number" id="minutes-input" class="form-control" placeholder="Minutes" min="0" max="59" style="width: 100px;" required>
+        <div class="content-wrapper">
+            <div class="row justify-content-center content-group">
+                <div class="text-center">
+                    <div id="input-group">
+                        <div class="d-flex justify-content-center">
+                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours" min="0" style="width: 100px;" required>
+                            <input type="number" id="minutes-input" class="form-control brutalInput" placeholder="Minutes" min="0" style="width: 100px;" required>
+                        </div>
+                        <div class="button-wrapper">
+                            <button id="start-button" class="brutalButton mt-3">Start</button>
+                        </div>
                     </div>
-                    <button id="start-button" class="btn btn-primary mt-3">Start</button>
-                </div>
-                <div id="countdown-group" style="display: none;">
-                    <div id="countdown-display" class="mt-3"></div>
-                    <div>
-                        <button id="pause-button" class="btn btn-warning mt-3">Pause</button>
-                        <button id="reset-button" class="btn btn-danger mt-3">Reset</button>
+                    <div id="countdown-group" style="display: none;">
+                        <div id="time-grid" class="">
+                            <!-- Squares will be added dynamically using JavaScript -->
+                        </div>
+                        <div id="countdown-display" class="mt-3"></div>
+                        <div class="button-wrapper">
+                            <button id="pause-button" class="brutalButton mt-3">Pause</button>
+                            <button id="reset-button" class="brutalButton mt-3">Reset</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -75,84 +165,121 @@
     </div>
 
     <script>
-		let countdown;
-		let endTime;
-		let isPaused = false;
+        let countdown;
+        let endTime;
+        let originalSeconds; // Declare originalSeconds
+        let isPaused = false;
 
-		document.getElementById('start-button').addEventListener('click', function() {
-		    var hours = parseInt(document.getElementById('hours-input').value) || 0;
-		    var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
-		    let duration = hours * 3600 + minutes * 60;
-		    endTime = Date.now() + duration * 1000;
+        document.getElementById('start-button').addEventListener('click', function() {
+            var hours = parseInt(document.getElementById('hours-input').value) || 0;
+            var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
+            let duration = hours * 3600 + minutes * 60;
+            originalSeconds = duration; // Set originalSeconds here
+            endTime = Date.now() + duration * 1000;
 
-		    toggleVisibility();
-		    startCountdown();
-		});
+            initializeTimeGrid(); // Initialize the grid
+            toggleVisibility();
+            startCountdown();
+        });
 
-		document.getElementById('pause-button').addEventListener('click', function() {
-		    if (isPaused) {
-		        let remainingTime = endTime - Date.now();
-		        endTime = Date.now() + remainingTime;
-		        startCountdown();
-		        this.textContent = 'Pause';
-		        this.className = 'btn btn-warning mt-3';
-		        isPaused = false;
-		    } else {
-		        clearInterval(countdown);
-		        this.textContent = 'Resume';
-		        this.className = 'btn btn-success mt-3';
-		        isPaused = true;
-		    }
-		});
+        document.getElementById('pause-button').addEventListener('click', function() {
+            if (isPaused) {
+                let remainingTime = endTime - Date.now();
+                endTime = Date.now() + remainingTime;
+                startCountdown();
+                this.textContent = 'Pause';
+                this.className = 'brutalButton mt-3';
+                isPaused = false;
+            } else {
+                clearInterval(countdown);
+                this.textContent = 'Resume';
+                this.className = 'brutalButton mt-3';
+                isPaused = true;
+            }
+        });
 
-		document.getElementById('reset-button').addEventListener('click', function() {
-		    clearInterval(countdown);
-		    toggleVisibility();
-		});
+        document.getElementById('reset-button').addEventListener('click', function() {
+            clearInterval(countdown);
+            toggleVisibility();
+        });
 
-		function startCountdown() {
-		    countdown = setInterval(function() {
-		        let totalSeconds = Math.round((endTime - Date.now()) / 1000);
-		        updateDisplay(totalSeconds);
-		        document.getElementById('countdown-display').textContent = totalSeconds;
+        function startCountdown() {
+            countdown = setInterval(function() {
+                let totalSeconds = Math.round((endTime - Date.now()) / 1000);
+                updateDisplay(totalSeconds);
+                document.getElementById('countdown-display').textContent = totalSeconds <= 0 ? 0 : totalSeconds; // Display 0 when time is up
 
-		        if (totalSeconds < 0) {
-		            clearInterval(countdown);
-		            toggleVisibility();
-		        }
-		    }, 1000);
-		}
+                if (totalSeconds <= 0) {
+                    clearInterval(countdown);
+                    // Removed the call to toggleVisibility to avoid resetting
+                }
+            }, 1000);
+        }
 
-		function updateDisplay(totalSeconds) {
-		    let countdownDisplay = document.getElementById('countdown-display');
-		    let originalSeconds = (endTime - Date.now()) / 1000;
-		    let percentage = totalSeconds / originalSeconds;
+        function updateDisplay(totalSeconds) {
+            let countdownDisplay = document.getElementById('countdown-display');
+            countdownDisplay.className = ''; // Reset classes
 
-		    countdownDisplay.className = ''; // Reset classes
+            // Update countdown display color based on remaining percentage
+            if (totalSeconds > 0) {
+                let percentage = totalSeconds / originalSeconds;
+                if (percentage > 0.5) {
+                   
+                } else if (percentage > 0.25) {
+                    countdownDisplay.classList.add('text-warning');
+                } else if (percentage > 0.05) {
+                    countdownDisplay.classList.add('text-danger');
+                } else {
+                    countdownDisplay.classList.add('text-danger', 'shaking');
+                }
+            } else {
+                countdownDisplay.classList.add('text-danger');
+            }
 
-		    if (percentage > 0.25) {
-		        countdownDisplay.classList.add('text-success');
-		    } else if (percentage > 0.10) {
-		        countdownDisplay.classList.add('text-warning');
-		    } else if (percentage > 0.05) {
-		        countdownDisplay.classList.add('text-danger');
-		    } else {
-		        countdownDisplay.classList.add('text-danger', 'shaking');
-		    }
-		}
+            // Update time grid colors based on remaining percentage
+            const totalSquares = 100;
+            let activeSquares = totalSeconds > 0 ? Math.round(totalSquares * (totalSeconds / originalSeconds)) : 0;
+            
+            let squares = document.querySelectorAll('.time-square');
+            squares.forEach((square, index) => {
+                square.className = 'time-square'; // Reset square classes
+                if (totalSquares - index <= activeSquares) {
+                    if (totalSeconds / originalSeconds > 0.5) {
+                        square.classList.add('potato');
+                    } else if (totalSeconds / originalSeconds > 0.25) {
+                        square.classList.add('yellow');
+                    } else {
+                        square.classList.add('red');
+                    }
+                } else {
+                    square.style.backgroundColor = '#333333'; // Inactive squares
+                }
+            });
+        }
 
-		function toggleVisibility() {
-		    var inputGroup = document.getElementById('input-group');
-		    var countdownGroup = document.getElementById('countdown-group');
-		    
-		    if (inputGroup.style.display === 'none') {
-		        inputGroup.style.display = 'block';
-		        countdownGroup.style.display = 'none';
-		    } else {
-		        inputGroup.style.display = 'none';
-		        countdownGroup.style.display = 'block';
-		    }
-		}
+
+        function initializeTimeGrid() {
+            const grid = document.getElementById('time-grid');
+            grid.innerHTML = ''; // Clear existing squares if any
+            for (let i = 0; i < 100; i++) {
+                const square = document.createElement('div');
+                square.classList.add('time-square');
+                grid.appendChild(square);
+            }
+        }
+
+        function toggleVisibility() {
+            var inputGroup = document.getElementById('input-group');
+            var countdownGroup = document.getElementById('countdown-group');
+            
+            if (inputGroup.style.display === 'none') {
+                inputGroup.style.display = 'block';
+                countdownGroup.style.display = 'none';
+            } else {
+                inputGroup.style.display = 'none';
+                countdownGroup.style.display = 'block';
+            }
+        }
     </script>
 
 </body>
