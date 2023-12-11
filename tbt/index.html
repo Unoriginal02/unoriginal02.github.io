@@ -6,18 +6,22 @@
     <title>Time Blind Timer</title>
     <!-- Bootstrap CSS CDN -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: #343a40; /* Dark background */
+        	
+            background-color: #222222; /* Dark background */
             color: #f8f9fa; /* Light text color */
         }
         h1 {
+        	font-family: 'Bebas Neue', sans-serif;
             text-align: center;
-            font-weight: 700;
         }
         #countdown-display {
-            font-size: 48px;
-            font-weight: 600;
+        	font-family: 'Bebas Neue', sans-serif;
+            font-size: 128px;
         }
         .content-container {
             display: flex;
@@ -71,80 +75,84 @@
     </div>
 
     <script>
-        let countdown;
-        let totalSeconds;
-        let originalSeconds;
-        let isPaused = false;
+		let countdown;
+		let endTime;
+		let isPaused = false;
 
-        document.getElementById('start-button').addEventListener('click', function() {
-            var hours = parseInt(document.getElementById('hours-input').value) || 0;
-            var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
-            totalSeconds = originalSeconds = hours * 3600 + minutes * 60;
+		document.getElementById('start-button').addEventListener('click', function() {
+		    var hours = parseInt(document.getElementById('hours-input').value) || 0;
+		    var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
+		    let duration = hours * 3600 + minutes * 60;
+		    endTime = Date.now() + duration * 1000;
 
-            toggleVisibility();
-            startCountdown();
-        });
+		    toggleVisibility();
+		    startCountdown();
+		});
 
-        document.getElementById('pause-button').addEventListener('click', function() {
-            if (isPaused) {
-                startCountdown();
-                this.textContent = 'Pause';
-                this.className = 'btn btn-warning mt-3';
-                isPaused = false;
-            } else {
-                clearInterval(countdown);
-                this.textContent = 'Resume';
-                this.className = 'btn btn-success mt-3';
-                isPaused = true;
-            }
-        });
+		document.getElementById('pause-button').addEventListener('click', function() {
+		    if (isPaused) {
+		        let remainingTime = endTime - Date.now();
+		        endTime = Date.now() + remainingTime;
+		        startCountdown();
+		        this.textContent = 'Pause';
+		        this.className = 'btn btn-warning mt-3';
+		        isPaused = false;
+		    } else {
+		        clearInterval(countdown);
+		        this.textContent = 'Resume';
+		        this.className = 'btn btn-success mt-3';
+		        isPaused = true;
+		    }
+		});
 
-        document.getElementById('reset-button').addEventListener('click', function() {
-            clearInterval(countdown);
-            toggleVisibility();
-        });
+		document.getElementById('reset-button').addEventListener('click', function() {
+		    clearInterval(countdown);
+		    toggleVisibility();
+		});
 
-        function startCountdown() {
-            countdown = setInterval(function() {
-                updateDisplay();
-                document.getElementById('countdown-display').textContent = totalSeconds--;
+		function startCountdown() {
+		    countdown = setInterval(function() {
+		        let totalSeconds = Math.round((endTime - Date.now()) / 1000);
+		        updateDisplay(totalSeconds);
+		        document.getElementById('countdown-display').textContent = totalSeconds;
 
-                if (totalSeconds < 0) {
-                    clearInterval(countdown);
-                    toggleVisibility();
-                }
-            }, 1000);
-        }
+		        if (totalSeconds < 0) {
+		            clearInterval(countdown);
+		            toggleVisibility();
+		        }
+		    }, 1000);
+		}
 
-        function updateDisplay() {
-            let countdownDisplay = document.getElementById('countdown-display');
-            let percentage = totalSeconds / originalSeconds;
+		function updateDisplay(totalSeconds) {
+		    let countdownDisplay = document.getElementById('countdown-display');
+		    let originalSeconds = (endTime - Date.now()) / 1000;
+		    let percentage = totalSeconds / originalSeconds;
 
-            countdownDisplay.className = ''; // Reset classes
+		    countdownDisplay.className = ''; // Reset classes
 
-            if (percentage > 0.25) {
-                countdownDisplay.classList.add('text-success');
-            } else if (percentage > 0.10) {
-                countdownDisplay.classList.add('text-warning');
-            } else if (percentage > 0.05) {
-                countdownDisplay.classList.add('text-danger');
-            } else {
-                countdownDisplay.classList.add('text-danger', 'shaking');
-            }
-        }
+		    if (percentage > 0.25) {
+		        countdownDisplay.classList.add('text-success');
+		    } else if (percentage > 0.10) {
+		        countdownDisplay.classList.add('text-warning');
+		    } else if (percentage > 0.05) {
+		        countdownDisplay.classList.add('text-danger');
+		    } else {
+		        countdownDisplay.classList.add('text-danger', 'shaking');
+		    }
+		}
 
-        function toggleVisibility() {
-            var inputGroup = document.getElementById('input-group');
-            var countdownGroup = document.getElementById('countdown-group');
-            
-            if (inputGroup.style.display === 'none') {
-                inputGroup.style.display = 'block';
-                countdownGroup.style.display = 'none';
-            } else {
-                inputGroup.style.display = 'none';
-                countdownGroup.style.display = 'block';
-            }
-        }
+		function toggleVisibility() {
+		    var inputGroup = document.getElementById('input-group');
+		    var countdownGroup = document.getElementById('countdown-group');
+		    
+		    if (inputGroup.style.display === 'none') {
+		        inputGroup.style.display = 'block';
+		        countdownGroup.style.display = 'none';
+		    } else {
+		        inputGroup.style.display = 'none';
+		        countdownGroup.style.display = 'block';
+		    }
+		}
     </script>
 
 </body>
