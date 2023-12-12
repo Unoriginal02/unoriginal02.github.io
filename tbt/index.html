@@ -186,6 +186,7 @@
                             <!-- Squares will be added dynamically using JavaScript -->
                         </div>
                         <div id="countdown-display" class="mt-3"></div>
+                        <div id="upward-timer" style="display: none; font-size: 32px; text-align: center;" class="mb-3"></div>
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
@@ -197,6 +198,12 @@
     </div>
 
     <script>
+        let countdown;
+        let endTime;
+        let originalSeconds; // Declare originalSeconds
+        let isPaused = false;
+        let upwardTimerInterval;
+        let upwardStartTime;
 
         // Add this at the beginning of your script
         document.addEventListener('DOMContentLoaded', function() {
@@ -224,13 +231,14 @@
                             square.style.backgroundColor = savedGridState[index];
                         }
                     });
+            }
+
+           if (localStorage.getItem('upwardStartTime')) {
+                upwardStartTime = parseInt(localStorage.getItem('upwardStartTime'));
+                startUpwardTimer(); // Start upward timer if it was running before
             }           
         });
 
-        let countdown;
-        let endTime;
-        let originalSeconds; // Declare originalSeconds
-        let isPaused = false;
 
         document.getElementById('start-button').addEventListener('click', function() {
             var hours = parseInt(document.getElementById('hours-input').value) || 0;
@@ -269,6 +277,13 @@
             clearInterval(countdown);
             toggleVisibility();
             localStorage.clear(); // Clear local storage on reset
+            clearInterval(upwardTimerInterval);
+            document.getElementById('upward-timer').style.display = 'none';
+            localStorage.removeItem('upwardStartTime');
+            localStorage.removeItem('gridState');
+            let countdownDisplay = document.getElementById('countdown-display');
+            countdownDisplay.style.fontSize = '128px'; // Reduced font size
+            countdownDisplay.style.marginTop = '0'; // Reduced font size
         });
 
         function startCountdown() {
@@ -278,7 +293,10 @@
 
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
-                    document.getElementById('countdown-display').textContent = '⏰';
+                    let countdownDisplay = document.getElementById('countdown-display');
+                    countdownDisplay.textContent = '⏰';
+                    countdownDisplay.style.fontSize = '64px'; // Reduced font size
+                    countdownDisplay.style.marginTop = '16px'; // Reduced font size
                     animateGrid();
                 }
                 localStorage.setItem('endTime', endTime.toString());
@@ -369,12 +387,6 @@
             localStorage.setItem('gridState', JSON.stringify(gridState));
         }
 
-        // Ensure you also update the grid state in other relevant places, such as when the timer is reset
-        document.getElementById('reset-button').addEventListener('click', function() {
-            // ... existing code ...
-            localStorage.removeItem('gridState'); // Remove grid state from local storage on reset
-        });
-
         function toggleVisibility() {
             var inputGroup = document.getElementById('input-group');
             var countdownGroup = document.getElementById('countdown-group');
@@ -408,8 +420,32 @@
                     }
                 }
             }, interval);
+            startUpwardTimer();
         }
- 
+
+        function startUpwardTimer() {
+            if (!upwardStartTime) {
+                upwardStartTime = Date.now();
+            }
+
+            upwardTimerInterval = setInterval(function() {
+                updateUpwardTimer();
+            }, 1000);
+
+            document.getElementById('upward-timer').style.display = 'block';
+            localStorage.setItem('upwardStartTime', upwardStartTime.toString());
+        }
+
+        function updateUpwardTimer() {
+            let elapsed = Date.now() - upwardStartTime;
+            let hours = Math.floor(elapsed / 3600000);
+            let minutes = Math.floor((elapsed % 3600000) / 60000);
+            let seconds = Math.floor((elapsed % 60000) / 1000);
+
+            document.getElementById('upward-timer').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+             
     </script>
 
 </body>
