@@ -211,14 +211,20 @@
                 endTime = parseInt(localStorage.getItem('endTime'));
                 originalSeconds = parseInt(localStorage.getItem('originalSeconds'));
                 isPaused = localStorage.getItem('isPaused') === 'true';
+                remainingTime = isPaused ? parseInt(localStorage.getItem('remainingTime')) : 0;
+
                 toggleVisibility();
-                if (!isPaused) {
+
+                // Start the countdown automatically if it was paused before
+                if (isPaused) {
+                    let currentTime = Date.now();
+                    endTime = currentTime + remainingTime;
                     startCountdown();
+                    document.getElementById('pause-button').textContent = 'Pause';
+                    isPaused = false;
+                    localStorage.setItem('isPaused', isPaused.toString());
                 } else {
-                    let remainingTime = endTime - Date.now();
-                    updateDisplay(Math.round(remainingTime / 1000));
-                    document.getElementById('pause-button').textContent = 'Resume';
-                    document.getElementById('pause-button').className = 'brutalButton';
+                    startCountdown();
                 }
             }
 
@@ -258,20 +264,22 @@
 
         document.getElementById('pause-button').addEventListener('click', function() {
             if (isPaused) {
-                let remainingTime = endTime - Date.now();
+                // Resume the countdown
                 endTime = Date.now() + remainingTime;
                 startCountdown();
                 this.textContent = 'Pause';
-                this.className = 'brutalButton';
                 isPaused = false;
             } else {
+                // Pause the countdown
                 clearInterval(countdown);
+                remainingTime = endTime - Date.now(); // Save remaining time
                 this.textContent = 'Resume';
-                this.className = 'brutalButton';
                 isPaused = true;
+                localStorage.setItem('remainingTime', remainingTime.toString()); // Save remaining time
             }
             localStorage.setItem('isPaused', isPaused.toString());
         });
+
 
         document.getElementById('reset-button').addEventListener('click', function() {
             clearInterval(countdown);
