@@ -135,6 +135,23 @@
             }
         }
 
+        @media (min-width: 540px) {
+            #time-grid {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, 6px); /* Adjust to fit 4x4px squares */
+                grid-gap: 4px; /* Gap of 2px between squares */
+                justify-content: center; /* Center grid items */
+            }
+
+            .time-square {
+                width: 6px;
+                height: 6px;
+                background-color: #eeeeee; /* Very light gray */
+                margin: 1px; /* Gap of 2px between squares */
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -314,12 +331,12 @@
 
                 // Randomly select squares and change their color
                 for (let i = 0; i < squares.length; i++) {
-                    if (Math.random() < 0.1) { // Adjust the probability as needed
+                    if (Math.random() < 0.2) { // Adjust the probability as needed
                         // Generate a random color
                         const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
 
                         // Apply color change
-                        squares[i].style.transition = 'background-color 1s';
+                        squares[i].style.transition = 'background-color 0.25s';
                         squares[i].style.backgroundColor = randomColor;
                     }
                 }
