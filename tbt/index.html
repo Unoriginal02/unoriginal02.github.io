@@ -298,7 +298,9 @@
         }
 
         function calculateTotalSquares(duration) {
-            if (duration > 3600) {
+            if (duration > 7200) { // If duration is greater than 2 hours
+                return Math.ceil(duration / 8); // One square every 8 seconds
+            } else if (duration > 3600) {
                 return Math.ceil(duration / 4); // Quarter the squares for durations greater than 1 hour
             } else if (duration > 1800) {
                 return Math.ceil(duration / 2); // Half the squares for durations greater than 30 minutes
@@ -335,7 +337,18 @@
 
         function updateTimeGridColors(totalSeconds, percentage) {
             let totalSquares = calculateTotalSquares(originalSeconds);
-            let elapsedSquares = calculateTotalSquares(originalSeconds - totalSeconds);
+            let elapsedSquares;
+
+            if (originalSeconds > 7200) {
+                elapsedSquares = Math.ceil((originalSeconds - totalSeconds) / 8);
+            } else if (originalSeconds > 3600) {
+                elapsedSquares = Math.ceil((originalSeconds - totalSeconds) / 4);
+            } else if (originalSeconds > 1800) {
+                elapsedSquares = Math.ceil((originalSeconds - totalSeconds) / 2);
+            } else {
+                elapsedSquares = originalSeconds - totalSeconds;
+            }
+
             const gridState = [];
             const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
@@ -353,8 +366,9 @@
                 }
                 gridState.push(square.style.backgroundColor);
             });
-            localStorage.setItem('gridState', JSON.stringify(gridState))
+            localStorage.setItem('gridState', JSON.stringify(gridState));
         }
+
         // Ensure you also update the grid state in other relevant places, such as when the timer is reset
         document.getElementById('reset-button').addEventListener('click', function() {
             // ... existing code ...
