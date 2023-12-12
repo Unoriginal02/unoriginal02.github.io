@@ -24,7 +24,6 @@
             font-size: 128px;
             text-align: center; /* Center the countdown display */
             margin-top: 0; /* Remove the top margin to place it at the top */
-            margin-bottom: -2rem;
             color: #eeeeee;
         }
         .content-container {
@@ -34,7 +33,8 @@
             height: 100vh;
         }
         .content-group {
-            /* margin-top: -8rem;  Adjust as needed for centering */
+            width: 100%;
+            max-width: 640px;
         }
         .shaking {
             animation: shake 0.3s infinite;
@@ -53,17 +53,20 @@
             100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
         #time-grid {
+            width: 100%;
             display: grid;
-            grid-template-columns: repeat(10, 1fr); /* 10 columns */
-            grid-gap: 5px;
-            max-width: 260px;
+            grid-template-columns: repeat(auto-fill, 6px); /* Adjust to fit 4x4px squares */
+            grid-gap: 4px; /* Gap of 2px between squares */
+            justify-content: center; /* Center grid items */
         }
 
         .time-square {
-            width: 16px;
-            height: 16px;
-            background-color: #eeeeee; /* Very light gray replacing green */
+            width: 6px;
+            height: 6px;
+            background-color: #eeeeee; /* Very light gray */
+            margin: 1px; /* Gap of 2px between squares */
         }
+
 
         .time-square.yellow {
             background-color: #ffc107; /* Bootstrap orange */
@@ -138,12 +141,12 @@
     
     <div class="container content-container">
         <div class="content-wrapper">
-            <div class="row justify-content-center content-group">
+            <div class="justify-content-center content-group">
                 <div class="text-center">
                     <div id="input-group">
                         <div class="d-flex justify-content-center">
-                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours" min="0" style="width: 100px;" required>
-                            <input type="number" id="minutes-input" class="form-control brutalInput" placeholder="Minutes" min="0" style="width: 100px;" required>
+                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours" min="0"  required>
+                            <input type="number" id="minutes-input" class="form-control brutalInput" placeholder="Minutes" min="0" required>
                         </div>
                         <div class="button-wrapper">
                             <button id="start-button" class="brutalButton mt-3">Start</button>
@@ -155,8 +158,8 @@
                         </div>
                         <div id="countdown-display" class="mt-3"></div>
                         <div class="button-wrapper">
-                            <button id="pause-button" class="brutalButton mt-3">Pause</button>
-                            <button id="reset-button" class="brutalButton mt-3">Reset</button>
+                            <button id="pause-button" class="brutalButton">Pause</button>
+                            <button id="reset-button" class="brutalButton">Reset</button>
                         </div>
                     </div>
                 </div>
@@ -188,12 +191,12 @@
                 endTime = Date.now() + remainingTime;
                 startCountdown();
                 this.textContent = 'Pause';
-                this.className = 'brutalButton mt-3';
+                this.className = 'brutalButton';
                 isPaused = false;
             } else {
                 clearInterval(countdown);
                 this.textContent = 'Resume';
-                this.className = 'brutalButton mt-3';
+                this.className = 'brutalButton';
                 isPaused = true;
             }
         });
@@ -207,13 +210,31 @@
             countdown = setInterval(function() {
                 let totalSeconds = Math.round((endTime - Date.now()) / 1000);
                 updateDisplay(totalSeconds);
-                document.getElementById('countdown-display').textContent = totalSeconds <= 0 ? 0 : totalSeconds; // Display 0 when time is up
 
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
-                    // Removed the call to toggleVisibility to avoid resetting
+                    document.getElementById('countdown-display').textContent = '⏰';
+                    animateGrid();
                 }
             }, 1000);
+        }
+
+        function initializeTimeGrid() {
+            const grid = document.getElementById('time-grid');
+            grid.innerHTML = ''; // Clear existing squares if any
+            let totalSquares;
+            if (originalSeconds > 3600) {
+                totalSquares = Math.ceil(originalSeconds / 4);
+            } else if (originalSeconds > 1800) {
+                totalSquares = Math.ceil(originalSeconds / 2);
+            } else {
+                totalSquares = originalSeconds;
+            }
+            for (let i = 0; i < totalSquares; i++) {
+                const square = document.createElement('div');
+                square.classList.add('time-square');
+                grid.appendChild(square);
+            }
         }
 
         function updateDisplay(totalSeconds) {
@@ -221,51 +242,53 @@
             countdownDisplay.className = ''; // Reset classes
 
             // Update countdown display color based on remaining percentage
-            if (totalSeconds > 0) {
-                let percentage = totalSeconds / originalSeconds;
-                if (percentage > 0.5) {
-                   
-                } else if (percentage > 0.25) {
-                    countdownDisplay.classList.add('text-warning');
-                } else if (percentage > 0.05) {
-                    countdownDisplay.classList.add('text-danger');
-                } else {
-                    countdownDisplay.classList.add('text-danger', 'shaking');
-                }
-            } else {
-                countdownDisplay.classList.add('text-danger');
-            }
+            let percentage = totalSeconds / originalSeconds;
+            updateCountdownDisplayColor(countdownDisplay, percentage);
+            countdownDisplay.textContent = totalSeconds <= 0 ? 0 : totalSeconds; // Display 0 when time is up
 
-            // Update time grid colors based on remaining percentage
-            const totalSquares = 100;
-            let activeSquares = totalSeconds > 0 ? Math.round(totalSquares * (totalSeconds / originalSeconds)) : 0;
-            
-            let squares = document.querySelectorAll('.time-square');
+            // Update time grid colors
+            updateTimeGridColors(totalSeconds, percentage);
+        }
+
+        function updateCountdownDisplayColor(display, percentage) {
+            display.classList.remove('text-warning', 'text-danger', 'shaking');
+            if (percentage > 0.5) {
+                // Normal state
+            } else if (percentage > 0.25) {
+                display.classList.add('text-warning');
+            } else if (percentage > 0.05) {
+                display.classList.add('text-danger');
+            } else {
+                display.classList.add('text-danger', 'shaking');
+            }
+        }
+
+        function updateTimeGridColors(totalSeconds, percentage) {
+            let elapsedUnits;
+            if (originalSeconds > 3600) {
+                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 4);
+            } else if (originalSeconds > 1800) {
+                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 2);
+            } else {
+                elapsedUnits = originalSeconds - totalSeconds;
+            }
+            const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
-                square.className = 'time-square'; // Reset square classes
-                if (totalSquares - index <= activeSquares) {
-                    if (totalSeconds / originalSeconds > 0.5) {
-                        square.classList.add('potato');
-                    } else if (totalSeconds / originalSeconds > 0.25) {
+                if (index < elapsedUnits) {
+                    // Turn passed time squares to gray
+                    square.style.backgroundColor = '#444444';
+                } else {
+                    // Reset square classes for remaining time
+                    square.className = 'time-square';
+                    if (percentage > 0.5) {
+                        // Optionally, you can add a specific class or style for this range
+                    } else if (percentage > 0.25) {
                         square.classList.add('yellow');
                     } else {
                         square.classList.add('red');
                     }
-                } else {
-                    square.style.backgroundColor = '#333333'; // Inactive squares
                 }
             });
-        }
-
-
-        function initializeTimeGrid() {
-            const grid = document.getElementById('time-grid');
-            grid.innerHTML = ''; // Clear existing squares if any
-            for (let i = 0; i < 100; i++) {
-                const square = document.createElement('div');
-                square.classList.add('time-square');
-                grid.appendChild(square);
-            }
         }
 
         function toggleVisibility() {
@@ -280,6 +303,28 @@
                 countdownGroup.style.display = 'block';
             }
         }
+
+        function animateGrid() {
+            const squares = document.querySelectorAll('.time-square');
+            const interval = 1000; // Interval in milliseconds for the color change effect
+
+            setInterval(() => {
+                // Reset all squares to their original color
+                squares.forEach(sq => sq.style.backgroundColor = '#44444');
+
+                // Randomly select squares and change their color
+                for (let i = 0; i < squares.length; i++) {
+                    if (Math.random() < 0.1) { // Adjust the probability as needed
+                        // Generate a random color
+                        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+
+                        // Apply color change
+                        squares[i].style.transition = 'background-color 1s';
+                        squares[i].style.backgroundColor = randomColor;
+                    }
+                }
+            }, interval);
+        }  
     </script>
 
 </body>
