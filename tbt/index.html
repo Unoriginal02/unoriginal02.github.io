@@ -242,14 +242,6 @@
            if (localStorage.getItem('upwardStartTime')) {
                 upwardStartTime = parseInt(localStorage.getItem('upwardStartTime'));
                 startUpwardTimer(); // Start upward timer if it was running before
-            }
-            
-            if (localStorage.getItem('countdownEndedAt')) {
-                upwardStartTime = parseInt(localStorage.getItem('countdownEndedAt'));
-                // Calculate the correct starting point for the upward timer
-                let elapsedSinceCountdownEnd = Date.now() - upwardStartTime;
-                upwardStartTime = Date.now() - elapsedSinceCountdownEnd;
-                startUpwardTimer();
             }           
         });
 
@@ -312,7 +304,6 @@
 
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
-                    localStorage.setItem('countdownEndedAt', Date.now().toString());
                     let countdownDisplay = document.getElementById('countdown-display');
                     countdownDisplay.textContent = '⏰';
                     countdownDisplay.style.fontSize = '64px'; // Reduced font size
@@ -444,8 +435,19 @@
         }
 
         function startUpwardTimer() {
+            let currentTime = Date.now();
+
             if (!upwardStartTime) {
-                upwardStartTime = Date.now();
+                // Check if the countdown has already finished while the script was inactive
+                if (endTime && currentTime > endTime) {
+                    // Calculate the time elapsed since the countdown finished
+                    let elapsedSinceEnd = currentTime - endTime;
+                    // Set the upwardStartTime to a past time reflecting the countdown end
+                    upwardStartTime = currentTime - elapsedSinceEnd;
+                } else {
+                    // If the countdown hasn't finished, start the upward timer normally
+                    upwardStartTime = currentTime;
+                }
             }
 
             upwardTimerInterval = setInterval(function() {
@@ -455,7 +457,7 @@
             document.getElementById('upward-timer').style.display = 'block';
             localStorage.setItem('upwardStartTime', upwardStartTime.toString());
         }
-
+        
         function updateUpwardTimer() {
             let elapsed = Date.now() - upwardStartTime;
             let hours = Math.floor(elapsed / 3600000);
