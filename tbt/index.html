@@ -327,11 +327,11 @@
 
             setInterval(() => {
                 // Reset all squares to their original color
-                squares.forEach(sq => sq.style.backgroundColor = '#44444');
+                squares.forEach(sq => sq.style.backgroundColor = '#444444'); // Corrected the color code
 
                 // Randomly select squares and change their color
                 for (let i = 0; i < squares.length; i++) {
-                    if (Math.random() < 0.2) { // Adjust the probability as needed
+                    if (Math.random() < 0.25) { // Adjust the probability as needed
                         // Generate a random color
                         const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
 
@@ -341,7 +341,8 @@
                     }
                 }
             }, interval);
-        }  
+        }
+ 
     </script>
 
 </body>
