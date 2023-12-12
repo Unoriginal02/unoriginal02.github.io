@@ -288,16 +288,22 @@
         function initializeTimeGrid() {
             const grid = document.getElementById('time-grid');
             grid.innerHTML = ''; // Clear existing squares if any
-            let totalSquares = originalSeconds; // Default value for totalSquares
-
-            if (localStorage.getItem('gridState')) {
-                totalSquares = JSON.parse(localStorage.getItem('gridState')).length;
-            }
+            let totalSquares = calculateTotalSquares(originalSeconds);
 
             for (let i = 0; i < totalSquares; i++) {
                 const square = document.createElement('div');
                 square.classList.add('time-square');
                 grid.appendChild(square);
+            }
+        }
+
+        function calculateTotalSquares(duration) {
+            if (duration > 3600) {
+                return Math.ceil(duration / 4); // Quarter the squares for durations greater than 1 hour
+            } else if (duration > 1800) {
+                return Math.ceil(duration / 2); // Half the squares for durations greater than 30 minutes
+            } else {
+                return duration;
             }
         }
 
@@ -328,22 +334,14 @@
         }
 
         function updateTimeGridColors(totalSeconds, percentage) {
-            let elapsedUnits;
-            if (originalSeconds > 3600) {
-                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 8);
-            } else if (originalSeconds > 1800) {
-                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 4);
-            } else {
-                elapsedUnits = originalSeconds - totalSeconds;
-            }
+            let totalSquares = calculateTotalSquares(originalSeconds);
+            let elapsedSquares = calculateTotalSquares(originalSeconds - totalSeconds);
             const gridState = [];
             const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
-                if (index < elapsedUnits) {
-                    // Turn passed time squares to gray
-                    square.style.backgroundColor = '#444444';
+                if (index < elapsedSquares) {
+                    square.style.backgroundColor = '#444444'; // Color for elapsed time
                 } else {
-                    // Reset square classes for remaining time
                     square.className = 'time-square';
                     if (percentage > 0.5) {
                         // Optionally, you can add a specific class or style for this range
@@ -357,7 +355,6 @@
             });
             localStorage.setItem('gridState', JSON.stringify(gridState))
         }
-        
         // Ensure you also update the grid state in other relevant places, such as when the timer is reset
         document.getElementById('reset-button').addEventListener('click', function() {
             // ... existing code ...
