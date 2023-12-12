@@ -185,6 +185,36 @@
     </div>
 
     <script>
+
+        // Add this at the beginning of your script
+        document.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('endTime')) {
+                endTime = parseInt(localStorage.getItem('endTime'));
+                originalSeconds = parseInt(localStorage.getItem('originalSeconds'));
+                isPaused = localStorage.getItem('isPaused') === 'true';
+                toggleVisibility();
+                if (!isPaused) {
+                    startCountdown();
+                } else {
+                    let remainingTime = endTime - Date.now();
+                    updateDisplay(Math.round(remainingTime / 1000));
+                    document.getElementById('pause-button').textContent = 'Resume';
+                    document.getElementById('pause-button').className = 'brutalButton';
+                }
+            }
+
+            if (localStorage.getItem('gridState')) {
+                    initializeTimeGrid();
+                    const savedGridState = JSON.parse(localStorage.getItem('gridState'));
+                    const squares = document.querySelectorAll('.time-square');
+                    squares.forEach((square, index) => {
+                        if (savedGridState[index]) {
+                            square.style.backgroundColor = savedGridState[index];
+                        }
+                    });
+            }           
+        });
+
         let countdown;
         let endTime;
         let originalSeconds; // Declare originalSeconds
@@ -200,6 +230,10 @@
             initializeTimeGrid(); // Initialize the grid
             toggleVisibility();
             startCountdown();
+
+            localStorage.setItem('endTime', endTime.toString());
+            localStorage.setItem('originalSeconds', originalSeconds.toString());
+            localStorage.setItem('isPaused', 'false');
         });
 
         document.getElementById('pause-button').addEventListener('click', function() {
@@ -216,11 +250,13 @@
                 this.className = 'brutalButton';
                 isPaused = true;
             }
+            localStorage.setItem('isPaused', isPaused.toString());
         });
 
         document.getElementById('reset-button').addEventListener('click', function() {
             clearInterval(countdown);
             toggleVisibility();
+            localStorage.clear(); // Clear local storage on reset
         });
 
         function startCountdown() {
@@ -233,20 +269,19 @@
                     document.getElementById('countdown-display').textContent = '⏰';
                     animateGrid();
                 }
+                localStorage.setItem('endTime', endTime.toString());
             }, 1000);
         }
 
         function initializeTimeGrid() {
             const grid = document.getElementById('time-grid');
             grid.innerHTML = ''; // Clear existing squares if any
-            let totalSquares;
-            if (originalSeconds > 3600) {
-                totalSquares = Math.ceil(originalSeconds / 4);
-            } else if (originalSeconds > 1800) {
-                totalSquares = Math.ceil(originalSeconds / 2);
-            } else {
-                totalSquares = originalSeconds;
+            let totalSquares = originalSeconds; // Default value for totalSquares
+
+            if (localStorage.getItem('gridState')) {
+                totalSquares = JSON.parse(localStorage.getItem('gridState')).length;
             }
+
             for (let i = 0; i < totalSquares; i++) {
                 const square = document.createElement('div');
                 square.classList.add('time-square');
@@ -289,6 +324,7 @@
             } else {
                 elapsedUnits = originalSeconds - totalSeconds;
             }
+            const gridState = [];
             const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
                 if (index < elapsedUnits) {
@@ -305,8 +341,16 @@
                         square.classList.add('red');
                     }
                 }
+                gridState.push(square.style.backgroundColor);
             });
+            localStorage.setItem('gridState', JSON.stringify(gridState))
         }
+        
+        // Ensure you also update the grid state in other relevant places, such as when the timer is reset
+        document.getElementById('reset-button').addEventListener('click', function() {
+            // ... existing code ...
+            localStorage.removeItem('gridState'); // Remove grid state from local storage on reset
+        });
 
         function toggleVisibility() {
             var inputGroup = document.getElementById('input-group');
