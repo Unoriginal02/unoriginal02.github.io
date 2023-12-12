@@ -242,6 +242,14 @@
            if (localStorage.getItem('upwardStartTime')) {
                 upwardStartTime = parseInt(localStorage.getItem('upwardStartTime'));
                 startUpwardTimer(); // Start upward timer if it was running before
+            }
+            
+            if (localStorage.getItem('countdownEndedAt')) {
+                upwardStartTime = parseInt(localStorage.getItem('countdownEndedAt'));
+                // Calculate the correct starting point for the upward timer
+                let elapsedSinceCountdownEnd = Date.now() - upwardStartTime;
+                upwardStartTime = Date.now() - elapsedSinceCountdownEnd;
+                startUpwardTimer();
             }           
         });
 
@@ -304,6 +312,7 @@
 
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
+                    localStorage.setItem('countdownEndedAt', Date.now().toString());
                     let countdownDisplay = document.getElementById('countdown-display');
                     countdownDisplay.textContent = '⏰';
                     countdownDisplay.style.fontSize = '64px'; // Reduced font size
