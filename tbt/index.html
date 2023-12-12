@@ -285,14 +285,17 @@
             clearInterval(countdown);
             toggleVisibility();
             localStorage.clear(); // Clear local storage on reset
-            clearInterval(upwardTimerInterval);
+
+            clearInterval(upwardTimerInterval); // Stop the upward timer
+            upwardStartTime = null; // Reset upwardStartTime to null
             document.getElementById('upward-timer').style.display = 'none';
-            localStorage.removeItem('upwardStartTime');
-            localStorage.removeItem('gridState');
+            document.getElementById('upward-timer').textContent = '00:00:00'; // Reset the upward timer display
+
             let countdownDisplay = document.getElementById('countdown-display');
-            countdownDisplay.style.fontSize = '128px'; // Reduced font size
-            countdownDisplay.style.marginTop = '0'; // Reduced font size
+            countdownDisplay.style.fontSize = '128px'; // Reset font size
+            countdownDisplay.style.marginTop = '0'; // Reset margin
         });
+
 
         function startCountdown() {
             countdown = setInterval(function() {
