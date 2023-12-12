@@ -55,14 +55,14 @@
         #time-grid {
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(auto-fill, 3px); /* Adjust to fit 4x4px squares */
-            grid-gap: 3px; /* Gap of 2px between squares */
+            grid-template-columns: repeat(auto-fill, 4px); /* Adjust to fit 4x4px squares */
+            grid-gap: 4px; /* Gap of 2px between squares */
             justify-content: center; /* Center grid items */
         }
 
         .time-square {
-            width: 3px;
-            height: 3px;
+            width: 4px;
+            height: 4px;
             background-color: #eeeeee; /* Very light gray */
             margin: 1px; /* Gap of 2px between squares */
         }
@@ -330,9 +330,9 @@
         function updateTimeGridColors(totalSeconds, percentage) {
             let elapsedUnits;
             if (originalSeconds > 3600) {
-                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 4);
+                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 8);
             } else if (originalSeconds > 1800) {
-                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 2);
+                elapsedUnits = Math.ceil((originalSeconds - totalSeconds) / 4);
             } else {
                 elapsedUnits = originalSeconds - totalSeconds;
             }
