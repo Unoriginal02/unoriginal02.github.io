@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,77 +11,126 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-
         body {
-            background-color: #222222; /* Dark background */
-            color: #f8f9fa; /* Light text color */
+            background-color: #222222;
+            /* Dark background */
+            color: #f8f9fa;
+            /* Light text color */
         }
+
         h1 {
             font-family: 'Bebas Neue', sans-serif;
             text-align: center;
         }
+
         #countdown-display {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 128px;
-            text-align: center; /* Center the countdown display */
-            margin-top: 0; /* Remove the top margin to place it at the top */
+            text-align: center;
+            /* Center the countdown display */
+            margin-top: 0;
+            /* Remove the top margin to place it at the top */
             color: #eeeeee;
         }
+
         .content-container {
             display: flex;
             flex-direction: column;
             justify-content: center;
             height: 100vh;
         }
+
         .content-group {
             width: 100%;
             max-width: 640px;
         }
+
         .shaking {
             animation: shake 0.3s infinite;
         }
+
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
+            0% {
+                transform: translate(1px, 1px) rotate(0deg);
+            }
+
+            10% {
+                transform: translate(-1px, -2px) rotate(-1deg);
+            }
+
+            20% {
+                transform: translate(-3px, 0px) rotate(1deg);
+            }
+
+            30% {
+                transform: translate(3px, 2px) rotate(0deg);
+            }
+
+            40% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
+
+            50% {
+                transform: translate(-1px, 2px) rotate(-1deg);
+            }
+
+            60% {
+                transform: translate(-3px, 1px) rotate(0deg);
+            }
+
+            70% {
+                transform: translate(3px, 1px) rotate(-1deg);
+            }
+
+            80% {
+                transform: translate(-1px, -1px) rotate(1deg);
+            }
+
+            90% {
+                transform: translate(1px, 2px) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(1px, -2px) rotate(-1deg);
+            }
         }
+
         #time-grid {
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(auto-fill, 4px); /* Adjust to fit 4x4px squares */
-            grid-gap: 4px; /* Gap of 2px between squares */
-            justify-content: center; /* Center grid items */
+            grid-template-columns: repeat(auto-fill, 4px);
+            /* Adjust to fit 4x4px squares */
+            grid-gap: 4px;
+            /* Gap of 2px between squares */
+            justify-content: center;
+            /* Center grid items */
         }
 
         .time-square {
             width: 4px;
             height: 4px;
-            background-color: #eeeeee; /* Very light gray */
-            margin: 1px; /* Gap of 2px between squares */
+            background-color: #eeeeee;
+            /* Very light gray */
+            margin: 1px;
+            /* Gap of 2px between squares */
         }
 
 
         .time-square.yellow {
-            background-color: #ffc107; /* Bootstrap orange */
+            background-color: #ffc107;
+            /* Bootstrap orange */
         }
 
         .time-square.red {
-            background-color: #dc3545; /* Bootstrap red */
+            background-color: #dc3545;
+            /* Bootstrap red */
         }
 
-        .content-wrapper{
+        .content-wrapper {
             display: flex;
             height: 100%;
             border: 0px solid #eeeeee;
-            margin:  0;
+            margin: 0;
             padding: 0;
             align-items: center;
             justify-content: center;
@@ -96,17 +146,19 @@
             border: 1px solid #eeeeee;
             background-color: #222222;
             color: #eeeeee;
-            flex: 1; /* Flex grow to fill available space */
-            margin-right: -1px; /* Overlap borders */
-            padding: .5rem 0; 
+            flex: 1;
+            /* Flex grow to fill available space */
+            margin-right: -1px;
+            /* Overlap borders */
+            padding: .5rem 0;
         }
 
-        .brutalButton:hover{
+        .brutalButton:hover {
             background-color: #333333;
-        }        
+        }
 
         .brutalButton:last-child {
-             margin-right: 0;
+            margin-right: 0;
         }
 
         .brutalInput {
@@ -115,17 +167,21 @@
             color: #eeeeee;
             padding: .5rem .5rem;
             height: 42px;
-            margin-right: -1px; /* Overlap borders */
-            border-radius: 0; 
+            margin-right: -1px;
+            /* Overlap borders */
+            border-radius: 0;
         }
 
         .brutalInput:focus {
             background-color: #333333;
-            color: #eeeeee; /* Change text color to light gray when focused */
-            outline: none; /* Remove the default focus outline */
+            color: #eeeeee;
+            /* Change text color to light gray when focused */
+            outline: none;
+            /* Remove the default focus outline */
         }
 
-        .brutalInput::placeholder { /* Change the color of placeholders */
+        .brutalInput::placeholder {
+            /* Change the color of placeholders */
             color: #bbbbbb;
         }
 
@@ -139,19 +195,24 @@
             #time-grid {
                 width: 100%;
                 display: grid;
-                grid-template-columns: repeat(auto-fill, 6px); /* Adjust to fit 4x4px squares */
-                grid-gap: 4px; /* Gap of 2px between squares */
-                justify-content: center; /* Center grid items */
+                grid-template-columns: repeat(auto-fill, 6px);
+                /* Adjust to fit 4x4px squares */
+                grid-gap: 4px;
+                /* Gap of 2px between squares */
+                justify-content: center;
+                /* Center grid items */
             }
 
             .time-square {
                 width: 6px;
                 height: 6px;
-                background-color: #eeeeee; /* Very light gray */
-                margin: 1px; /* Gap of 2px between squares */
+                background-color: #eeeeee;
+                /* Very light gray */
+                margin: 1px;
+                /* Gap of 2px between squares */
             }
 
-            .content-wrapper{
+            .content-wrapper {
                 display: flex;
                 height: 100%;
                 border: 1px solid #eeeeee;
@@ -163,19 +224,21 @@
 
 
         }
-
     </style>
 </head>
+
 <body>
-    
+
     <div class="container content-container">
         <div class="content-wrapper">
             <div class="justify-content-center content-group">
                 <div class="text-center">
                     <div id="input-group">
                         <div class="d-flex justify-content-center">
-                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours" min="0"  required>
-                            <input type="number" id="minutes-input" class="form-control brutalInput" placeholder="Minutes" min="0" required>
+                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours"
+                                min="0" required>
+                            <input type="number" id="minutes-input" class="form-control brutalInput"
+                                placeholder="Minutes" min="0" required>
                         </div>
                         <div class="button-wrapper">
                             <button id="start-button" class="brutalButton mt-3">Start</button>
@@ -186,10 +249,24 @@
                             <!-- Squares will be added dynamically using JavaScript -->
                         </div>
                         <div id="countdown-display" class="mt-3"></div>
-                        <div id="upward-timer" style="display: none; font-size: 32px; text-align: center;" class="mb-3"></div>
+                        <div id="upward-timer" style="display: none; font-size: 32px; text-align: center;" class="mb-3">
+                        </div>
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
+                            <button id="checkpoint-button" class="brutalButton">Checkpoint</button>
+                        </div>
+                        <div id="checkpoint-form" style="display: none;">
+                            <div class="d-flex justify-content-center">
+                                <input type="number" id="checkpoint-hours-input" class="form-control brutalInput"
+                                    placeholder="Hours" min="0">
+                                <input type="number" id="checkpoint-minutes-input" class="form-control brutalInput"
+                                    placeholder="Minutes" min="0">
+                            </div>
+                            <div class="d-flex justify-content-center">
+                                <button id="set-checkpoint-button" class="brutalButton">Set Checkpoint</button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -206,7 +283,7 @@
         let upwardStartTime;
 
         // Add this at the beginning of your script
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             if (localStorage.getItem('endTime')) {
                 endTime = parseInt(localStorage.getItem('endTime'));
                 originalSeconds = parseInt(localStorage.getItem('originalSeconds'));
@@ -229,24 +306,29 @@
             }
 
             if (localStorage.getItem('gridState')) {
-                    initializeTimeGrid();
-                    const savedGridState = JSON.parse(localStorage.getItem('gridState'));
-                    const squares = document.querySelectorAll('.time-square');
-                    squares.forEach((square, index) => {
-                        if (savedGridState[index]) {
-                            square.style.backgroundColor = savedGridState[index];
-                        }
-                    });
+                initializeTimeGrid();
+                const savedGridState = JSON.parse(localStorage.getItem('gridState'));
+                const squares = document.querySelectorAll('.time-square');
+                squares.forEach((square, index) => {
+                    if (savedGridState[index]) {
+                        square.style.backgroundColor = savedGridState[index];
+                    }
+                });
             }
 
-           if (localStorage.getItem('upwardStartTime')) {
+            if (localStorage.getItem('upwardStartTime')) {
                 upwardStartTime = parseInt(localStorage.getItem('upwardStartTime'));
                 startUpwardTimer(); // Start upward timer if it was running before
-            }           
+            }
+
+            if (localStorage.getItem('checkpointSeconds')) {
+                let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds'));
+                paintCheckpointSquares(checkpointSeconds);
+            }
         });
 
 
-        document.getElementById('start-button').addEventListener('click', function() {
+        document.getElementById('start-button').addEventListener('click', function () {
             var hours = parseInt(document.getElementById('hours-input').value) || 0;
             var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
             let duration = hours * 3600 + minutes * 60;
@@ -262,7 +344,7 @@
             localStorage.setItem('isPaused', 'false');
         });
 
-        document.getElementById('pause-button').addEventListener('click', function() {
+        document.getElementById('pause-button').addEventListener('click', function () {
             if (isPaused) {
                 // Resume the countdown
                 endTime = Date.now() + remainingTime;
@@ -281,7 +363,7 @@
         });
 
 
-        document.getElementById('reset-button').addEventListener('click', function() {
+        document.getElementById('reset-button').addEventListener('click', function () {
             clearInterval(countdown);
             toggleVisibility();
             localStorage.clear(); // Clear local storage on reset
@@ -294,11 +376,19 @@
             let countdownDisplay = document.getElementById('countdown-display');
             countdownDisplay.style.fontSize = '128px'; // Reset font size
             countdownDisplay.style.marginTop = '0'; // Reset margin
+
+            // Reset initial form values
+            document.getElementById('hours-input').value = '';
+            document.getElementById('minutes-input').value = '';
+
+            // Reset checkpoint form values as well
+            document.getElementById('checkpoint-hours-input').value = '';
+            document.getElementById('checkpoint-minutes-input').value = '';
         });
 
 
         function startCountdown() {
-            countdown = setInterval(function() {
+            countdown = setInterval(function () {
                 let totalSeconds = Math.round((endTime - Date.now()) / 1000);
                 updateDisplay(totalSeconds);
 
@@ -322,9 +412,11 @@
             for (let i = 0; i < totalSquares; i++) {
                 const square = document.createElement('div');
                 square.classList.add('time-square');
+                square.style.opacity = '1'; // Ensure full opacity on initialization
                 grid.appendChild(square);
             }
         }
+
 
         function calculateTotalSquares(duration) {
             if (duration > 7200) { // If duration is greater than 2 hours
@@ -349,22 +441,40 @@
 
             // Update time grid colors
             updateTimeGridColors(totalSeconds, percentage);
+            updateTimerColor(totalSeconds);
         }
 
         function updateCountdownDisplayColor(display, percentage) {
+            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
+            let isCheckpointActive = checkpointSeconds > 0;
+
             display.classList.remove('text-warning', 'text-danger', 'shaking');
-            if (percentage > 0.5) {
-                // Normal state
-            } else if (percentage > 0.25) {
-                display.classList.add('text-warning');
-            } else if (percentage > 0.05) {
-                display.classList.add('text-danger');
+            if (!isCheckpointActive) {
+                // console.log("No checkpoint active, should update to orange/red if necessary.");
+                if (percentage > 0.5) {
+                    // Normal state
+                } else if (percentage > 0.25) {
+                    display.classList.add('text-warning');
+                } else if (percentage > 0.05) {
+                    display.classList.add('text-danger');
+                } else {
+                    display.classList.add('text-danger', 'shaking');
+                }
             } else {
-                display.classList.add('text-danger', 'shaking');
+                // console.log("Checkpoint active, updating squares for checkpoint.");
             }
         }
 
         function updateTimeGridColors(totalSeconds, percentage) {
+            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
+            let isCheckpointActive = checkpointSeconds > 0;
+
+            // console.log("Checkpoint Seconds:", checkpointSeconds);
+            // console.log("Is Checkpoint Active:", isCheckpointActive);
+            // console.log("Total Seconds:", totalSeconds);
+            // console.log("Percentage:", percentage);
+
+
             let totalSquares = calculateTotalSquares(originalSeconds);
             let elapsedSquares;
 
@@ -378,30 +488,32 @@
                 elapsedSquares = originalSeconds - totalSeconds;
             }
 
-            const gridState = [];
             const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
-                if (index < elapsedSquares) {
-                    square.style.backgroundColor = '#444444'; // Color for elapsed time
-                } else {
-                    square.className = 'time-square';
+                // Reset color classes and opacity
+                square.classList.remove('yellow', 'red');
+                square.style.opacity = index < elapsedSquares ? '0.2' : '1';
+
+                // Update square color based on remaining percentage and checkpoint status
+                if (!isCheckpointActive || checkpointSeconds === 0) {
+                    // console.log("No checkpoint active, should update to orange/red if necessary.");
                     if (percentage > 0.5) {
-                        // Optionally, you can add a specific class or style for this range
+                        // Normal state, no color change
                     } else if (percentage > 0.25) {
-                        square.classList.add('yellow');
+                        if (index >= elapsedSquares) square.classList.add('yellow');
                     } else {
-                        square.classList.add('red');
+                        if (index >= elapsedSquares) square.classList.add('red');
                     }
+                } else {
+                    // console.log("Checkpoint active, updating squares for checkpoint.");
                 }
-                gridState.push(square.style.backgroundColor);
             });
-            localStorage.setItem('gridState', JSON.stringify(gridState));
         }
 
         function toggleVisibility() {
             var inputGroup = document.getElementById('input-group');
             var countdownGroup = document.getElementById('countdown-group');
-            
+
             if (inputGroup.style.display === 'none') {
                 inputGroup.style.display = 'block';
                 countdownGroup.style.display = 'none';
@@ -416,23 +528,28 @@
             const interval = 1000; // Interval in milliseconds for the color change effect
 
             setInterval(() => {
-                // Reset all squares to their original color
-                squares.forEach(sq => sq.style.backgroundColor = '#444444'); // Corrected the color code
+                // Reset all squares to their original color and set opacity to 1
+                squares.forEach(sq => {
+                    sq.style.backgroundColor = '#4B4B4B'; // Original color
+                    sq.style.opacity = '1'; // Full opacity
+                });
 
                 // Randomly select squares and change their color
                 for (let i = 0; i < squares.length; i++) {
                     if (Math.random() < 0.25) { // Adjust the probability as needed
                         // Generate a random color
-                        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+                        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
 
-                        // Apply color change
+                        // Apply color change with full opacity
                         squares[i].style.transition = 'background-color 0.25s';
                         squares[i].style.backgroundColor = randomColor;
+                        squares[i].style.opacity = '1'; // Ensure full opacity for color change
                     }
                 }
             }, interval);
             startUpwardTimer();
         }
+
 
         function startUpwardTimer() {
             let currentTime = Date.now();
@@ -450,25 +567,79 @@
                 }
             }
 
-            upwardTimerInterval = setInterval(function() {
+            upwardTimerInterval = setInterval(function () {
                 updateUpwardTimer();
             }, 1000);
 
             document.getElementById('upward-timer').style.display = 'block';
             localStorage.setItem('upwardStartTime', upwardStartTime.toString());
         }
-        
+
         function updateUpwardTimer() {
             let elapsed = Date.now() - upwardStartTime;
             let hours = Math.floor(elapsed / 3600000);
             let minutes = Math.floor((elapsed % 3600000) / 60000);
             let seconds = Math.floor((elapsed % 60000) / 1000);
 
-            document.getElementById('upward-timer').textContent = 
+            document.getElementById('upward-timer').textContent =
                 `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
-             
+
+        document.getElementById('checkpoint-button').addEventListener('click', function () {
+            document.getElementById('checkpoint-form').style.display = 'block';
+            // Reset checkpoint form values
+            document.getElementById('checkpoint-hours-input').value = '';
+            document.getElementById('checkpoint-minutes-input').value = '';
+        });
+
+        document.getElementById('set-checkpoint-button').addEventListener('click', function () {
+            var checkpointHours = parseInt(document.getElementById('checkpoint-hours-input').value) || 0;
+            var checkpointMinutes = parseInt(document.getElementById('checkpoint-minutes-input').value) || 0;
+            var checkpointSeconds = checkpointHours * 3600 + checkpointMinutes * 60;
+
+            paintCheckpointSquares(checkpointSeconds);
+            document.getElementById('checkpoint-form').style.display = 'none';
+        });
+
+        function paintCheckpointSquares(checkpointSeconds) {
+            let totalSquares = calculateTotalSquares(originalSeconds);
+            let checkpointSquaresRate = originalSeconds > 7200 ? 8 : originalSeconds > 3600 ? 4 : originalSeconds > 1800 ? 2 : 1;
+            let checkpointSquares = Math.ceil(checkpointSeconds / checkpointSquaresRate);
+            let startSquare = totalSquares - checkpointSquares;
+
+            const squares = document.querySelectorAll('.time-square');
+            const gridState = new Array(squares.length).fill('');
+
+            // Reset all squares to white (original color)
+            squares.forEach(square => {
+                square.style.backgroundColor = 'white'; // Set to original color
+            });
+
+            // Apply new checkpoint coloring from the calculated start square
+            for (let i = startSquare; i < totalSquares; i++) {
+                squares[i].style.backgroundColor = '#00a8e8';
+                gridState[i] = '#00a8e8'; // Save the new checkpoint state
+            }
+
+            // Save the updated checkpoint state
+            localStorage.setItem('gridState', JSON.stringify(gridState));
+            localStorage.setItem('checkpointSeconds', checkpointSeconds.toString());
+        }
+
+        function updateTimerColor(totalSeconds) {
+            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
+            let countdownDisplay = document.getElementById('countdown-display');
+
+            // If within the last checkpointSeconds, turn the timer blue
+            if (totalSeconds <= checkpointSeconds) {
+                countdownDisplay.style.color = '#00a8e8'; // The blue color
+            } else {
+                countdownDisplay.style.color = '#ffffff'; // White color
+            }
+        }
+
     </script>
 
 </body>
+
 </html>
