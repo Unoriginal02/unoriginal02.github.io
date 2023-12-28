@@ -548,7 +548,7 @@
             squares.forEach((square, index) => {
                 // Reset color classes and opacity
                 square.classList.remove('yellow', 'red');
-                square.style.opacity = index < elapsedSquares ? '0.2' : '1';
+                square.style.opacity = index < elapsedSquares ? '0.4' : '1';
 
                 // Update square color based on remaining percentage and checkpoint status
                 if (!isCheckpointActive || checkpointSeconds === 0) {
@@ -586,7 +586,7 @@
             setInterval(() => {
                 // Reset all squares to their original color and set opacity to 1
                 squares.forEach(sq => {
-                    sq.style.backgroundColor = '#4B4B4B'; // Original color
+                    sq.style.backgroundColor = '#5F5F5F'; // Original color
                     sq.style.opacity = '1'; // Full opacity
                 });
 
