@@ -305,7 +305,7 @@
                 originalSeconds = parseInt(localStorage.getItem('originalSeconds'));
                 isPaused = localStorage.getItem('isPaused') === 'true';
                 remainingTime = isPaused ? parseInt(localStorage.getItem('remainingTime')) : 0;
-
+                initializeTimeGrid();
                 toggleVisibility();
 
                 // Start the countdown automatically if it was paused before
@@ -322,7 +322,6 @@
             }
 
             if (localStorage.getItem('gridState')) {
-                initializeTimeGrid();
                 const savedGridState = JSON.parse(localStorage.getItem('gridState'));
                 const squares = document.querySelectorAll('.time-square');
                 squares.forEach((square, index) => {
