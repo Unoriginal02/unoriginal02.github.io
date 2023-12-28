@@ -173,6 +173,19 @@
             text-align: center;
         }
 
+        button:focus {
+            /* outline: 1px dotted; */
+            outline: 0px auto -webkit-focus-ring-color;
+            background-color: rgba(255, 255, 255, .1);
+        }
+
+        .form-control:focus {
+            background-color: rgba(255, 255, 255, .1) !important;
+            border-color: #eeeeee;
+            outline: 0;
+            box-shadow: none;
+        }
+
         .brutalInput:focus {
             background-color: #333333;
             color: #eeeeee;
@@ -224,7 +237,7 @@
             }
         }
 
-        .marginAdjust{
+        .marginAdjust {
             margin-top: -1px;
         }
     </style>
