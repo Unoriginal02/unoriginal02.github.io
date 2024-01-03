@@ -248,6 +248,11 @@
         .upwardClass {
             font-family: 'JetBrains Mono', monospace;
         }
+
+        .check {
+            padding: 10px;
+            background-color: red;
+        }
     </style>
 </head>
 
@@ -258,13 +263,19 @@
             <div class="justify-content-center content-group">
                 <div class="text-center">
                     <div id="input-group">
-                        <div class="d-flex justify-content-center">
-                            <input type="number" id="hours-input" class="form-control brutalInput" placeholder="Hours"
-                                min="0" required>
-                            <input type="number" id="minutes-input" class="form-control brutalInput"
-                                placeholder="Minutes" min="0" required>
+                        <div id="base-time-inputs-container">
+                            <div class="d-flex justify-content-center">
+                                <input type="number" id="hours-input" class="form-control brutalInput"
+                                    placeholder="Hours" min="0" required>
+                                <input type="number" id="minutes-input" class="form-control brutalInput"
+                                    placeholder="Minutes" min="0" required>
+                            </div>
+                            <div class="" id="time-inputs-container">
+                                <!-- Sub-timers added here -->
+                            </div>
                         </div>
                         <div class="button-wrapper marginAdjust">
+                            <button id="add-time-button" class="brutalButton">Add Time</button>
                             <button id="start-button" class="brutalButton">Start</button>
                         </div>
                     </div>
@@ -279,7 +290,7 @@
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
-                            <button id="checkpoint-button" class="brutalButton">Checkpoint</button>
+                            <!-- <button id="checkpoint-button" class="brutalButton">Checkpoint</button> -->
                         </div>
                         <div id="checkpoint-form" style="display: none;" class="marginAdjust">
                             <div class="d-flex justify-content-center">
@@ -312,6 +323,24 @@
             document.getElementById(buttonId).click();
         }
 
+        let isSubtimerActive = false;
+
+        document.getElementById('add-time-button').addEventListener('click', function () {
+            var container = document.getElementById('time-inputs-container');
+            var newInputGroup = document.createElement('div');
+            newInputGroup.className = 'd-flex justify-content-center';
+            newInputGroup.innerHTML = `
+                <input type="number" class="form-control brutalInput marginAdjust" placeholder="Hours" min="0">
+                <input type="number" class="form-control brutalInput marginAdjust" placeholder="Minutes" min="0">
+            `;
+            container.appendChild(newInputGroup);
+            // Set isSubtimerActive to true when a new subtimer is added
+            isSubtimerActive = true;
+            localStorage.setItem('isSubtimerActive', isSubtimerActive.toString());
+            console.log('(add)isSubtimerActive:', isSubtimerActive);
+        });
+
+
         // Add event listener to start timer inputs
         document.getElementById('hours-input').addEventListener('keyup', function (event) {
             if (event.keyCode === 13) { // 13 is the Enter key
@@ -339,66 +368,132 @@
         });
 
 
-        // Add this at the beginning of your script
         document.addEventListener('DOMContentLoaded', function () {
-            if (localStorage.getItem('endTime')) {
-                endTime = parseInt(localStorage.getItem('endTime'));
-                originalSeconds = parseInt(localStorage.getItem('originalSeconds'));
-                isPaused = localStorage.getItem('isPaused') === 'true';
-                remainingTime = isPaused ? parseInt(localStorage.getItem('remainingTime')) : 0;
-                initializeTimeGrid();
+            console.log("DOMContentLoaded event triggered");
+
+            if (localStorage.getItem("endTime")) {
+                endTime = parseInt(localStorage.getItem("endTime"));
+                originalSeconds = parseInt(localStorage.getItem("originalSeconds"));
+                isPaused = localStorage.getItem("isPaused") === "true";
+                remainingTime = isPaused ? parseInt(localStorage.getItem("remainingTime")) : 0;
+
+                console.log("Retrieved endTime:", endTime, "originalSeconds:", originalSeconds);
+
+                initializeTimeGrid(originalSeconds); // This ensures grid is set up
+
                 toggleVisibility();
 
-                // Start the countdown automatically if it was paused before
                 if (isPaused) {
                     let currentTime = Date.now();
                     endTime = currentTime + remainingTime;
                     startCountdown();
-                    document.getElementById('pause-button').textContent = 'Pause';
+                    document.getElementById("pause-button").textContent = "Pause";
                     isPaused = false;
-                    localStorage.setItem('isPaused', isPaused.toString());
+                    localStorage.setItem("isPaused", isPaused.toString());
                 } else {
                     startCountdown();
                 }
+
+                // Delay the application of colors to ensure the squares are ready
+                setTimeout(() => {
+                    const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
+                    console.log("Retrieved colors from localStorage:", savedColors); // Add this line
+                    document.querySelectorAll('.time-square').forEach((square, index) => {
+                        const color = savedColors[index];
+                        if (color) {
+                            square.style.backgroundColor = color;
+                        }
+                    });
+                }, 100); // delay of 100ms
             }
 
-            if (localStorage.getItem('gridState')) {
-                const savedGridState = JSON.parse(localStorage.getItem('gridState'));
-                const squares = document.querySelectorAll('.time-square');
-                squares.forEach((square, index) => {
-                    if (savedGridState[index]) {
-                        square.style.backgroundColor = savedGridState[index];
+            // Apply saved colors after initializing the grid
+            const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
+            // document.querySelectorAll('.time-square').forEach((square, index) => {
+            //     const color = savedColors[index];
+            //     if (color) {
+            //         square.style.backgroundColor = color;
+            //     }
+            // });
+
+            if (localStorage.getItem("gridState")) {
+                const gridState = JSON.parse(localStorage.getItem("gridState"));
+                document.querySelectorAll(".time-square").forEach((square, index) => {
+                    if (gridState[index]) {
+                        square.style.backgroundColor = gridState[index];
                     }
                 });
             }
 
-            if (localStorage.getItem('upwardStartTime')) {
-                upwardStartTime = parseInt(localStorage.getItem('upwardStartTime'));
-                startUpwardTimer(); // Start upward timer if it was running before
+            if (localStorage.getItem("upwardStartTime")) {
+                upwardStartTime = parseInt(localStorage.getItem("upwardStartTime"));
+                startUpwardTimer();
             }
 
-            if (localStorage.getItem('checkpointSeconds')) {
-                let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds'));
-                paintCheckpointSquares(checkpointSeconds);
+            if (localStorage.getItem("checkpointSeconds")) {
+                paintCheckpointSquares(parseInt(localStorage.getItem("checkpointSeconds")));
             }
+
+            // Retrieve and initialize isSubtimerActive
+            isSubtimerActive = localStorage.getItem('isSubtimerActive') === 'true';
         });
 
-
         document.getElementById('start-button').addEventListener('click', function () {
-            var hours = parseInt(document.getElementById('hours-input').value) || 0;
-            var minutes = parseInt(document.getElementById('minutes-input').value) || 0;
-            let duration = hours * 3600 + minutes * 60;
-            originalSeconds = duration; // Set originalSeconds here
-            endTime = Date.now() + duration * 1000;
+            let totalDuration = 0;
 
-            initializeTimeGrid(); // Initialize the grid
+            // Only add main timer duration once
+            let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
+            let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
+            let mainDuration = mainHours * 3600 + mainMinutes * 60;
+            // totalDuration += mainDuration; // Add main timer duration
+
+            // Add durations of all sub-timers
+            document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
+                let hours = parseInt(div.querySelector('input:first-child').value) || 0;
+                let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
+                totalDuration += hours * 3600 + minutes * 60; // Add each sub-timer duration
+            });
+
+            totalDuration += mainDuration;
+            console.log('totalduration::', totalDuration);
+            console.log('Main Duration::', mainDuration)
+
+            originalSeconds = totalDuration; // Set originalSeconds here
+            endTime = Date.now() + totalDuration * 1000;
+
+            initializeTimeGrid(totalDuration); // Initialize the grid with mainDuration
             toggleVisibility();
             startCountdown();
 
             localStorage.setItem('endTime', endTime.toString());
             localStorage.setItem('originalSeconds', originalSeconds.toString());
             localStorage.setItem('isPaused', 'false');
+            console.log('(start)isSubtimerActive:', isSubtimerActive);
         });
+
+        function getRandomColor() {
+            // List of specified neon colors
+            const neonColors = [
+                '#FF355E', // Neon Red
+                '#FD5B78', // Neon Pink
+                '#FF6037', // Neon Orange
+                '#FF9966', // Neon Peach
+                '#FFCC33', // Neon Yellow
+                '#CCFF00', // Neon Green
+                '#66FF66', // Neon Lime Green
+                '#AAF0D1', // Neon Mint Green
+                '#50BFE6', // Neon Blue
+                '#FF6EFF', // Neon Purple
+                '#EE34D2', // Neon Magenta
+                '#FF00CC'  // Neon Fuchsia
+            ];
+
+            // Select a random index from the neonColors array
+            const randomIndex = Math.floor(Math.random() * neonColors.length);
+
+            // Return the color at the randomly selected index
+            return neonColors[randomIndex];
+        }
 
         document.getElementById('pause-button').addEventListener('click', function () {
             if (isPaused) {
@@ -440,7 +535,21 @@
             // Reset checkpoint form values as well
             document.getElementById('checkpoint-hours-input').value = '';
             document.getElementById('checkpoint-minutes-input').value = '';
+
+            //Clear all dynamically added time input groups
+            var timeInputsContainer = document.getElementById('time-inputs-container');
+            timeInputsContainer.innerHTML = ''; // Clear all child elements
+            isSubtimerActive = false;
+            localStorage.setItem('isSubtimerActive', isSubtimerActive.toString());
+            console.log('(reset)isSubtimerActive:', isSubtimerActive);
+
+            // Reset the pause button's text to "Pause" and reset the isPaused flag
+            document.getElementById('pause-button').textContent = 'Pause';
+            isPaused = false;
+            localStorage.setItem('isPaused', 'false'); // Update the isPaused flag in localStorage
+
         });
+
 
 
         function startCountdown() {
@@ -460,17 +569,64 @@
             }, 1000);
         }
 
-        function initializeTimeGrid() {
+        function initializeTimeGrid(totalDuration) {
             const grid = document.getElementById('time-grid');
             grid.innerHTML = ''; // Clear existing squares if any
-            let totalSquares = calculateTotalSquares(originalSeconds);
 
-            for (let i = 0; i < totalSquares; i++) {
+            //Check if there are already saved colors in localStorage
+            const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
+            let colorsNeedSaving = savedColors.length === 0;
+
+            //Log to check if the grid is initialized correctly
+            console.log("Initializing grid for duration:", totalDuration);
+
+            // Add squares for the total duration
+            let mainSquares = calculateTotalSquares(totalDuration);
+            for (let i = 0; i < mainSquares; i++) {
                 const square = document.createElement('div');
                 square.classList.add('time-square');
-                square.style.opacity = '1'; // Ensure full opacity on initialization
                 grid.appendChild(square);
             }
+
+            //Collect durations from sub-timers to calculate the starting index for coloring
+            let durations = Array.from(document.querySelectorAll('#time-inputs-container > div')).map(div => {
+                let hours = parseInt(div.querySelector('input:first-child').value) || 0;
+                let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
+                return hours * 3600 + minutes * 60;
+            });
+
+            //Reverse durations to start coloring from the bottom
+            durations.reverse();
+
+            //Modified logic to calculate the number of squares for each sub-timer based on total duration
+            let subTimerEndIndex = mainSquares; // Start from the end of the grid
+            durations.forEach(duration => {
+                // Recalculate the number of squares for this sub-timer
+                let subSquares = calculateSubTimerSquares(duration, totalDuration);
+                let color = getRandomColor();
+
+                // Color squares for this sub-timer
+                for (let i = subTimerEndIndex - 1; i >= subTimerEndIndex - subSquares && i >= 0; i--) {
+                    grid.children[i].style.backgroundColor = color;
+                }
+                subTimerEndIndex -= subSquares; // Move the index down for the next sub-timer
+            });
+
+
+
+            if (colorsNeedSaving) {
+                // Only save colors if they haven't been saved before
+                const colors = Array.from(document.querySelectorAll('.time-square')).map(square => square.style.backgroundColor);
+                localStorage.setItem('squareColors', JSON.stringify(colors));
+                console.log("Colors saved to localStorage:", colors);
+            }
+        }
+
+        function calculateSubTimerSquares(subTimerDuration, totalDuration) {
+            //Calculate the number of squares for a sub-timer based on the total duration
+            let durationRatio = subTimerDuration / totalDuration;
+            let totalSquares = calculateTotalSquares(totalDuration);
+            return Math.ceil(totalSquares * durationRatio);
         }
 
 
@@ -501,11 +657,11 @@
         }
 
         function updateCountdownDisplayColor(display, percentage) {
-            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
-            let isCheckpointActive = checkpointSeconds > 0;
+            // let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
+            // let isCheckpointActive = checkpointSeconds > 0;
 
             display.classList.remove('text-warning', 'text-danger', 'shaking');
-            if (!isCheckpointActive) {
+            if (!isSubtimerActive) {
                 // console.log("No checkpoint active, should update to orange/red if necessary.");
                 if (percentage > 0.5) {
                     // Normal state
@@ -524,12 +680,6 @@
         function updateTimeGridColors(totalSeconds, percentage) {
             let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
             let isCheckpointActive = checkpointSeconds > 0;
-
-            // console.log("Checkpoint Seconds:", checkpointSeconds);
-            // console.log("Is Checkpoint Active:", isCheckpointActive);
-            // console.log("Total Seconds:", totalSeconds);
-            // console.log("Percentage:", percentage);
-
 
             let totalSquares = calculateTotalSquares(originalSeconds);
             let elapsedSquares;
@@ -551,7 +701,7 @@
                 square.style.opacity = index < elapsedSquares ? '0.4' : '1';
 
                 // Update square color based on remaining percentage and checkpoint status
-                if (!isCheckpointActive || checkpointSeconds === 0) {
+                if (!isSubtimerActive) {
                     // console.log("No checkpoint active, should update to orange/red if necessary.");
                     if (percentage > 0.5) {
                         // Normal state, no color change
@@ -683,17 +833,37 @@
         }
 
         function updateTimerColor(totalSeconds) {
-            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
+            const squares = document.querySelectorAll('.time-square');
             let countdownDisplay = document.getElementById('countdown-display');
+            let elapsedSquares = calculateElapsedSquares(originalSeconds, totalSeconds);
 
-            // If within the last checkpointSeconds, turn the timer blue
-            if (totalSeconds <= checkpointSeconds) {
-                countdownDisplay.style.color = '#00a8e8'; // The blue color
+            // Check if the elapsed time has reached the subtimer squares
+            if (elapsedSquares < squares.length) {
+                let currentSquare = squares[elapsedSquares];
+                // If the current square is a subtimer square (not white and not empty), update the color
+                if (currentSquare.style.backgroundColor !== '' && currentSquare.style.backgroundColor !== 'white') {
+                    countdownDisplay.style.color = currentSquare.style.backgroundColor;
+                } else {
+                    // Default color if no special subtimer is active
+                    countdownDisplay.style.color = '#ffffff'; // White color
+                }
             } else {
+                // Default color if the time has elapsed beyond the grid
                 countdownDisplay.style.color = '#ffffff'; // White color
             }
         }
 
+        function calculateElapsedSquares(originalSeconds, totalSeconds) {
+            if (originalSeconds > 7200) {
+                return Math.ceil((originalSeconds - totalSeconds) / 8);
+            } else if (originalSeconds > 3600) {
+                return Math.ceil((originalSeconds - totalSeconds) / 4);
+            } else if (originalSeconds > 1800) {
+                return Math.ceil((originalSeconds - totalSeconds) / 2);
+            } else {
+                return originalSeconds - totalSeconds;
+            }
+        }
     </script>
 
 </body>
