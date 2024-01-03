@@ -341,31 +341,31 @@
         });
 
 
-        // Add event listener to start timer inputs
-        document.getElementById('hours-input').addEventListener('keyup', function (event) {
-            if (event.keyCode === 13) { // 13 is the Enter key
-                simulateButtonClick('start-button');
-            }
-        });
+        // // Add event listener to start timer inputs
+        // document.getElementById('hours-input').addEventListener('keyup', function (event) {
+        //     if (event.keyCode === 13) { // 13 is the Enter key
+        //         simulateButtonClick('start-button');
+        //     }
+        // });
 
-        document.getElementById('minutes-input').addEventListener('keyup', function (event) {
-            if (event.keyCode === 13) {
-                simulateButtonClick('start-button');
-            }
-        });
+        // document.getElementById('minutes-input').addEventListener('keyup', function (event) {
+        //     if (event.keyCode === 13) {
+        //         simulateButtonClick('start-button');
+        //     }
+        // });
 
-        // Add event listener to set checkpoint inputs
-        document.getElementById('checkpoint-hours-input').addEventListener('keyup', function (event) {
-            if (event.keyCode === 13) {
-                simulateButtonClick('set-checkpoint-button');
-            }
-        });
+        // // Add event listener to set checkpoint inputs
+        // document.getElementById('checkpoint-hours-input').addEventListener('keyup', function (event) {
+        //     if (event.keyCode === 13) {
+        //         simulateButtonClick('set-checkpoint-button');
+        //     }
+        // });
 
-        document.getElementById('checkpoint-minutes-input').addEventListener('keyup', function (event) {
-            if (event.keyCode === 13) {
-                simulateButtonClick('set-checkpoint-button');
-            }
-        });
+        // document.getElementById('checkpoint-minutes-input').addEventListener('keyup', function (event) {
+        //     if (event.keyCode === 13) {
+        //         simulateButtonClick('set-checkpoint-button');
+        //     }
+        // });
 
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -436,6 +436,13 @@
 
             // Retrieve and initialize isSubtimerActive
             isSubtimerActive = localStorage.getItem('isSubtimerActive') === 'true';
+
+            // Add event delegation to handle 'Enter' key for dynamically added inputs
+            document.getElementById('base-time-inputs-container').addEventListener('keyup', function (event) {
+                if (event.target.matches('input') && event.keyCode === 13) { // Check if the event target is an input and the key is Enter
+                    simulateButtonClick('start-button');
+                }
+            });
         });
 
         document.getElementById('start-button').addEventListener('click', function () {
@@ -472,7 +479,6 @@
         });
 
         function getRandomColor() {
-            // List of specified neon colors
             const neonColors = [
                 '#FF355E', // Neon Red
                 '#FD5B78', // Neon Pink
@@ -488,12 +494,24 @@
                 '#FF00CC'  // Neon Fuchsia
             ];
 
-            // Select a random index from the neonColors array
-            const randomIndex = Math.floor(Math.random() * neonColors.length);
+            // Check if all colors have been used
+            if (usedColors.length === neonColors.length) {
+                usedColors = []; // Reset the list if all colors have been used
+            }
 
-            // Return the color at the randomly selected index
-            return neonColors[randomIndex];
+            let randomColor;
+            do {
+                // Select a random index from the neonColors array
+                const randomIndex = Math.floor(Math.random() * neonColors.length);
+                randomColor = neonColors[randomIndex];
+            } while (usedColors.includes(randomColor)); // Ensure the color hasn't been used already
+
+            usedColors.push(randomColor); // Add the selected color to the list of used colors
+            return randomColor;
         }
+
+        // Initialize an array to keep track of used colors
+        let usedColors = [];
 
         document.getElementById('pause-button').addEventListener('click', function () {
             if (isPaused) {
