@@ -292,18 +292,6 @@
                             <button id="reset-button" class="brutalButton">Reset</button>
                             <!-- <button id="checkpoint-button" class="brutalButton">Checkpoint</button> -->
                         </div>
-                        <div id="checkpoint-form" style="display: none;" class="marginAdjust">
-                            <div class="d-flex justify-content-center">
-                                <input type="number" id="checkpoint-hours-input" class="form-control brutalInput"
-                                    placeholder="Hours" min="0">
-                                <input type="number" id="checkpoint-minutes-input" class="form-control brutalInput"
-                                    placeholder="Minutes" min="0">
-                            </div>
-                            <div class="d-flex justify-content-center marginAdjust">
-                                <button id="set-checkpoint-button" class="brutalButton">Set Checkpoint</button>
-                            </div>
-
-                        </div>
                     </div>
                 </div>
             </div>
@@ -334,38 +322,15 @@
                 <input type="number" class="form-control brutalInput marginAdjust" placeholder="Minutes" min="0">
             `;
             container.appendChild(newInputGroup);
+
+            //GPT ADDS: Focus on the minutes input in the newly created input group
+            newInputGroup.querySelector('input:last-child').focus();
+
             // Set isSubtimerActive to true when a new subtimer is added
             isSubtimerActive = true;
             localStorage.setItem('isSubtimerActive', isSubtimerActive.toString());
             console.log('(add)isSubtimerActive:', isSubtimerActive);
         });
-
-
-        // // Add event listener to start timer inputs
-        // document.getElementById('hours-input').addEventListener('keyup', function (event) {
-        //     if (event.keyCode === 13) { // 13 is the Enter key
-        //         simulateButtonClick('start-button');
-        //     }
-        // });
-
-        // document.getElementById('minutes-input').addEventListener('keyup', function (event) {
-        //     if (event.keyCode === 13) {
-        //         simulateButtonClick('start-button');
-        //     }
-        // });
-
-        // // Add event listener to set checkpoint inputs
-        // document.getElementById('checkpoint-hours-input').addEventListener('keyup', function (event) {
-        //     if (event.keyCode === 13) {
-        //         simulateButtonClick('set-checkpoint-button');
-        //     }
-        // });
-
-        // document.getElementById('checkpoint-minutes-input').addEventListener('keyup', function (event) {
-        //     if (event.keyCode === 13) {
-        //         simulateButtonClick('set-checkpoint-button');
-        //     }
-        // });
 
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -409,12 +374,6 @@
 
             // Apply saved colors after initializing the grid
             const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
-            // document.querySelectorAll('.time-square').forEach((square, index) => {
-            //     const color = savedColors[index];
-            //     if (color) {
-            //         square.style.backgroundColor = color;
-            //     }
-            // });
 
             if (localStorage.getItem("gridState")) {
                 const gridState = JSON.parse(localStorage.getItem("gridState"));
@@ -430,19 +389,28 @@
                 startUpwardTimer();
             }
 
-            if (localStorage.getItem("checkpointSeconds")) {
-                paintCheckpointSquares(parseInt(localStorage.getItem("checkpointSeconds")));
-            }
-
             // Retrieve and initialize isSubtimerActive
             isSubtimerActive = localStorage.getItem('isSubtimerActive') === 'true';
 
-            // Add event delegation to handle 'Enter' key for dynamically added inputs
             document.getElementById('base-time-inputs-container').addEventListener('keyup', function (event) {
-                if (event.target.matches('input') && event.keyCode === 13) { // Check if the event target is an input and the key is Enter
+                //GPT ADDS: Check if the event target is an input, the key is Enter, and the delay flag is true
+                if (event.target.matches('input') && event.keyCode === 13 && event.target.enterKeyEnabled) {
                     simulateButtonClick('start-button');
                 }
             });
+
+            //GPT ADDS: Add a focus event listener to all input elements inside the container
+            document.getElementById('base-time-inputs-container').addEventListener('focusin', function (event) {
+                if (event.target.matches('input')) {
+                    //GPT ADDS: Initially set the enterKeyEnabled flag to false
+                    event.target.enterKeyEnabled = false;
+
+                    //GPT ADDS: Enable the enterKeyEnabled flag after a one second delay
+                    setTimeout(function () {
+                        event.target.enterKeyEnabled = true;
+                    }, 1000); // 1000 milliseconds = 1 second
+                }
+            }, true); //GPT ADDS: The third argument `true` is for capturing the event during the capture phase
         });
 
         document.getElementById('start-button').addEventListener('click', function () {
@@ -550,10 +518,6 @@
             document.getElementById('hours-input').value = '';
             document.getElementById('minutes-input').value = '';
 
-            // Reset checkpoint form values as well
-            document.getElementById('checkpoint-hours-input').value = '';
-            document.getElementById('checkpoint-minutes-input').value = '';
-
             //Clear all dynamically added time input groups
             var timeInputsContainer = document.getElementById('time-inputs-container');
             timeInputsContainer.innerHTML = ''; // Clear all child elements
@@ -565,6 +529,9 @@
             document.getElementById('pause-button').textContent = 'Pause';
             isPaused = false;
             localStorage.setItem('isPaused', 'false'); // Update the isPaused flag in localStorage
+
+            //GPT ADDS: Make sure the pause button is visible again on reset
+            document.getElementById('pause-button').style.display = 'initial';
 
         });
 
@@ -582,6 +549,9 @@
                     countdownDisplay.style.fontSize = '64px'; // Reduced font size
                     countdownDisplay.style.marginTop = '16px'; // Reduced font size
                     animateGrid();
+
+                    //GPT ADDS: Hide the pause button when the timer ends
+                    document.getElementById('pause-button').style.display = 'none';
                 }
                 localStorage.setItem('endTime', endTime.toString());
             }, 1000);
@@ -696,8 +666,6 @@
         }
 
         function updateTimeGridColors(totalSeconds, percentage) {
-            let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
-            let isCheckpointActive = checkpointSeconds > 0;
 
             let totalSquares = calculateTotalSquares(originalSeconds);
             let elapsedSquares;
@@ -807,47 +775,6 @@
 
             document.getElementById('upward-timer').textContent =
                 `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        document.getElementById('checkpoint-button').addEventListener('click', function () {
-            document.getElementById('checkpoint-form').style.display = 'block';
-            // Reset checkpoint form values
-            document.getElementById('checkpoint-hours-input').value = '';
-            document.getElementById('checkpoint-minutes-input').value = '';
-        });
-
-        document.getElementById('set-checkpoint-button').addEventListener('click', function () {
-            var checkpointHours = parseInt(document.getElementById('checkpoint-hours-input').value) || 0;
-            var checkpointMinutes = parseInt(document.getElementById('checkpoint-minutes-input').value) || 0;
-            var checkpointSeconds = checkpointHours * 3600 + checkpointMinutes * 60;
-
-            paintCheckpointSquares(checkpointSeconds);
-            document.getElementById('checkpoint-form').style.display = 'none';
-        });
-
-        function paintCheckpointSquares(checkpointSeconds) {
-            let totalSquares = calculateTotalSquares(originalSeconds);
-            let checkpointSquaresRate = originalSeconds > 7200 ? 8 : originalSeconds > 3600 ? 4 : originalSeconds > 1800 ? 2 : 1;
-            let checkpointSquares = Math.ceil(checkpointSeconds / checkpointSquaresRate);
-            let startSquare = totalSquares - checkpointSquares;
-
-            const squares = document.querySelectorAll('.time-square');
-            const gridState = new Array(squares.length).fill('');
-
-            // Reset all squares to white (original color)
-            squares.forEach(square => {
-                square.style.backgroundColor = 'white'; // Set to original color
-            });
-
-            // Apply new checkpoint coloring from the calculated start square
-            for (let i = startSquare; i < totalSquares; i++) {
-                squares[i].style.backgroundColor = '#00a8e8';
-                gridState[i] = '#00a8e8'; // Save the new checkpoint state
-            }
-
-            // Save the updated checkpoint state
-            localStorage.setItem('gridState', JSON.stringify(gridState));
-            localStorage.setItem('checkpointSeconds', checkpointSeconds.toString());
         }
 
         function updateTimerColor(totalSeconds) {
