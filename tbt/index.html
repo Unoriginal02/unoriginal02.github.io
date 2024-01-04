@@ -290,7 +290,6 @@
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
-                            <button id="generate-url-button" class="brutalButton">Export</button>
                             <!-- <button id="checkpoint-button" class="brutalButton">Checkpoint</button> -->
                         </div>
                     </div>
@@ -300,7 +299,6 @@
     </div>
 
     <script>
-
         let countdown;
         let endTime;
         let originalSeconds; // Declare originalSeconds
@@ -315,41 +313,6 @@
 
         let isSubtimerActive = false;
 
-        document.getElementById('generate-url-button').addEventListener('click', generateURL);
-
-        function generateURL() {
-            let params = new URLSearchParams();
-
-            // Retrieve each item from local storage and add it to the URL search parameters
-            ['endTime', 'originalSeconds', 'isPaused', 'remainingTime', 'squareColors', 'gridState', 'upwardStartTime', 'isSubtimerActive'].forEach(key => {
-                if (localStorage.getItem(key)) {
-                    params.set(key, localStorage.getItem(key));
-                }
-            });
-
-            // Construct the URL with parameters
-            let urlWithParams = `${window.location.href.split('?')[0]}?${params.toString()}`;
-            console.log("Generated URL:", urlWithParams);
-
-            // Copy the URL to the clipboard
-            navigator.clipboard.writeText(urlWithParams).then(() => {
-                console.log("URL copied to clipboard.");
-
-                //Change button text to "Copied!" temporarily
-                let generateButton = document.getElementById('generate-url-button');
-                generateButton.textContent = 'Copied!';
-
-                //Revert button text to "Export" after 2 seconds
-                setTimeout(() => {
-                    generateButton.textContent = 'Export';
-                }, 2000); // 2000 milliseconds = 2 seconds
-
-            }).catch(err => {
-                console.error("Failed to copy URL: ", err);
-            });
-        }
-
-
         document.getElementById('add-time-button').addEventListener('click', function () {
             var container = document.getElementById('time-inputs-container');
             var newInputGroup = document.createElement('div');
@@ -360,7 +323,7 @@
             `;
             container.appendChild(newInputGroup);
 
-            //Focus on the minutes input in the newly created input group
+            //GPT ADDS: Focus on the minutes input in the newly created input group
             newInputGroup.querySelector('input:last-child').focus();
 
             // Set isSubtimerActive to true when a new subtimer is added
@@ -372,12 +335,6 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             console.log("DOMContentLoaded event triggered");
-
-            // Check for URL parameters and update local storage
-            let params = new URLSearchParams(window.location.search);
-            params.forEach((value, key) => {
-                localStorage.setItem(key, value);
-            });
 
             if (localStorage.getItem("endTime")) {
                 endTime = parseInt(localStorage.getItem("endTime"));
@@ -436,19 +393,19 @@
             isSubtimerActive = localStorage.getItem('isSubtimerActive') === 'true';
 
             document.getElementById('base-time-inputs-container').addEventListener('keyup', function (event) {
-                //Check if the event target is an input, the key is Enter, and the delay flag is true
+                //GPT ADDS: Check if the event target is an input, the key is Enter, and the delay flag is true
                 if (event.target.matches('input') && event.keyCode === 13 && event.target.enterKeyEnabled) {
                     simulateButtonClick('start-button');
                 }
             });
 
-            //Add a focus event listener to all input elements inside the container
+            //GPT ADDS: Add a focus event listener to all input elements inside the container
             document.getElementById('base-time-inputs-container').addEventListener('focusin', function (event) {
                 if (event.target.matches('input')) {
-                    //Initially set the enterKeyEnabled flag to false
+                    //GPT ADDS: Initially set the enterKeyEnabled flag to false
                     event.target.enterKeyEnabled = false;
 
-                    //Enable the enterKeyEnabled flag after a one second delay
+                    //GPT ADDS: Enable the enterKeyEnabled flag after a one second delay
                     setTimeout(function () {
                         event.target.enterKeyEnabled = true;
                     }, 1000); // 1000 milliseconds = 1 second
@@ -482,6 +439,7 @@
 
             return decompressed;
         }
+
 
         document.getElementById('start-button').addEventListener('click', function () {
             let totalDuration = 0;
@@ -600,9 +558,8 @@
             isPaused = false;
             localStorage.setItem('isPaused', 'false'); // Update the isPaused flag in localStorage
 
-            //Make sure the pause button is visible again on reset
+            //GPT ADDS: Make sure the pause button is visible again on reset
             document.getElementById('pause-button').style.display = 'initial';
-            document.getElementById('generate-url-button').style.display = 'initial';
 
         });
 
@@ -621,9 +578,8 @@
                     countdownDisplay.style.marginTop = '16px'; // Reduced font size
                     animateGrid();
 
-                    //Hide the pause button when the timer ends
+                    //GPT ADDS: Hide the pause button when the timer ends
                     document.getElementById('pause-button').style.display = 'none';
-                    document.getElementById('generate-url-button').style.display = 'none';
                 }
                 localStorage.setItem('endTime', endTime.toString());
             }, 1000);
@@ -708,6 +664,9 @@
 
             return compressed;
         }
+
+
+
 
         function calculateSubTimerSquares(subTimerDuration, totalDuration) {
             //Calculate the number of squares for a sub-timer based on the total duration
