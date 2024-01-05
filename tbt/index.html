@@ -253,6 +253,53 @@
             padding: 10px;
             background-color: red;
         }
+
+        /* Style for the textarea used for exporting data */
+        #exported-data {
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #eeeeee;
+            background-color: #000000;
+            color: #eeeeee;
+            padding: .5rem .5rem;
+            margin: 0 0 .5rem 0;
+            /* Add margin at the bottom */
+            width: 100%;
+            /* Full width */
+            border-radius: 0;
+            /* No border radius */
+            resize: none;
+            /* Disable resizing */
+        }
+
+        /* Style for the input field used for importing data */
+        #import-data {
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #eeeeee;
+            background-color: #000000;
+            color: #eeeeee;
+            padding: .5rem .5rem;
+            height: 42px;
+            /* Same height as other inputs */
+            border-radius: 0;
+            /* No border radius */
+            text-align: center;
+        }
+
+        #import-data::placeholder {
+            color: #bbbbbb;
+            /* Placeholder color */
+        }
+
+        #import-data:focus {
+            background-color: #333333;
+            color: #eeeeee;
+            outline: none;
+            box-shadow: none;
+        }
+        .loadButton{
+            padding: 0 32px;
+            margin-left: -1px;
+        }
     </style>
 </head>
 
@@ -273,9 +320,16 @@
                             <div class="" id="time-inputs-container">
                                 <!-- Sub-timers added here -->
                             </div>
+                            <!-- Container for load functionality -->
+                            <div id="load-container" style="display: none;" class="button-wrapper marginAdjust">
+                                <input type="text" id="import-data" class="form-control"
+                                    placeholder="Paste JSON data here">
+                                <button id="confirm-load-button" class="brutalButton loadButton">Load!</button>
+                            </div>
                         </div>
                         <div class="button-wrapper marginAdjust">
                             <button id="add-time-button" class="brutalButton">Add Time</button>
+                            <button id="load-button" class="brutalButton">Load</button>
                             <button id="start-button" class="brutalButton">Start</button>
                         </div>
                     </div>
@@ -290,8 +344,10 @@
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
-                            <!-- <button id="checkpoint-button" class="brutalButton">Checkpoint</button> -->
+                            <button id="export-button" class="brutalButton">Export</button>
                         </div>
+                        <!-- Textarea for exporting data -->
+                        <textarea id="exported-data" class="form-control marginAdjust" rows="4" style="display: none;"></textarea>
                     </div>
                 </div>
             </div>
@@ -560,6 +616,7 @@
 
             //GPT ADDS: Make sure the pause button is visible again on reset
             document.getElementById('pause-button').style.display = 'initial';
+            document.getElementById('export-button').style.display = 'initial';
 
         });
 
@@ -580,6 +637,7 @@
 
                     //GPT ADDS: Hide the pause button when the timer ends
                     document.getElementById('pause-button').style.display = 'none';
+                    document.getElementById('export-button').style.display = 'none';
                 }
                 localStorage.setItem('endTime', endTime.toString());
             }, 1000);
@@ -867,6 +925,42 @@
                 return originalSeconds - totalSeconds;
             }
         }
+
+        // Export button functionality
+        document.getElementById('export-button').addEventListener('click', function () {
+            const data = { ...localStorage };
+            const jsonString = JSON.stringify(data);
+            const exportTextArea = document.getElementById('exported-data');
+            exportTextArea.value = jsonString;
+            exportTextArea.style.display = ''; // Show the textarea
+        });
+
+        // Load button functionality
+        document.getElementById('load-button').addEventListener('click', function () {
+            document.getElementById('load-container').style.display = ''; // Show the load container
+        });
+
+        // Confirm Load button functionality
+        document.getElementById('confirm-load-button').addEventListener('click', function () {
+            const jsonString = document.getElementById('import-data').value;
+            try {
+                const data = JSON.parse(jsonString);
+
+                // Clear current localStorage
+                localStorage.clear();
+
+                // Load new data into localStorage
+                for (const key in data) {
+                    localStorage.setItem(key, data[key]);
+                }
+
+                // Reload the page to start the timer with new data
+                location.reload();
+            } catch (e) {
+                alert('Invalid JSON data.');
+            }
+        });
+
     </script>
 
 </body>
