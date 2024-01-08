@@ -45,6 +45,7 @@
         .content-group {
             width: 100%;
             max-width: 640px;
+            /*(Original 640px)*/
         }
 
         .shaking {
@@ -113,7 +114,7 @@
             height: 4px;
             background-color: #eeeeee;
             /* Very light gray */
-            margin: 1px;
+            margin: 0px;
             /* Gap of 2px between squares */
         }
 
@@ -226,7 +227,7 @@
                 height: 6px;
                 background-color: #eeeeee;
                 /* Very light gray */
-                margin: 1px;
+                margin: 0px;
                 /* Gap of 2px between squares */
             }
 
@@ -296,7 +297,8 @@
             outline: none;
             box-shadow: none;
         }
-        .loadButton{
+
+        .loadButton {
             padding: 0 32px;
             margin-left: -1px;
         }
@@ -309,7 +311,7 @@
         <div class="content-wrapper">
             <div class="justify-content-center content-group">
                 <div class="text-center">
-                    <div id="input-group">
+                    <div id="input-group" class="input-group-css">
                         <div id="base-time-inputs-container">
                             <div class="d-flex justify-content-center">
                                 <input type="number" id="hours-input" class="form-control brutalInput"
@@ -347,7 +349,8 @@
                             <button id="export-button" class="brutalButton">Export</button>
                         </div>
                         <!-- Textarea for exporting data -->
-                        <textarea id="exported-data" class="form-control marginAdjust" rows="4" style="display: none;"></textarea>
+                        <textarea id="exported-data" class="form-control marginAdjust" rows="4"
+                            style="display: none;"></textarea>
                     </div>
                 </div>
             </div>
@@ -532,19 +535,61 @@
 
         function getRandomColor() {
             const neonColors = [
-                '#FF355E', // Neon Red
-                '#FD5B78', // Neon Pink
-                '#FF6037', // Neon Orange
-                '#FF9966', // Neon Peach
-                '#FFCC33', // Neon Yellow
-                '#CCFF00', // Neon Green
-                '#66FF66', // Neon Lime Green
-                '#AAF0D1', // Neon Mint Green
-                '#50BFE6', // Neon Blue
-                '#FF6EFF', // Neon Purple
-                '#EE34D2', // Neon Magenta
-                '#FF00CC'  // Neon Fuchsia
+                '#FC5B5B',
+                '#FF925C', 
+                '#FFDE5C', 
+                '#AAF05F', 
+                '#5FDAF0', 
+                '#5F92F0',
+                '#A55FF0',
+                // '#F05F92',
             ];
+
+            // Function to calculate hue difference between two colors
+            function calculateHueDifference(color1, color2) {
+                // Convert hex color to RGB
+                function hexToRgb(hex) {
+                    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : null;
+                }
+
+                // Convert RGB to HSL
+                function rgbToHsl(r, g, b) {
+                    r /= 255, g /= 255, b /= 255;
+                    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+                    var h, s, l = (max + min) / 2;
+
+                    if (max == min) {
+                        h = s = 0; // achromatic
+                    } else {
+                        var d = max - min;
+                        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                        switch (max) {
+                            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                            case g: h = (b - r) / d + 2; break;
+                            case b: h = (r - g) / d + 4; break;
+                        }
+                        h /= 6;
+                    }
+
+                    return h * 360; // Return hue in degrees
+                }
+
+                // Get RGB values for both colors
+                const rgb1 = hexToRgb(color1);
+                const rgb2 = hexToRgb(color2);
+
+                // Get hue values for both colors
+                const hue1 = rgbToHsl(rgb1.r, rgb1.g, rgb1.b);
+                const hue2 = rgbToHsl(rgb2.r, rgb2.g, rgb2.b);
+
+                // Calculate and return the absolute difference in hue
+                return Math.abs(hue1 - hue2);
+            }
 
             // Check if all colors have been used
             if (usedColors.length === neonColors.length) {
@@ -552,15 +597,17 @@
             }
 
             let randomColor;
+            let lastColor = usedColors[usedColors.length - 1]; // Get the last used color
             do {
                 // Select a random index from the neonColors array
                 const randomIndex = Math.floor(Math.random() * neonColors.length);
                 randomColor = neonColors[randomIndex];
-            } while (usedColors.includes(randomColor)); // Ensure the color hasn't been used already
+            } while (usedColors.includes(randomColor) || (lastColor && calculateHueDifference(randomColor, lastColor) < 120)); // Ensure the color hasn't been used already and has enough hue difference
 
             usedColors.push(randomColor); // Add the selected color to the list of used colors
             return randomColor;
         }
+
 
         // Initialize an array to keep track of used colors
         let usedColors = [];
