@@ -536,10 +536,10 @@
         function getRandomColor() {
             const neonColors = [
                 '#FC5B5B',
-                '#FF925C', 
-                '#FFDE5C', 
-                '#AAF05F', 
-                '#5FDAF0', 
+                '#FF925C',
+                '#FFDE5C',
+                '#AAF05F',
+                '#5FDAF0',
                 '#5F92F0',
                 '#A55FF0',
                 // '#F05F92',
@@ -882,6 +882,18 @@
             const squares = document.querySelectorAll('.time-square');
             const interval = 1000; // Interval in milliseconds for the color change effect
 
+            // Array of neon colors
+            const neonColors = [
+                '#FC5B5B',
+                '#FF925C',
+                '#FFDE5C',
+                '#AAF05F',
+                '#5FDAF0',
+                '#5F92F0',
+                '#A55FF0',
+                // '#F05F92', // Uncomment if you want to include this color
+            ];
+
             setInterval(() => {
                 // Reset all squares to their original color and set opacity to 1
                 squares.forEach(sq => {
@@ -892,8 +904,8 @@
                 // Randomly select squares and change their color
                 for (let i = 0; i < squares.length; i++) {
                     if (Math.random() < 0.25) { // Adjust the probability as needed
-                        // Generate a random color
-                        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+                        //GPT ADDS: Select a random color from the neonColors array
+                        const randomColor = neonColors[Math.floor(Math.random() * neonColors.length)];
 
                         // Apply color change with full opacity
                         squares[i].style.transition = 'background-color 0.25s';
