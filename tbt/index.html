@@ -667,15 +667,54 @@
 
         });
 
+        //GPT ADDS: Function to calculate and store the end times for the base timer and each subtimer
+        function calculateTimerEndTimes() {
+            let durations = [];
 
+            // Include the base timer duration
+            let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
+            let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
+            durations.push(mainHours * 3600 + mainMinutes * 60);
+
+            // Include durations of all sub-timers
+            document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
+                let hours = parseInt(div.querySelector('input:first-child').value) || 0;
+                let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
+                durations.push(hours * 3600 + minutes * 60);
+            });
+
+            // Calculate end times for each timer (base + subtimers)
+            let currentTime = Date.now();
+            let timerEndTimes = [];
+            let accumulatedDuration = 0;
+            durations.forEach(duration => {
+                accumulatedDuration += duration;
+                timerEndTimes.push(currentTime + accumulatedDuration * 1000);
+            });
+            return timerEndTimes;
+        }
 
         function startCountdown() {
+            //GPT ADDS: Calculate subtimer end times
+            let timerEndTimes = calculateTimerEndTimes();
+
             countdown = setInterval(function () {
                 let totalSeconds = Math.round((endTime - Date.now()) / 1000);
                 updateDisplay(totalSeconds);
 
+                //GPT ADDS: Check for each timer end time
+                timerEndTimes.forEach(timerEndTime => {
+                    if (Date.now() >= timerEndTime - 5000 && Date.now() < timerEndTime) {
+                        handleBlinkingEffect(totalSeconds, document.getElementById('countdown-display'), true);
+                    }
+                });
+
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
+
+                    //GPT ADDS: Stop the blinking effect and ensure visibility
+                    stopBlinking(document.getElementById('countdown-display'));
+
                     let countdownDisplay = document.getElementById('countdown-display');
                     countdownDisplay.textContent = '⏰';
                     countdownDisplay.style.fontSize = '64px'; // Reduced font size
@@ -688,6 +727,13 @@
                 }
                 localStorage.setItem('endTime', endTime.toString());
             }, 1000);
+        }
+
+        //GPT ADDS: Modify the stopBlinking function to ensure visibility
+        function stopBlinking(element) {
+            clearInterval(element.blinkInterval);
+            element.style.visibility = 'visible';
+            element.blinking = false;
         }
 
         function initializeTimeGrid(totalDuration) {
@@ -805,6 +851,41 @@
             // Update time grid colors
             updateTimeGridColors(totalSeconds, percentage);
             updateTimerColor(totalSeconds);
+
+            handleBlinkingEffect(totalSeconds, countdownDisplay);
+        }
+
+        //GPT ADDS: Adjust the handleBlinkingEffect function
+        function handleBlinkingEffect(totalSeconds, displayElement, isTimer) {
+            const timeBeforeBlink = 10; // Time in seconds before we start blinking
+
+            // Start blinking if within the time range and not already blinking
+            if (isTimer || totalSeconds <= timeBeforeBlink) {
+                if (!displayElement.blinking) {
+                    console.log("Blinking started");
+                    startBlinking(displayElement);
+                }
+            }
+            // Stop blinking if time is exceeded or if timer ends
+            else if (totalSeconds > timeBeforeBlink || totalSeconds <= 0) {
+                if (displayElement.blinking) {
+                    console.log("Blinking stopped");
+                    stopBlinking(displayElement);
+                }
+            }
+        }
+
+        function startBlinking(element) {
+            element.blinking = true;
+            element.blinkInterval = setInterval(() => {
+                element.style.visibility = element.style.visibility === 'hidden' ? 'visible' : 'hidden';
+            }, 500); // Blink every half second
+        }
+
+        function stopBlinking(element) {
+            clearInterval(element.blinkInterval);
+            element.style.visibility = 'visible';
+            element.blinking = false;
         }
 
         function updateCountdownDisplayColor(display, percentage) {
