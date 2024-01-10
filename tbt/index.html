@@ -144,7 +144,6 @@
             justify-content: stretch;
         }
 
-
         .brutalButton {
             font-family: 'JetBrains Mono', monospace;
             border: 1px solid #eeeeee;
@@ -155,6 +154,21 @@
             margin-right: -1px;
             /* Overlap borders */
             padding: .5rem 0;
+        }
+
+        .subtimer-display-container {
+            display: flex;
+            gap: .25rem;
+        }
+
+        .subTimerStyle {
+            font-family: 'JetBrains Mono', monospace;
+            color: #eeeeee;
+            margin-bottom: 1rem;
+            flex: 1;
+            border-radius: .25rem;
+            /* Overlap borders */
+            padding: .5rem .5rem;
         }
 
         .brutalButton:hover {
@@ -322,16 +336,9 @@
                             <div class="" id="time-inputs-container">
                                 <!-- Sub-timers added here -->
                             </div>
-                            <!-- Container for load functionality -->
-                            <div id="load-container" style="display: none;" class="button-wrapper marginAdjust">
-                                <input type="text" id="import-data" class="form-control"
-                                    placeholder="Paste JSON data here">
-                                <button id="confirm-load-button" class="brutalButton loadButton">Load!</button>
-                            </div>
                         </div>
                         <div class="button-wrapper marginAdjust">
                             <button id="add-time-button" class="brutalButton">Add Time</button>
-                            <button id="load-button" class="brutalButton">Load</button>
                             <button id="start-button" class="brutalButton">Start</button>
                         </div>
                     </div>
@@ -343,14 +350,14 @@
                         <div id="upward-timer" style="display: none; font-size: 32px; text-align: center;"
                             class="mb-3 upwardClass">
                         </div>
+                        <div id="subtimer-display"
+                            class="d-flex flex-wrap justify-content-center marginAdjust subtimer-display-container">
+                            <!-- Subtimer end times will be added here dynamically -->
+                        </div>
                         <div class="button-wrapper">
                             <button id="pause-button" class="brutalButton">Pause</button>
                             <button id="reset-button" class="brutalButton">Reset</button>
-                            <button id="export-button" class="brutalButton">Export</button>
                         </div>
-                        <!-- Textarea for exporting data -->
-                        <textarea id="exported-data" class="form-control marginAdjust" rows="4"
-                            style="display: none;"></textarea>
                     </div>
                 </div>
             </div>
@@ -364,6 +371,7 @@
         let isPaused = false;
         let upwardTimerInterval;
         let upwardStartTime;
+        let subtimerColors = [];
 
         // Function to simulate button click
         function simulateButtonClick(buttonId) {
@@ -382,26 +390,22 @@
             `;
             container.appendChild(newInputGroup);
 
-            //GPT ADDS: Focus on the minutes input in the newly created input group
+            // Focus on the minutes input in the newly created input group
             newInputGroup.querySelector('input:last-child').focus();
 
             // Set isSubtimerActive to true when a new subtimer is added
             isSubtimerActive = true;
             localStorage.setItem('isSubtimerActive', isSubtimerActive.toString());
-            console.log('(add)isSubtimerActive:', isSubtimerActive);
         });
 
-
         document.addEventListener('DOMContentLoaded', function () {
-            console.log("DOMContentLoaded event triggered");
+            // console.log("DOMContentLoaded event triggered");
 
             if (localStorage.getItem("endTime")) {
                 endTime = parseInt(localStorage.getItem("endTime"));
                 originalSeconds = parseInt(localStorage.getItem("originalSeconds"));
                 isPaused = localStorage.getItem("isPaused") === "true";
                 remainingTime = isPaused ? parseInt(localStorage.getItem("remainingTime")) : 0;
-
-                console.log("Retrieved endTime:", endTime, "originalSeconds:", originalSeconds);
 
                 initializeTimeGrid(originalSeconds); // This ensures grid is set up
 
@@ -421,14 +425,13 @@
                 // Delay the application of colors to ensure the squares are ready
                 setTimeout(() => {
                     const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
-                    console.log("Retrieved colors from localStorage:", savedColors); // Add this line
                     document.querySelectorAll('.time-square').forEach((square, index) => {
                         const color = savedColors[index];
                         if (color) {
                             square.style.backgroundColor = color;
                         }
                     });
-                }, 100); // delay of 100ms
+                }, 100);
             }
 
             // Apply saved colors after initializing the grid
@@ -452,19 +455,19 @@
             isSubtimerActive = localStorage.getItem('isSubtimerActive') === 'true';
 
             document.getElementById('base-time-inputs-container').addEventListener('keyup', function (event) {
-                //GPT ADDS: Check if the event target is an input, the key is Enter, and the delay flag is true
+                // Check if the event target is an input, the key is Enter, and the delay flag is true
                 if (event.target.matches('input') && event.keyCode === 13 && event.target.enterKeyEnabled) {
                     simulateButtonClick('start-button');
                 }
             });
 
-            //GPT ADDS: Add a focus event listener to all input elements inside the container
+            // Add a focus event listener to all input elements inside the container
             document.getElementById('base-time-inputs-container').addEventListener('focusin', function (event) {
                 if (event.target.matches('input')) {
-                    //GPT ADDS: Initially set the enterKeyEnabled flag to false
+                    // Initially set the enterKeyEnabled flag to false
                     event.target.enterKeyEnabled = false;
 
-                    //GPT ADDS: Enable the enterKeyEnabled flag after a one second delay
+                    // Enable the enterKeyEnabled flag after a one second delay
                     setTimeout(function () {
                         event.target.enterKeyEnabled = true;
                     }, 1000); // 1000 milliseconds = 1 second
@@ -484,6 +487,28 @@
                     }
                 });
             }
+
+            // Retrieve and use stored subtimer end times on page reload
+            if (localStorage.getItem('subtimerEndTimes')) {
+                logSubtimerEndTimes();
+            }
+
+            // Reapply saved subtimer styles on page reload
+            if (localStorage.getItem('subtimerStyles')) {
+                const subtimerStyles = JSON.parse(localStorage.getItem('subtimerStyles'));
+                const subtimers = document.querySelectorAll('#subtimer-display div');
+
+                subtimers.forEach((div, index) => {
+                    const style = subtimerStyles[index];
+                    if (style) {
+                        div.style.color = style.color;
+                        div.style.backgroundColor = style.rgbaColor;
+                        div.style.opacity = style.opacity;
+
+                        console.log(`Applied styles to Subtimer ${index + 1}: color = ${style.color}, rgbaColor = ${style.rgbaColor}, opacity = ${style.opacity}`);
+                    }
+                });
+            }
         });
 
         //Function to decompress the array of colors
@@ -499,7 +524,6 @@
             return decompressed;
         }
 
-
         document.getElementById('start-button').addEventListener('click', function () {
             let totalDuration = 0;
 
@@ -507,7 +531,6 @@
             let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
             let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
             let mainDuration = mainHours * 3600 + mainMinutes * 60;
-            // totalDuration += mainDuration; // Add main timer duration
 
             // Add durations of all sub-timers
             document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
@@ -517,8 +540,6 @@
             });
 
             totalDuration += mainDuration;
-            console.log('totalduration::', totalDuration);
-            console.log('Main Duration::', mainDuration)
 
             originalSeconds = totalDuration; // Set originalSeconds here
             endTime = Date.now() + totalDuration * 1000;
@@ -530,7 +551,12 @@
             localStorage.setItem('endTime', endTime.toString());
             localStorage.setItem('originalSeconds', originalSeconds.toString());
             localStorage.setItem('isPaused', 'false');
-            console.log('(start)isSubtimerActive:', isSubtimerActive);
+
+            // Defer the calculation and storage of subtimer end times
+            setTimeout(() => {
+                calculateAndStoreSubtimerEndTimes();
+                logSubtimerEndTimes();
+            }, 0);
         });
 
         function getRandomColor() {
@@ -542,7 +568,6 @@
                 '#5FDAF0',
                 '#5F92F0',
                 '#A55FF0',
-                // '#F05F92',
             ];
 
             // Function to calculate hue difference between two colors
@@ -608,7 +633,6 @@
             return randomColor;
         }
 
-
         // Initialize an array to keep track of used colors
         let usedColors = [];
 
@@ -629,7 +653,6 @@
             }
             localStorage.setItem('isPaused', isPaused.toString());
         });
-
 
         document.getElementById('reset-button').addEventListener('click', function () {
             clearInterval(countdown);
@@ -654,20 +677,18 @@
             timeInputsContainer.innerHTML = ''; // Clear all child elements
             isSubtimerActive = false;
             localStorage.setItem('isSubtimerActive', isSubtimerActive.toString());
-            console.log('(reset)isSubtimerActive:', isSubtimerActive);
+            // console.log('(reset)isSubtimerActive:', isSubtimerActive);
 
             // Reset the pause button's text to "Pause" and reset the isPaused flag
             document.getElementById('pause-button').textContent = 'Pause';
             isPaused = false;
             localStorage.setItem('isPaused', 'false'); // Update the isPaused flag in localStorage
 
-            //GPT ADDS: Make sure the pause button is visible again on reset
+            // Make sure the pause button is visible again on reset
             document.getElementById('pause-button').style.display = 'initial';
-            document.getElementById('export-button').style.display = 'initial';
-
         });
 
-        //GPT ADDS: Function to calculate and store the end times for the base timer and each subtimer
+        // Function to calculate and store the end times for the base timer and each subtimer
         function calculateTimerEndTimes() {
             let durations = [];
 
@@ -691,18 +712,19 @@
                 accumulatedDuration += duration;
                 timerEndTimes.push(currentTime + accumulatedDuration * 1000);
             });
+
             return timerEndTimes;
         }
 
         function startCountdown() {
-            //GPT ADDS: Calculate subtimer end times
+            // Calculate subtimer end times
             let timerEndTimes = calculateTimerEndTimes();
 
             countdown = setInterval(function () {
                 let totalSeconds = Math.round((endTime - Date.now()) / 1000);
                 updateDisplay(totalSeconds);
 
-                //GPT ADDS: Check for each timer end time
+                // Check for each timer end time
                 timerEndTimes.forEach(timerEndTime => {
                     if (Date.now() >= timerEndTime - 5000 && Date.now() < timerEndTime) {
                         handleBlinkingEffect(totalSeconds, document.getElementById('countdown-display'), true);
@@ -712,7 +734,7 @@
                 if (totalSeconds <= 0) {
                     clearInterval(countdown);
 
-                    //GPT ADDS: Stop the blinking effect and ensure visibility
+                    // Stop the blinking effect and ensure visibility
                     stopBlinking(document.getElementById('countdown-display'));
 
                     let countdownDisplay = document.getElementById('countdown-display');
@@ -721,31 +743,25 @@
                     countdownDisplay.style.marginTop = '16px'; // Reduced font size
                     animateGrid();
 
-                    //GPT ADDS: Hide the pause button when the timer ends
+                    // Hide the pause button when the timer ends
                     document.getElementById('pause-button').style.display = 'none';
-                    document.getElementById('export-button').style.display = 'none';
                 }
                 localStorage.setItem('endTime', endTime.toString());
             }, 1000);
-        }
-
-        //GPT ADDS: Modify the stopBlinking function to ensure visibility
-        function stopBlinking(element) {
-            clearInterval(element.blinkInterval);
-            element.style.visibility = 'visible';
-            element.blinking = false;
         }
 
         function initializeTimeGrid(totalDuration) {
             const grid = document.getElementById('time-grid');
             grid.innerHTML = ''; // Clear existing squares if any
 
+            subtimerColors = [];
+
             //Check if there are already saved colors in localStorage
             const savedColors = JSON.parse(localStorage.getItem('squareColors') || '[]');
             let colorsNeedSaving = savedColors.length === 0;
 
             //Log to check if the grid is initialized correctly
-            console.log("Initializing grid for duration:", totalDuration);
+            // console.log("Initializing grid for duration:", totalDuration);
 
             // Add squares for the total duration
             let mainSquares = calculateTotalSquares(totalDuration);
@@ -772,6 +788,9 @@
                 let subSquares = calculateSubTimerSquares(duration, totalDuration);
                 let color = getRandomColor();
 
+                // Store the color for this subtimer
+                subtimerColors.push(color);
+
                 // Color squares for this sub-timer
                 for (let i = subTimerEndIndex - 1; i >= subTimerEndIndex - subSquares && i >= 0; i--) {
                     grid.children[i].style.backgroundColor = color;
@@ -779,14 +798,16 @@
                 subTimerEndIndex -= subSquares; // Move the index down for the next sub-timer
             });
 
-
+            subtimerColors.push('#eeeeee');
+            // Add this line to reverse the order of the array
+            subtimerColors.reverse();
 
             if (colorsNeedSaving) {
                 // Compress the colors array before saving
                 const colors = Array.from(document.querySelectorAll('.time-square')).map(square => square.style.backgroundColor);
                 const compressedColors = compressColorsArray(colors);
                 localStorage.setItem('squareColors', JSON.stringify(compressedColors));
-                console.log("Compressed colors saved to localStorage:", compressedColors);
+                // console.log("Compressed colors saved to localStorage:", compressedColors);
             }
         }
 
@@ -816,16 +837,12 @@
             return compressed;
         }
 
-
-
-
         function calculateSubTimerSquares(subTimerDuration, totalDuration) {
             //Calculate the number of squares for a sub-timer based on the total duration
             let durationRatio = subTimerDuration / totalDuration;
             let totalSquares = calculateTotalSquares(totalDuration);
             return Math.ceil(totalSquares * durationRatio);
         }
-
 
         function calculateTotalSquares(duration) {
             if (duration > 7200) { // If duration is greater than 2 hours
@@ -855,21 +872,21 @@
             handleBlinkingEffect(totalSeconds, countdownDisplay);
         }
 
-        //GPT ADDS: Adjust the handleBlinkingEffect function
+        // Adjust the handleBlinkingEffect function
         function handleBlinkingEffect(totalSeconds, displayElement, isTimer) {
             const timeBeforeBlink = 10; // Time in seconds before we start blinking
 
             // Start blinking if within the time range and not already blinking
             if (isTimer || totalSeconds <= timeBeforeBlink) {
                 if (!displayElement.blinking) {
-                    console.log("Blinking started");
+                    // console.log("Blinking started");
                     startBlinking(displayElement);
                 }
             }
             // Stop blinking if time is exceeded or if timer ends
             else if (totalSeconds > timeBeforeBlink || totalSeconds <= 0) {
                 if (displayElement.blinking) {
-                    console.log("Blinking stopped");
+                    // console.log("Blinking stopped");
                     stopBlinking(displayElement);
                 }
             }
@@ -889,8 +906,6 @@
         }
 
         function updateCountdownDisplayColor(display, percentage) {
-            // let checkpointSeconds = parseInt(localStorage.getItem('checkpointSeconds') || '0');
-            // let isCheckpointActive = checkpointSeconds > 0;
 
             display.classList.remove('text-warning', 'text-danger', 'shaking');
             if (!isSubtimerActive) {
@@ -926,22 +941,16 @@
 
             const squares = document.querySelectorAll('.time-square');
             squares.forEach((square, index) => {
-                // Reset color classes and opacity
                 square.classList.remove('yellow', 'red');
                 square.style.opacity = index < elapsedSquares ? '0.4' : '1';
-
-                // Update square color based on remaining percentage and checkpoint status
                 if (!isSubtimerActive) {
-                    // console.log("No checkpoint active, should update to orange/red if necessary.");
                     if (percentage > 0.5) {
-                        // Normal state, no color change
                     } else if (percentage > 0.25) {
                         if (index >= elapsedSquares) square.classList.add('yellow');
                     } else {
                         if (index >= elapsedSquares) square.classList.add('red');
                     }
                 } else {
-                    // console.log("Checkpoint active, updating squares for checkpoint.");
                 }
             });
         }
@@ -972,7 +981,6 @@
                 '#5FDAF0',
                 '#5F92F0',
                 '#A55FF0',
-                // '#F05F92', // Uncomment if you want to include this color
             ];
 
             setInterval(() => {
@@ -985,7 +993,7 @@
                 // Randomly select squares and change their color
                 for (let i = 0; i < squares.length; i++) {
                     if (Math.random() < 0.25) { // Adjust the probability as needed
-                        //GPT ADDS: Select a random color from the neonColors array
+                        // Select a random color from the neonColors array
                         const randomColor = neonColors[Math.floor(Math.random() * neonColors.length)];
 
                         // Apply color change with full opacity
@@ -997,7 +1005,6 @@
             }, interval);
             startUpwardTimer();
         }
-
 
         function startUpwardTimer() {
             let currentTime = Date.now();
@@ -1066,40 +1073,92 @@
             }
         }
 
-        // Export button functionality
-        document.getElementById('export-button').addEventListener('click', function () {
-            const data = { ...localStorage };
-            const jsonString = JSON.stringify(data);
-            const exportTextArea = document.getElementById('exported-data');
-            exportTextArea.value = jsonString;
-            exportTextArea.style.display = ''; // Show the textarea
-        });
+        // Modified function to calculate and store subtimer end times
+        function calculateAndStoreSubtimerEndTimes() {
+            let timerEndTimes = calculateTimerEndTimes();
+            localStorage.setItem('subtimerEndTimes', JSON.stringify(timerEndTimes));
+        }
 
-        // Load button functionality
-        document.getElementById('load-button').addEventListener('click', function () {
-            document.getElementById('load-container').style.display = ''; // Show the load container
-        });
+        // Function to log subtimer end times and save their styles
+        function logSubtimerEndTimes() {
+            let timerEndTimes = JSON.parse(localStorage.getItem('subtimerEndTimes') || '[]');
+            const subtimerDisplay = document.getElementById('subtimer-display');
+            subtimerDisplay.innerHTML = '';
 
-        // Confirm Load button functionality
-        document.getElementById('confirm-load-button').addEventListener('click', function () {
-            const jsonString = document.getElementById('import-data').value;
-            try {
-                const data = JSON.parse(jsonString);
+            // Retrieve existing styles from localStorage or initialize if not present
+            let subtimerStyles = JSON.parse(localStorage.getItem('subtimerStyles')) || [];
 
-                // Clear current localStorage
-                localStorage.clear();
+            // Check if we need to update subtimerStyles based on timerEndTimes length
+            let shouldUpdateStyles = subtimerStyles.length !== timerEndTimes.length;
 
-                // Load new data into localStorage
-                for (const key in data) {
-                    localStorage.setItem(key, data[key]);
+            timerEndTimes.forEach((endTime, index) => {
+                const timeString = new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                console.log(`Subtimer ${index + 1}: Ends at ${timeString}`);
+
+                const subtimerDiv = document.createElement('div');
+                subtimerDiv.textContent = timeString;
+                subtimerDiv.className = 'subTimerStyle';
+                subtimerDiv.dataset.endTime = endTime;
+
+                if (subtimerColors[index]) {
+                    const textColor = subtimerColors[index];
+                    subtimerDiv.style.color = textColor;
+
+                    // Convert hex to RGBA and set as background color
+                    const rgbaColor = convertHexToRGBA(textColor, 0.2);
+                    subtimerDiv.style.backgroundColor = rgbaColor;
+
+                    // Update the style information if needed
+                    if (shouldUpdateStyles || !subtimerStyles[index] || subtimerStyles[index].color !== textColor) {
+                        subtimerStyles[index] = { color: textColor, rgbaColor: rgbaColor, opacity: 1 };
+                    }
+                } else if (shouldUpdateStyles || !subtimerStyles[index]) {
+                    // Update default style if no color is defined
+                    subtimerStyles[index] = { color: null, rgbaColor: null, opacity: 1 };
                 }
 
-                // Reload the page to start the timer with new data
-                location.reload();
-            } catch (e) {
-                alert('Invalid JSON data.');
+                subtimerDisplay.appendChild(subtimerDiv);
+            });
+
+            if (shouldUpdateStyles) {
+                // Save the updated styles to localStorage only if necessary
+                localStorage.setItem('subtimerStyles', JSON.stringify(subtimerStyles));
+                console.log('Updated and saved subtimerStyles:', subtimerStyles);
+            } else {
+                console.log('No update required for subtimerStyles');
             }
-        });
+
+            // Interval check to update opacity of subtimers
+            setInterval(() => {
+                const currentTime = Date.now();
+                document.querySelectorAll('#subtimer-display div').forEach((div, index) => {
+                    const subtimerEndTime = parseInt(div.dataset.endTime);
+                    if (subtimerEndTime < currentTime) {
+                        div.style.opacity = 0.4;
+                        if (subtimerStyles[index]) {
+                            subtimerStyles[index].opacity = 0.4; // Update the stored opacity
+                        }
+                    } else {
+                        div.style.opacity = 1;
+                        if (subtimerStyles[index]) {
+                            subtimerStyles[index].opacity = 1; // Update the stored opacity
+                        }
+                    }
+                });
+                // Save the updated styles to localStorage
+                localStorage.setItem('subtimerStyles', JSON.stringify(subtimerStyles));
+            }, 60000); // Check every minute
+        }
+
+
+        //GPT ADDS: Function to convert hex color to RGBA
+        function convertHexToRGBA(hex, opacity) {
+            let r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
 
     </script>
 
