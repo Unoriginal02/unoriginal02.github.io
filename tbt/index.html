@@ -35,6 +35,16 @@
             color: #eeeeee;
         }
 
+        .target-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            text-align: center;
+            /* Center the countdown display */
+            margin-top: 0;
+            /* Remove the top margin to place it at the top */
+            color: #eeeeee;
+        }
+
         .content-container {
             display: flex;
             flex-direction: column;
@@ -326,6 +336,7 @@
             <div class="justify-content-center content-group">
                 <div class="text-center">
                     <div id="input-group" class="input-group-css">
+                        <div id="target-time-display" class="target-time mb-3"></div>
                         <div id="base-time-inputs-container">
                             <div class="d-flex justify-content-center">
                                 <input type="number" id="hours-input" class="form-control brutalInput"
@@ -346,7 +357,7 @@
                         <div id="time-grid" class="">
                             <!-- Squares will be added dynamically using JavaScript -->
                         </div>
-                        <div id="countdown-display" class="mt-3"></div>
+                        <div id="countdown-display" class="mt-3 relojito"></div>
                         <div id="upward-timer" style="display: none; font-size: 32px; text-align: center;"
                             class="mb-3 upwardClass">
                         </div>
@@ -509,6 +520,15 @@
                     }
                 });
             }
+
+            //GPT ADDS: Update the target time display with the current hour and minute
+            let currentTime = new Date(Date.now());
+            let hours = currentTime.getHours().toString().padStart(2, '0');
+            let minutes = currentTime.getMinutes().toString().padStart(2, '0');
+            document.getElementById('target-time-display').textContent = `Target: ${hours}:${minutes}`;
+
+            subtimerColors = JSON.parse(localStorage.getItem('subtimerColors') || '[]');
+            console.log(subtimerColors);
         });
 
         //Function to decompress the array of colors
@@ -686,6 +706,12 @@
 
             // Make sure the pause button is visible again on reset
             document.getElementById('pause-button').style.display = 'initial';
+
+            //GPT ADDS: Update the target time display with the current hour and minute
+            let currentTime = new Date(Date.now());
+            let hours = currentTime.getHours().toString().padStart(2, '0');
+            let minutes = currentTime.getMinutes().toString().padStart(2, '0');
+            document.getElementById('target-time-display').textContent = `Target: ${hours}:${minutes}`;
         });
 
         // Function to calculate and store the end times for the base timer and each subtimer
@@ -718,7 +744,16 @@
 
         function startCountdown() {
             // Calculate subtimer end times
-            let timerEndTimes = calculateTimerEndTimes();
+            let timerEndTimes;
+
+            // Check if timerEndTimes are stored in localStorage
+            if (localStorage.getItem('subtimerEndTimes')) {
+                timerEndTimes = JSON.parse(localStorage.getItem('subtimerEndTimes'));
+            } else {
+                // Calculate subtimer end times if not available
+                timerEndTimes = calculateTimerEndTimes();
+                localStorage.setItem('subtimerEndTimes', JSON.stringify(timerEndTimes));
+            }
 
             countdown = setInterval(function () {
                 let totalSeconds = Math.round((endTime - Date.now()) / 1000);
@@ -726,6 +761,7 @@
 
                 // Check for each timer end time
                 timerEndTimes.forEach(timerEndTime => {
+
                     if (Date.now() >= timerEndTime - 5000 && Date.now() < timerEndTime) {
                         handleBlinkingEffect(totalSeconds, document.getElementById('countdown-display'), true);
                     }
@@ -809,6 +845,9 @@
                 localStorage.setItem('squareColors', JSON.stringify(compressedColors));
                 // console.log("Compressed colors saved to localStorage:", compressedColors);
             }
+
+            localStorage.setItem('subtimerColors', JSON.stringify(subtimerColors));
+
         }
 
         //Function to compress the array of colors using run-length encoding
@@ -875,9 +914,9 @@
         // Adjust the handleBlinkingEffect function
         function handleBlinkingEffect(totalSeconds, displayElement, isTimer) {
             const timeBeforeBlink = 10; // Time in seconds before we start blinking
-
             // Start blinking if within the time range and not already blinking
             if (isTimer || totalSeconds <= timeBeforeBlink) {
+
                 if (!displayElement.blinking) {
                     // console.log("Blinking started");
                     startBlinking(displayElement);
@@ -1147,7 +1186,7 @@
                 });
                 // Save the updated styles to localStorage
                 localStorage.setItem('subtimerStyles', JSON.stringify(subtimerStyles));
-            }, 60000); // Check every minute
+            }, 2000); // Check every minute
         }
 
 
@@ -1160,6 +1199,62 @@
             return `rgba(${r}, ${g}, ${b}, ${opacity})`;
         }
 
+        //GPT ADDS: Function to calculate and display the estimated target time
+        //GPT ADDS: Function to calculate and display the estimated target time based on current time and timer inputs
+        function updateTargetTimeDisplay() {
+            let totalDurationInSeconds = 0;
+
+            // Include the base timer duration
+            let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
+            let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
+            totalDurationInSeconds += (mainHours * 3600 + mainMinutes * 60);
+
+            // Include durations of all sub-timers
+            document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
+                let hours = parseInt(div.querySelector('input:first-child').value) || 0;
+                let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
+                totalDurationInSeconds += (hours * 3600 + minutes * 60);
+            });
+
+            // Calculate target time based on current time and total duration
+            let currentTime = new Date();
+            let targetTime = new Date(currentTime.getTime() + totalDurationInSeconds * 1000);
+            let targetHours = targetTime.getHours();
+            let targetMinutes = targetTime.getMinutes();
+
+            // Update the display
+            let targetTimeDisplay = document.getElementById('target-time-display');
+            targetTimeDisplay.textContent = `Target: ${targetHours.toString().padStart(2, '0')}:${targetMinutes.toString().padStart(2, '0')}`;
+        }
+
+        // Adding event listeners to update target time display
+        document.getElementById('base-time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
+        document.getElementById('time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
+
+        //GPT ADDS: Event listener for handling Shift + Up/Down arrow keys for input fields
+        document.body.addEventListener('keydown', function (event) {
+            // Check if the event target is an input within the specified containers
+            if (event.target.matches('#base-time-inputs-container input[type="number"], #time-inputs-container input[type="number"]')) {
+                handleShiftArrowKeys(event);
+            }
+        });
+
+        function handleShiftArrowKeys(event) {
+            // Check for Shift + Up Arrow or Shift + Down Arrow key combinations
+            if (event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                event.preventDefault(); // Prevent the default action
+
+                let currentValue = parseInt(event.target.value) || 0;
+                if (event.key === 'ArrowUp') {
+                    event.target.value = currentValue + 10; // Increment by 10
+                } else if (event.key === 'ArrowDown') {
+                    event.target.value = currentValue - 10; // Decrement by 10
+                    if (event.target.value < 0) event.target.value = 0; // Ensure value does not go below 0
+                }
+
+                updateTargetTimeDisplay(); // Update the target time display
+            }
+        }
     </script>
 
 </body>
