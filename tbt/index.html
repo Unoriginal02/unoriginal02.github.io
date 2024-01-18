@@ -326,6 +326,11 @@
             padding: 0 32px;
             margin-left: -1px;
         }
+
+        .input-group-css {
+            margin: 0 auto;
+            max-width: 328px;
+        }
     </style>
 </head>
 
@@ -340,7 +345,7 @@
                         <div id="base-time-inputs-container">
                             <div class="d-flex justify-content-center">
                                 <input type="number" id="hours-input" class="form-control brutalInput"
-                                    placeholder="Hours" min="0" required>
+                                    placeholder="Hours" min="0" required style="display:none;">
                                 <input type="number" id="minutes-input" class="form-control brutalInput"
                                     placeholder="Minutes" min="0" required>
                             </div>
@@ -396,7 +401,7 @@
             var newInputGroup = document.createElement('div');
             newInputGroup.className = 'd-flex justify-content-center';
             newInputGroup.innerHTML = `
-                <input type="number" class="form-control brutalInput marginAdjust" placeholder="Hours" min="0">
+                <input type="number" class="form-control brutalInput marginAdjust" placeholder="Hours" min="0" style="display:none">
                 <input type="number" class="form-control brutalInput marginAdjust" placeholder="Minutes" min="0">
             `;
             container.appendChild(newInputGroup);
