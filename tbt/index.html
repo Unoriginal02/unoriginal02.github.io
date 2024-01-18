@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Time Blind Timer</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -333,6 +333,11 @@
         .input-group-css {
             margin: 0 auto;
             max-width: 328px;
+        }
+
+        .tooltip{
+            font-family: 'JetBrains Mono', monospace;
+            color: #eeeeee;
         }
     </style>
 </head>
@@ -1180,6 +1185,9 @@
                 subtimerDiv.className = 'subTimerStyle';
                 subtimerDiv.dataset.endTime = endTime;
 
+                //GPT ADDS: Apply non-selectable text style to subtimerDiv
+                subtimerDiv.style.userSelect = 'none';
+
                 // Add click event listener to each subtimer for setting a name
                 subtimerDiv.addEventListener('click', function () {
                     // Save the current index to a variable accessible by the modal save button
@@ -1319,6 +1327,10 @@
             // Calculate target time based on current time and total duration
             let currentTime = new Date();
             let targetTime = new Date(currentTime.getTime() + totalDurationInSeconds * 1000);
+
+            //GPT ADDS: Adjust for next day crossover if the time goes past midnight
+            targetTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), targetTime.getHours(), targetTime.getMinutes());
+
             let targetHours = targetTime.getHours();
             let targetMinutes = targetTime.getMinutes();
 
