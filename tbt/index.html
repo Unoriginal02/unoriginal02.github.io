@@ -423,7 +423,10 @@
                 isPaused = localStorage.getItem("isPaused") === "true";
                 remainingTime = isPaused ? parseInt(localStorage.getItem("remainingTime")) : 0;
 
-                initializeTimeGrid(originalSeconds); // This ensures grid is set up
+                // Check if the flag is set before initializing the grid
+                if (localStorage.getItem('isGridPage') === 'true') {
+                    initializeTimeGrid(originalSeconds);
+                }
 
                 toggleVisibility();
 
@@ -582,6 +585,9 @@
                 calculateAndStoreSubtimerEndTimes();
                 logSubtimerEndTimes();
             }, 0);
+
+            // When the user navigates to the grid page
+            localStorage.setItem('isGridPage', 'true');
         });
 
         function getRandomColor() {
@@ -717,9 +723,12 @@
             let hours = currentTime.getHours().toString().padStart(2, '0');
             let minutes = currentTime.getMinutes().toString().padStart(2, '0');
             document.getElementById('target-time-display').textContent = `Target: ${hours}:${minutes}`;
-            
+
             //GPT ADDS: Explicitly remove 'subtimerStyles' from localStorage on reset
             localStorage.removeItem('subtimerStyles');
+
+            // When leaving the grid page or clicking the reset button
+            localStorage.removeItem('isGridPage');
         });
 
         // Function to calculate and store the end times for the base timer and each subtimer
@@ -1147,6 +1156,22 @@
                 subtimerDiv.className = 'subTimerStyle';
                 subtimerDiv.dataset.endTime = endTime;
 
+                //GPT ADDS: Add click event listener to each subtimer for setting a name
+                subtimerDiv.addEventListener('click', function () {
+                    let name = prompt("Enter a name for this subtimer:");
+                    if (name) {
+                        subtimerDiv.setAttribute('title', name);
+                        $(subtimerDiv).tooltip(); // Initialize Bootstrap tooltip
+                    }
+                });
+
+                //GPT ADDS: Initialize tooltip if name is already set
+                let storedName = localStorage.getItem('subtimerName' + index);
+                if (storedName) {
+                    subtimerDiv.setAttribute('title', storedName);
+                    $(subtimerDiv).tooltip();
+                }
+
                 if (subtimerColors[index]) {
                     const textColor = subtimerColors[index];
                     subtimerDiv.style.color = textColor;
@@ -1192,11 +1217,13 @@
                         }
                     }
                 });
-                // Save the updated styles to localStorage
-                localStorage.setItem('subtimerStyles', JSON.stringify(subtimerStyles));
             }, 2000); // Check every minute
         }
 
+        //GPT ADDS: Initialize tooltips on page load
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
 
         //GPT ADDS: Function to convert hex color to RGBA
         function convertHexToRGBA(hex, opacity) {
