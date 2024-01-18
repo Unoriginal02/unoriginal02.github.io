@@ -339,6 +339,28 @@
 
 <body>
 
+    <!-- Bootstrap Modal -->
+    <div class="modal fade" id="nameModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Enter Name for Subtimer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="subtimerNameInput" class="form-control" placeholder="Subtimer Name">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveNameButton">Save Name</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="container content-container" data-toggle="tooltip">
         <div class="content-wrapper">
             <div class="justify-content-center content-group">
@@ -540,6 +562,11 @@
 
             subtimerColors = JSON.parse(localStorage.getItem('subtimerColors') || '[]');
             console.log(subtimerColors);
+
+            $('#nameModal').on('hidden.bs.modal', function () {
+                document.getElementById('subtimerNameInput').value = '';
+            });
+
         });
 
         //Function to decompress the array of colors
@@ -1158,15 +1185,57 @@
                 subtimerDiv.textContent = timeString;
                 subtimerDiv.className = 'subTimerStyle';
                 subtimerDiv.dataset.endTime = endTime;
-                subtimerDiv.setAttribute('data-toggle', 'tooltip')
 
                 // Add click event listener to each subtimer for setting a name
                 subtimerDiv.addEventListener('click', function () {
-                    let name = prompt("Enter a name for this subtimer:");
-                    if (name) {
-                        subtimerDiv.setAttribute('title', name);
-                        $(subtimerDiv).tooltip(); // Initialize Bootstrap tooltip
+                    // Save the current index to a variable accessible by the modal save button
+                    currentSubtimerIndex = index;
+
+                    // Show the modal
+                    $('#nameModal').modal('show');
+                });
+
+                document.getElementById('subtimerNameInput').addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        // Trigger save action
+                        document.getElementById('saveNameButton').click();
                     }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape') {
+                        // Check if modal is open
+                        if ($('#nameModal').hasClass('show')) {
+                            $('#nameModal').modal('hide');
+                        }
+                    }
+                });
+
+                document.getElementById('saveNameButton').addEventListener('click', function () {
+                    const name = document.getElementById('subtimerNameInput').value;
+                    if (name) {
+                        const currentSubtimerDiv = document.querySelectorAll('.subTimerStyle')[currentSubtimerIndex];
+
+                        // Set the title for Bootstrap tooltip and immediately initialize it
+                        currentSubtimerDiv.setAttribute('title', name);
+                        $(currentSubtimerDiv).tooltip();
+
+                        // Remove the title attribute to prevent default browser tooltip
+                        currentSubtimerDiv.removeAttribute('title');
+
+                        // Optionally, set data-original-title for Bootstrap tooltip
+                        $(currentSubtimerDiv).attr('data-original-title', name);
+
+                        // Save the name in local storage
+                        localStorage.setItem('subtimerName' + currentSubtimerIndex, name);
+
+                        // Hide the modal
+                        $('#nameModal').modal('hide');
+                    }
+                });
+
+                $('#nameModal').on('shown.bs.modal', function () {
+                    $('#subtimerNameInput').focus();
                 });
 
                 // Initialize tooltip if name is already set
@@ -1227,7 +1296,6 @@
         $(function () {
             $('[data-toggle="tooltip"]').tooltip()
         })
-
 
         // Function to convert hex color to RGBA
         function convertHexToRGBA(hex, opacity) {
