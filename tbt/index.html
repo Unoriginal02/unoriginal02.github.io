@@ -335,7 +335,7 @@
             max-width: 328px;
         }
 
-        .tooltip{
+        .tooltip {
             font-family: 'JetBrains Mono', monospace;
             color: #eeeeee;
         }
@@ -566,6 +566,62 @@
                 document.getElementById('subtimerNameInput').value = '';
             });
 
+            // Function to calculate and display the estimated target time based on current time and timer inputs
+            function updateTargetTimeDisplay() {
+                let totalDurationInSeconds = 0;
+
+                // Include the base timer duration
+                let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
+                let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
+                totalDurationInSeconds += (mainHours * 3600 + mainMinutes * 60);
+
+                // Include durations of all sub-timers
+                document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
+                    let hours = parseInt(div.querySelector('input:first-child').value) || 0;
+                    let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
+                    totalDurationInSeconds += (hours * 3600 + minutes * 60);
+                });
+
+                // Calculate target time based on current time and total duration
+                let currentTime = new Date();
+                let targetTime = new Date(currentTime.getTime() + totalDurationInSeconds * 1000);
+
+                let targetHours = targetTime.getHours();
+                let targetMinutes = targetTime.getMinutes();
+
+                // Update the display
+                let targetTimeDisplay = document.getElementById('target-time-display');
+                targetTimeDisplay.textContent = `Target: ${targetHours.toString().padStart(2, '0')}:${targetMinutes.toString().padStart(2, '0')}`;
+            }
+
+            // Adding event listeners to update target time display
+            document.getElementById('base-time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
+            document.getElementById('time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
+
+            // Event listener for handling Shift + Up/Down arrow keys for input fields
+            document.body.addEventListener('keydown', function (event) {
+                // Check if the event target is an input within the specified containers
+                if (event.target.matches('#base-time-inputs-container input[type="number"], #time-inputs-container input[type="number"]')) {
+                    handleShiftArrowKeys(event);
+                }
+            });
+
+            function handleShiftArrowKeys(event) {
+                // Check for Shift + Up Arrow or Shift + Down Arrow key combinations
+                if (event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                    event.preventDefault(); // Prevent the default action
+
+                    let currentValue = parseInt(event.target.value) || 0;
+                    if (event.key === 'ArrowUp') {
+                        event.target.value = currentValue + 10; // Increment by 10
+                    } else if (event.key === 'ArrowDown') {
+                        event.target.value = currentValue - 10; // Decrement by 10
+                        if (event.target.value < 0) event.target.value = 0; // Ensure value does not go below 0
+                    }
+
+                    updateTargetTimeDisplay(); // Update the target time display
+                }
+            }
         });
 
         //Function to decompress the array of colors
@@ -1306,66 +1362,6 @@
                 b = parseInt(hex.slice(5, 7), 16);
 
             return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        }
-
-        // Function to calculate and display the estimated target time based on current time and timer inputs
-        function updateTargetTimeDisplay() {
-            let totalDurationInSeconds = 0;
-
-            // Include the base timer duration
-            let mainHours = parseInt(document.getElementById('hours-input').value) || 0;
-            let mainMinutes = parseInt(document.getElementById('minutes-input').value) || 0;
-            totalDurationInSeconds += (mainHours * 3600 + mainMinutes * 60);
-
-            // Include durations of all sub-timers
-            document.querySelectorAll('#time-inputs-container > div').forEach((div) => {
-                let hours = parseInt(div.querySelector('input:first-child').value) || 0;
-                let minutes = parseInt(div.querySelector('input:last-child').value) || 0;
-                totalDurationInSeconds += (hours * 3600 + minutes * 60);
-            });
-
-            // Calculate target time based on current time and total duration
-            let currentTime = new Date();
-            let targetTime = new Date(currentTime.getTime() + totalDurationInSeconds * 1000);
-
-            //GPT ADDS: Adjust for next day crossover if the time goes past midnight
-            targetTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), targetTime.getHours(), targetTime.getMinutes());
-
-            let targetHours = targetTime.getHours();
-            let targetMinutes = targetTime.getMinutes();
-
-            // Update the display
-            let targetTimeDisplay = document.getElementById('target-time-display');
-            targetTimeDisplay.textContent = `Target: ${targetHours.toString().padStart(2, '0')}:${targetMinutes.toString().padStart(2, '0')}`;
-        }
-
-        // Adding event listeners to update target time display
-        document.getElementById('base-time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
-        document.getElementById('time-inputs-container').addEventListener('input', updateTargetTimeDisplay);
-
-        // Event listener for handling Shift + Up/Down arrow keys for input fields
-        document.body.addEventListener('keydown', function (event) {
-            // Check if the event target is an input within the specified containers
-            if (event.target.matches('#base-time-inputs-container input[type="number"], #time-inputs-container input[type="number"]')) {
-                handleShiftArrowKeys(event);
-            }
-        });
-
-        function handleShiftArrowKeys(event) {
-            // Check for Shift + Up Arrow or Shift + Down Arrow key combinations
-            if (event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-                event.preventDefault(); // Prevent the default action
-
-                let currentValue = parseInt(event.target.value) || 0;
-                if (event.key === 'ArrowUp') {
-                    event.target.value = currentValue + 10; // Increment by 10
-                } else if (event.key === 'ArrowDown') {
-                    event.target.value = currentValue - 10; // Decrement by 10
-                    if (event.target.value < 0) event.target.value = 0; // Ensure value does not go below 0
-                }
-
-                updateTargetTimeDisplay(); // Update the target time display
-            }
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
