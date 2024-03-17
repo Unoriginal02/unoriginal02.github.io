@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Task Battle</title>
+
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+    <style>
+        :root {
+            --main-color: #eeeeee;
+            --main-color-hover: rgba(238, 238, 238, .1);
+            /* Define the main color variable */
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            /* Remove default margin */
+        }
+
+
+        body {
+            background-color: #000000;
+            /* Dark background */
+            color: var(--main-color);
+            /* Light text color */
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            justify-content: center;
+            /* Horizontally center the content */
+            align-items: center;
+            /* Vertically center the content */
+            flex-direction: column;
+            /* Stack flex items vertically */
+            min-height: 100vh;
+            /* Minimum height of 100% of the viewport height */
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        h3 {
+            text-align: center;
+        }
+
+        #taskInputSection {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            /* Ensure the container takes full width */
+        }
+
+        .maxwidth {
+            max-width: 800px;
+            margin: auto;
+            /* Ensures the content remains centered horizontally */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .comparisonSection {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brutalButton {
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem 0;
+            border-radius: 0;
+            white-space: nowrap;
+            /* Prevent text wrapping */
+            min-width: 100px;
+            /* Adjust based on your needs */
+        }
+
+        .brutalButton:hover {
+            background-color: var(--main-color-hover);
+            color: var(--main-color);
+        }
+
+        .brutalButton:last-child {
+            margin-right: 0;
+        }
+
+        .brutal-list-group {
+            flex-grow: 1;
+            /* Make input take up available space */
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem .5rem;
+            margin-right: -1px;
+            /* Overlap borders */
+            border-radius: 0;
+            text-align: center;
+        }
+
+        .brutalInput {
+            flex-grow: 1;
+            /* Make input take up available space */
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem .5rem;
+            margin-right: -1px;
+            /* Overlap borders */
+            border-radius: 0;
+            text-align: center;
+        }
+
+        button:focus {
+            /* outline: 1px dotted; */
+            outline: 0px auto -webkit-focus-ring-color;
+            background-color: rgba(255, 255, 255, .1);
+        }
+
+        .form-control:focus {
+            background-color: rgba(255, 255, 255, .1) !important;
+            border-color: var(--main-color);
+            outline: 0;
+            box-shadow: none;
+        }
+
+        .brutalInput:focus {
+            background-color: #333333;
+            color: var(--main-color);
+            /* Change text color to light gray when focused */
+            outline: none;
+            /* Remove the default focus outline */
+        }
+
+        .brutalInput::placeholder {
+            /* Change the color of placeholders */
+            color: var(--main-color);
+        }
+
+        .marginAdjust {
+            margin-top: -1px;
+        }
+
+        .marginAdjust-right {
+            margin-right: -1px;
+        }
+
+        .brutal-list-group-item {
+            position: relative;
+            display: block;
+            padding: 0.5rem 1rem;
+            color: var(--main-color);
+            text-decoration: none;
+        }
+
+        .brutal-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            width: 100%;
+            word-wrap: break-word;
+            background-clip: border-box;
+            border: 1px solid var(--main-color);
+        }
+
+        .brutal-card:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        .leaderboard {
+            background-color: #000000;
+            color: var(--main-color);
+            text-align: left;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 0 auto;
+        }
+
+        .leaderboard-row {
+            display: flex;
+            justify-content: start;
+            padding: 10px;
+        }
+
+        .leaderboard-row:nth-child(odd) {
+            background-color: #111111;
+        }
+
+        .leaderboard-top {
+            color: #AAF05F;
+            font-size: 1.5rem;
+        }
+
+        .leaderboard-rank {
+            width: 50px;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+        }
+
+        .leaderboard-score {
+            width: 150px;
+            text-align: right;
+        }
+
+        .card-title {
+            margin-bottom: 0rem;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="maxwidth container text-center my-5">
+        <h2>Task Battle Royale</h2>
+        <div id="taskInputSection" class="justify-content-center mt-3">
+            <input type="text" id="taskInput" class="form-control brutalInput" placeholder="Enter a task">
+            <button class="btn brutalButton" onclick="addTask()">Add Task</button>
+        </div>
+        <div id="taskListSection" class="my-3"></div>
+        <button id="compareButton" class="btn brutalButton" onclick="startComparison()">Compare</button>
+        <div id="comparisonSection" class="comparisonSection justify-content-center"></div>
+        <div id="resultsSection" class="my-3"></div>
+    </div>
+
+    <script>
+
+        //GPT ADDS: Flag to indicate if we are in tiebreaker phase
+        let isInTiebreakerPhase = false;
+
+        function enterTiePhase() {
+            document.documentElement.style.setProperty('--main-color', '#FC6B5B');
+            document.documentElement.style.setProperty('--main-color-hover', 'rgba(252,107,91,.1)');
+            isInTiebreakerPhase = true; //GPT ADDS: Indicate tiebreaker phase has started
+        }
+
+        function exitTiePhase() {
+            document.documentElement.style.setProperty('--main-color', '#eeeeee');
+            document.documentElement.style.setProperty('--main-color-hover', 'rgba(238,238,238,.1)');
+            isInTiebreakerPhase = false; //GPT ADDS: Indicate tiebreaker phase has ended
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const taskInput = document.getElementById('taskInput');
+
+            // Event listener for the Enter key on the task input
+            taskInput.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); // Prevent the default action to avoid form submission if applicable
+                    addTask();
+                    taskInput.focus(); // Refocus on the input for new task entry
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+
+                //GPT ADDS: Check if in tiebreaker phase to call the correct function
+                if (isInTiebreakerPhase) {
+                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                        // Since we only have two options in a tiebreaker, no need to pass index
+                        chooseTiebreaker(comparisons[event.key === 'ArrowLeft' ? 0 : 1]);
+                    }
+                } else {
+                    // Check if the comparison section is currently active/displayed
+                    if (document.getElementById('comparisonSection').innerHTML !== '') {
+                        switch (event.key) {
+                            case 'ArrowLeft':
+                                // Simulate choosing the first option
+                                if (comparisonIndex < comparisons.length) choose(comparisonIndex, 0);
+                                break;
+                            case 'ArrowRight':
+                                // Simulate choosing the second option
+                                if (comparisonIndex < comparisons.length) choose(comparisonIndex, 1);
+                                break;
+                            case 'ArrowUp':
+                                // Reset the comparison process
+                                resetComparisons();
+                                break;
+                        }
+                    }
+                }
+
+            });
+        });
+
+
+        function resetComparisons() {
+            comparisonIndex = 0;
+            comparisons = [];
+            results = {};
+            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('Delete', '').trim()); //GPT ADDS: Repopulate tasks from the UI
+            document.getElementById('comparisonSection').innerHTML = ''; // Clear current comparison
+            document.getElementById('resultsSection').innerHTML = ''; // Clear results section
+            document.getElementById('taskInputSection').style.display = 'flex'; // Show task input section
+            document.getElementById('taskListSection').style.display = 'block'; // Show task list
+            document.getElementById('compareButton').style.display = 'block'; // Show compare button
+            updateTaskListSection(); //GPT ADDS: Update the task list section to reflect current tasks
+            isInTiebreakerPhase = false;
+        }
+
+        let tasks = [];
+        let comparisons = [];
+        let comparisonIndex = 0;
+        let results = {};
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const task = taskInput.value.trim();
+            if (task) {
+                tasks.push(task);
+                taskInput.value = ''; // Clear input field
+                updateTaskListSection();
+            }
+        }
+
+        function updateTaskListSection() {
+            const taskListSection = document.getElementById('taskListSection');
+            // GPT ADDS: Use Bootstrap's list group for a better look
+            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">Delete</button></li>`).join('') + '</ul>';
+        }
+
+
+        //GPT ADDS: Function to delete a task
+        function deleteTask(index) {
+            tasks.splice(index, 1); // Remove the task from the array
+            updateTaskListSection(); // Update the task list
+        }
+
+        function prepareComparisons() {
+            comparisons = [];
+            for (let i = 0; i < tasks.length; i++) {
+                for (let j = i + 1; j < tasks.length; j++) {
+                    comparisons.push([tasks[i], tasks[j]]);
+                }
+            }
+            shuffleComparisons(comparisons);
+        }
+
+        function shuffleComparisons(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+
+        function startComparison() {
+            document.getElementById('taskInputSection').style.display = 'none'; //GPT ADDS: Hide task input section
+            document.getElementById('taskListSection').style.display = 'none'; //GPT ADDS: Hide task list
+            document.getElementById('compareButton').style.display = 'none'; //GPT ADDS: Hide task list
+            document.getElementById('comparisonSection').style.display = 'flex';
+            prepareComparisons();
+            comparisonIndex = 0;
+            if (comparisons.length > 0) {
+                showNextComparison();
+            } else {
+                alert("Please add at least two tasks for comparison.");
+                resetComparisons();
+            }
+        }
+
+        function showNextComparison() {
+            if (comparisonIndex < comparisons.length) {
+                const comparison = comparisons[comparisonIndex];
+                const comparisonSection = document.getElementById('comparisonSection');
+                comparisonSection.innerHTML = `
+                <div class="d-flex justify-content-around my-3">
+                    <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 0)">
+                        <div class="card-body">
+                            <h5 class="card-title">${comparison[0]}</h5>
+                        </div>
+                    </div>
+                    <div class="brutal-card" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 1)">
+                        <div class="card-body">
+                            <h5 class="card-title">${comparison[1]}</h5>
+                        </div>
+                    </div>
+                </div>
+            `;
+            } else {
+                displayResults();
+            }
+        }
+
+        function choose(index, choice) {
+            const chosenTask = comparisons[index][choice];
+            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1;
+            comparisonIndex++;
+            showNextComparison();
+        }
+
+        function displayResults() {
+            document.getElementById('comparisonSection').style.display = 'none'; // Hide comparison section after completion
+            const resultsSection = document.getElementById('resultsSection');
+            // Ensure all tasks are in the results, even if they have 0 points
+            tasks.forEach(task => {
+                if (results[task] === undefined) {
+                    results[task] = 0; //GPT ADDS: Initialize tasks with 0 points if not already in results
+                }
+            });
+            let sortedTasks = Object.entries(results).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); // Sort primarily by score, then alphabetically
+
+            // The rest of the displayResults function remains unchanged
+            let tiesExist = checkForTies(sortedTasks);
+            if (tiesExist) {
+                performTiebreakers(); // Handle tiebreakers
+            } else {
+                finalizeResultsDisplay(sortedTasks); // Directly display results if no ties
+            }
+        }
+
+        //GPT ADDS: Function to check for ties in task scores
+        function checkForTies(sortedTasks) {
+            let lastScore = null;
+            for (let i = 0; i < sortedTasks.length; i++) {
+                if (sortedTasks[i][1] === lastScore) return true;
+                lastScore = sortedTasks[i][1];
+            }
+            return false;
+        }
+
+        //GPT ADDS: Adjusted performTiebreakers function for handling tiebreakers specifically
+        function performTiebreakers() {
+
+            enterTiePhase();
+            // Filter tasks for tiebreaker comparisons
+            let tiebreakerTasks = [];
+            for (let score in results) {
+                if (results.hasOwnProperty(score)) {
+                    tiebreakerTasks.push([score, results[score]]);
+                }
+            }
+            // Prepare comparisons for tiebreakerTasks
+            comparisons = tiebreakerTasks.map(task => task[0]);
+            comparisonIndex = 0;
+            startTiebreakerComparison();
+        }
+
+        //GPT ADDS: Function to start tiebreaker comparisons
+        function startTiebreakerComparison() {
+            if (comparisons.length > 1) { // Ensure there are at least two tasks to compare
+                let tasksForTiebreaker = comparisons.splice(0, 2); // Take first two tasks for comparison
+                showTiebreakerComparison(tasksForTiebreaker);
+            } else {
+                let sortedTasks = Object.entries(results).sort((a, b) => b[1] - a[1]);
+                finalizeResultsDisplay(sortedTasks);
+            }
+            comparisons = tasks;
+        }
+
+        //GPT ADDS: Show comparison specifically for tiebreakers
+        function showTiebreakerComparison(tasks) {
+            const comparisonSection = document.getElementById('comparisonSection');
+            comparisonSection.style.display = 'flex';
+            comparisonSection.innerHTML = `
+            <div class="d-flex justify-content-around my-3">
+                <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="chooseTiebreaker('${tasks[0]}')">
+                    <div class="card-body">
+                        <h5 class="card-title">${tasks[0]}</h5>
+                    </div>
+                </div>
+                <div class="brutal-card" style="cursor: pointer;" onclick="chooseTiebreaker('${tasks[1]}')">
+                    <div class="card-body">
+                        <h5 class="card-title">${tasks[1]}</h5>
+                    </div>
+                </div>
+            </div>
+        `;
+        }
+
+        //GPT ADDS: Choose function for tiebreakers with increment of 0.1
+        function chooseTiebreaker(chosenTask) {
+            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 0.1 : 0.1;
+            startTiebreakerComparison(); // Continue with the next tiebreaker comparison
+        }
+
+        //GPT ADDS: Finalize the display of results, abstracted to reuse after tiebreakers
+        function finalizeResultsDisplay(sortedTasks) {
+            exitTiePhase();
+            document.getElementById('comparisonSection').style.display = 'none';
+            const resultsSection = document.getElementById('resultsSection');
+            // Start leaderboard HTML with a header
+            let leaderboardHTML = '<h3>High Scores</h3>';
+            leaderboardHTML += '<div class="leaderboard">';
+            // Add each task as a row in the leaderboard
+            sortedTasks.forEach((task, index) => {
+                leaderboardHTML += `
+            <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
+                <span class="leaderboard-rank">${index + 1}</span>
+                <span class="leaderboard-name">${task[0]}</span>
+                <span class="leaderboard-score">${task[1].toFixed(1)}</span>
+            </div>
+        `;
+            });
+            leaderboardHTML += '</div>';
+            resultsSection.innerHTML = leaderboardHTML;
+        }
+
+        document.getElementById('compareButton').style.display = 'block';
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
