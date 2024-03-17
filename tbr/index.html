@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>Task Battle</title>
 
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -174,6 +174,7 @@
             word-wrap: break-word;
             background-clip: border-box;
             border: 1px solid var(--main-color);
+            margin-top: -1px;
         }
 
         .brutal-card:hover {
@@ -200,7 +201,7 @@
 
         .leaderboard-top {
             color: #AAF05F;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
         }
 
         .leaderboard-rank {
@@ -212,7 +213,6 @@
         }
 
         .leaderboard-score {
-            width: 150px;
             text-align: right;
         }
 
@@ -220,18 +220,17 @@
             margin-bottom: 0rem;
         }
 
-        .comparisonSection {
-            display: flex;
+        .comparisonBlock {
             flex-direction: row;
-            /* Default direction */
-            justify-content: center;
         }
 
-        /* GPT ADDS: Media query for screens less than or equal to 768px */
         @media (max-width: 768px) {
-            .comparisonSection {
+            .comparisonBlock {
                 flex-direction: column;
-                /* Stack items vertically on smaller screens */
+            }
+
+            .cardbody{
+                margin-top: -1px;
             }
         }
     </style>
@@ -317,7 +316,7 @@
             comparisonIndex = 0;
             comparisons = [];
             results = {};
-            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('Delete', '').trim()); //GPT ADDS: Repopulate tasks from the UI
+            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('X', '').trim()); //GPT ADDS: Repopulate tasks from the UI
             document.getElementById('comparisonSection').innerHTML = ''; // Clear current comparison
             document.getElementById('resultsSection').innerHTML = ''; // Clear results section
             document.getElementById('taskInputSection').style.display = 'flex'; // Show task input section
@@ -345,7 +344,7 @@
         function updateTaskListSection() {
             const taskListSection = document.getElementById('taskListSection');
             // GPT ADDS: Use Bootstrap's list group for a better look
-            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">Delete</button></li>`).join('') + '</ul>';
+            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">X</button></li>`).join('') + '</ul>';
         }
 
 
@@ -392,7 +391,7 @@
                 const comparison = comparisons[comparisonIndex];
                 const comparisonSection = document.getElementById('comparisonSection');
                 comparisonSection.innerHTML = `
-                <div class="d-flex justify-content-around my-3">
+                <div class="comparisonBlock d-flex justify-content-around my-3">
                     <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 0)">
                         <div class="card-body">
                             <h5 class="card-title">${comparison[0]}</h5>
@@ -481,7 +480,7 @@
             const comparisonSection = document.getElementById('comparisonSection');
             comparisonSection.style.display = 'flex';
             comparisonSection.innerHTML = `
-            <div class="d-flex justify-content-around my-3">
+            <div class="comparisonBlock d-flex justify-content-around my-3">
                 <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="chooseTiebreaker('${tasks[0]}')">
                     <div class="card-body">
                         <h5 class="card-title">${tasks[0]}</h5>
