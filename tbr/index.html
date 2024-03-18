@@ -229,7 +229,7 @@
                 flex-direction: column;
             }
 
-            .cardbody{
+            .cardbody {
                 margin-top: -1px;
             }
         }
@@ -253,19 +253,18 @@
 
     <script>
 
-        //GPT ADDS: Flag to indicate if we are in tiebreaker phase
         let isInTiebreakerPhase = false;
 
         function enterTiePhase() {
             document.documentElement.style.setProperty('--main-color', '#FC6B5B');
             document.documentElement.style.setProperty('--main-color-hover', 'rgba(252,107,91,.1)');
-            isInTiebreakerPhase = true; //GPT ADDS: Indicate tiebreaker phase has started
+            isInTiebreakerPhase = true; 
         }
 
         function exitTiePhase() {
             document.documentElement.style.setProperty('--main-color', '#eeeeee');
             document.documentElement.style.setProperty('--main-color-hover', 'rgba(238,238,238,.1)');
-            isInTiebreakerPhase = false; //GPT ADDS: Indicate tiebreaker phase has ended
+            isInTiebreakerPhase = false; 
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -282,11 +281,12 @@
 
             document.addEventListener('keydown', function (event) {
 
-                //GPT ADDS: Check if in tiebreaker phase to call the correct function
                 if (isInTiebreakerPhase) {
-                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                        // Since we only have two options in a tiebreaker, no need to pass index
-                        chooseTiebreaker(comparisons[event.key === 'ArrowLeft' ? 0 : 1]);
+                    // Ensure we are referencing the current tasks being compared correctly
+                    let currentComparisons = document.querySelectorAll('.comparisonBlock .card-title');
+                    if (currentComparisons.length === 2) {
+                        let chosenTask = currentComparisons[event.key === 'ArrowLeft' ? 0 : 1].textContent;
+                        chooseTiebreaker(chosenTask);
                     }
                 } else {
                     // Check if the comparison section is currently active/displayed
@@ -309,6 +309,7 @@
                 }
 
             });
+            updateCompareButtonVisibility();
         });
 
 
@@ -316,13 +317,13 @@
             comparisonIndex = 0;
             comparisons = [];
             results = {};
-            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('X', '').trim()); //GPT ADDS: Repopulate tasks from the UI
+            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('X', '').trim());
             document.getElementById('comparisonSection').innerHTML = ''; // Clear current comparison
             document.getElementById('resultsSection').innerHTML = ''; // Clear results section
             document.getElementById('taskInputSection').style.display = 'flex'; // Show task input section
             document.getElementById('taskListSection').style.display = 'block'; // Show task list
             document.getElementById('compareButton').style.display = 'block'; // Show compare button
-            updateTaskListSection(); //GPT ADDS: Update the task list section to reflect current tasks
+            updateTaskListSection();
             isInTiebreakerPhase = false;
         }
 
@@ -338,20 +339,20 @@
                 tasks.push(task);
                 taskInput.value = ''; // Clear input field
                 updateTaskListSection();
+                updateCompareButtonVisibility();
             }
         }
 
         function updateTaskListSection() {
             const taskListSection = document.getElementById('taskListSection');
-            // GPT ADDS: Use Bootstrap's list group for a better look
-            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">X</button></li>`).join('') + '</ul>';
+            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">Delete</button></li>`).join('') + '</ul>';
         }
 
 
-        //GPT ADDS: Function to delete a task
         function deleteTask(index) {
             tasks.splice(index, 1); // Remove the task from the array
             updateTaskListSection(); // Update the task list
+            updateCompareButtonVisibility();
         }
 
         function prepareComparisons() {
@@ -372,9 +373,9 @@
         }
 
         function startComparison() {
-            document.getElementById('taskInputSection').style.display = 'none'; //GPT ADDS: Hide task input section
-            document.getElementById('taskListSection').style.display = 'none'; //GPT ADDS: Hide task list
-            document.getElementById('compareButton').style.display = 'none'; //GPT ADDS: Hide task list
+            document.getElementById('taskInputSection').style.display = 'none'; 
+            document.getElementById('taskListSection').style.display = 'none'; 
+            document.getElementById('compareButton').style.display = 'none'; 
             document.getElementById('comparisonSection').style.display = 'flex';
             prepareComparisons();
             comparisonIndex = 0;
@@ -422,7 +423,7 @@
             // Ensure all tasks are in the results, even if they have 0 points
             tasks.forEach(task => {
                 if (results[task] === undefined) {
-                    results[task] = 0; //GPT ADDS: Initialize tasks with 0 points if not already in results
+                    results[task] = 0;
                 }
             });
             let sortedTasks = Object.entries(results).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); // Sort primarily by score, then alphabetically
@@ -436,7 +437,6 @@
             }
         }
 
-        //GPT ADDS: Function to check for ties in task scores
         function checkForTies(sortedTasks) {
             let lastScore = null;
             for (let i = 0; i < sortedTasks.length; i++) {
@@ -446,7 +446,6 @@
             return false;
         }
 
-        //GPT ADDS: Adjusted performTiebreakers function for handling tiebreakers specifically
         function performTiebreakers() {
 
             enterTiePhase();
@@ -463,7 +462,6 @@
             startTiebreakerComparison();
         }
 
-        //GPT ADDS: Function to start tiebreaker comparisons
         function startTiebreakerComparison() {
             if (comparisons.length > 1) { // Ensure there are at least two tasks to compare
                 let tasksForTiebreaker = comparisons.splice(0, 2); // Take first two tasks for comparison
@@ -472,10 +470,9 @@
                 let sortedTasks = Object.entries(results).sort((a, b) => b[1] - a[1]);
                 finalizeResultsDisplay(sortedTasks);
             }
-            comparisons = tasks;
+            // comparisons = tasks;
         }
 
-        //GPT ADDS: Show comparison specifically for tiebreakers
         function showTiebreakerComparison(tasks) {
             const comparisonSection = document.getElementById('comparisonSection');
             comparisonSection.style.display = 'flex';
@@ -495,36 +492,44 @@
         `;
         }
 
-        //GPT ADDS: Choose function for tiebreakers with increment of 0.1
         function chooseTiebreaker(chosenTask) {
             results[chosenTask] = results[chosenTask] ? results[chosenTask] + 0.1 : 0.1;
             startTiebreakerComparison(); // Continue with the next tiebreaker comparison
         }
 
-        //GPT ADDS: Finalize the display of results, abstracted to reuse after tiebreakers
         function finalizeResultsDisplay(sortedTasks) {
             exitTiePhase();
             document.getElementById('comparisonSection').style.display = 'none';
             const resultsSection = document.getElementById('resultsSection');
             // Start leaderboard HTML with a header
             let leaderboardHTML = '<h3>High Scores</h3>';
-            leaderboardHTML += '<div class="leaderboard">';
+            leaderboardHTML += '<div class="mt-3 leaderboard">';
             // Add each task as a row in the leaderboard
             sortedTasks.forEach((task, index) => {
                 leaderboardHTML += `
-            <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
-                <span class="leaderboard-rank">${index + 1}</span>
-                <span class="leaderboard-name">${task[0]}</span>
-                <span class="leaderboard-score">${task[1].toFixed(1)}</span>
-            </div>
-        `;
+                <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
+                    <span class="leaderboard-rank">${index + 1}</span>
+                    <span class="leaderboard-name">${task[0]}</span>
+                    <span class="leaderboard-score">${task[1].toFixed(1)}</span>
+                </div>
+            `;
             });
             leaderboardHTML += '</div>';
             resultsSection.innerHTML = leaderboardHTML;
+
+            let resetButtonHTML = '<button id="resetButton" class="mt-3 btn brutalButton" style="width: 100%;" onclick="resetComparisons()">Reset</button>';
+            // Append the reset button HTML to the resultsSection or another appropriate section based on your layout
+            resultsSection.innerHTML += resetButtonHTML;
         }
 
         document.getElementById('compareButton').style.display = 'block';
 
+        function updateCompareButtonVisibility() {
+            const compareButton = document.getElementById('compareButton');
+            compareButton.style.display = tasks.length >= 2 ? 'block' : 'none';
+        }
+
+        document.getElementById('compareButton').style.display = 'none';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
