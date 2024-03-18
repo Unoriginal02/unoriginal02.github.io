@@ -28,7 +28,6 @@
             /* Remove default margin */
         }
 
-
         body {
             background-color: #000000;
             /* Dark background */
@@ -222,16 +221,22 @@
 
         .comparisonBlock {
             flex-direction: row;
+            gap: 1rem;
         }
 
         @media (max-width: 768px) {
             .comparisonBlock {
                 flex-direction: column;
+                gap: 1rem;
             }
 
             .cardbody {
                 margin-top: -1px;
             }
+        }
+
+        .or {
+            white-space: nowrap;
         }
     </style>
 
@@ -258,13 +263,13 @@
         function enterTiePhase() {
             document.documentElement.style.setProperty('--main-color', '#FC6B5B');
             document.documentElement.style.setProperty('--main-color-hover', 'rgba(252,107,91,.1)');
-            isInTiebreakerPhase = true; 
+            isInTiebreakerPhase = true;
         }
 
         function exitTiePhase() {
             document.documentElement.style.setProperty('--main-color', '#eeeeee');
             document.documentElement.style.setProperty('--main-color-hover', 'rgba(238,238,238,.1)');
-            isInTiebreakerPhase = false; 
+            isInTiebreakerPhase = false;
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -373,9 +378,9 @@
         }
 
         function startComparison() {
-            document.getElementById('taskInputSection').style.display = 'none'; 
-            document.getElementById('taskListSection').style.display = 'none'; 
-            document.getElementById('compareButton').style.display = 'none'; 
+            document.getElementById('taskInputSection').style.display = 'none';
+            document.getElementById('taskListSection').style.display = 'none';
+            document.getElementById('compareButton').style.display = 'none';
             document.getElementById('comparisonSection').style.display = 'flex';
             prepareComparisons();
             comparisonIndex = 0;
@@ -398,7 +403,7 @@
                             <h5 class="card-title">${comparison[0]}</h5>
                         </div>
                     </div>
-                    <div class="text-center my-auto">- or -</div>
+                    <div class="or text-center my-auto">- Or -</div>
                     <div class="brutal-card" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 1)">
                         <div class="card-body">
                             <h5 class="card-title">${comparison[1]}</h5>
@@ -484,7 +489,7 @@
                         <h5 class="card-title">${tasks[0]}</h5>
                     </div>
                 </div>
-                <div class="text-center my-auto">- or -</div>
+                <div class="or text-center my-auto">- Or -</div>
                 <div class="brutal-card" style="cursor: pointer;" onclick="chooseTiebreaker('${tasks[1]}')">
                     <div class="card-body">
                         <h5 class="card-title">${tasks[1]}</h5>
