@@ -45,6 +45,11 @@
             /* Minimum height of 100% of the viewport height */
         }
 
+        /* hide the default radio buttons */
+        input[type="radio"] {
+            display: none;
+        }
+
         h2 {
             text-align: center;
         }
@@ -162,6 +167,8 @@
             padding: 0.5rem 1rem;
             color: var(--main-color);
             text-decoration: none;
+            text-align: left;
+            gap: 1rem;
         }
 
         .brutal-card {
@@ -222,6 +229,7 @@
         .comparisonBlock {
             flex-direction: row;
             gap: 1rem;
+            align-items: center;
         }
 
         @media (max-width: 768px) {
@@ -238,6 +246,36 @@
         .or {
             white-space: nowrap;
         }
+
+        /* style the custom radio buttons */
+        .custom-radio {
+            display: flex;
+            align-items: center;
+            width: 48px;
+            height: 48px;
+
+            background-image: url('./img/heart-empty.png');
+            background-repeat: no-repeat;
+            background-size: contain;
+            cursor: pointer;
+            opacity: 0.4;
+        }
+
+        .custom-radio:hover {
+            opacity: 0.6;
+        }
+
+        input[type="radio"]:checked+.custom-radio {
+            background-image: url('./img/heart-fill.png');
+            opacity: 1;
+        }
+
+        .leaderboard-hearts {
+            display: flex;
+            margin-right: 1rem;
+            gap: .25rem;
+            align-items: center;
+        }
     </style>
 
 </head>
@@ -246,6 +284,7 @@
 
     <div class="maxwidth container text-center my-5">
         <h2>Task Battle Royale</h2>
+
         <div id="taskInputSection" class="justify-content-center mt-3">
             <input type="text" id="taskInput" class="form-control brutalInput" placeholder="Enter a task">
             <button class="btn brutalButton" onclick="addTask()">Add Task</button>
@@ -254,10 +293,18 @@
         <button id="compareButton" class="btn brutalButton" onclick="startComparison()">Compare</button>
         <div id="comparisonSection" class="comparisonSection justify-content-center"></div>
         <div id="resultsSection" class="my-3"></div>
+        <div id="welcome">
+            <p>Welcome to Task Battle Royale.</p>
+            <p>This app will allow you to sort your daily tasks by importance</p>
+        </div>
+        <!-- <div id="scoresSection" class="my-3"></div> -->
     </div>
 
-    <script>
 
+
+    <script>
+        let heartedTaskIndex = null;
+        let heartCounts = {};
         let isInTiebreakerPhase = false;
 
         function enterTiePhase() {
@@ -322,13 +369,14 @@
             comparisonIndex = 0;
             comparisons = [];
             results = {};
-            tasks = [...document.querySelectorAll('.brutal-list-group-item')].map(el => el.textContent.trim().replace('X', '').trim());
+            // No need to repopulate tasks from the DOM here, just reset the state
             document.getElementById('comparisonSection').innerHTML = ''; // Clear current comparison
             document.getElementById('resultsSection').innerHTML = ''; // Clear results section
             document.getElementById('taskInputSection').style.display = 'flex'; // Show task input section
             document.getElementById('taskListSection').style.display = 'block'; // Show task list
             document.getElementById('compareButton').style.display = 'block'; // Show compare button
-            updateTaskListSection();
+            document.getElementById('welcome').style.display = 'block';
+            updateTaskListSection(); // Ensure the task list UI is correctly updated
             isInTiebreakerPhase = false;
         }
 
@@ -348,15 +396,24 @@
             }
         }
 
+
         function updateTaskListSection() {
             const taskListSection = document.getElementById('taskListSection');
-            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' + tasks.map((task, index) => `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">${task} <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">Delete</button></li>`).join('') + '</ul>';
+            taskListSection.innerHTML = '<ul class="list-group brutal-list-group">' +
+                tasks.map((task, index) =>
+                    `<li class="brutal-list-group-item d-flex justify-content-between align-items-center">
+                ${task} 
+                <button class="btn brutalButton btn-sm" onclick="deleteTask(${index})">Delete</button>
+            </li>`
+                ).join('') +
+                '</ul>';
+            document.getElementById('welcome').style.display = 'none';
         }
 
 
         function deleteTask(index) {
-            tasks.splice(index, 1); // Remove the task from the array
-            updateTaskListSection(); // Update the task list
+            tasks.splice(index, 1); // Remove the task from the array correctly
+            updateTaskListSection(); // Update the task list UI to reflect changes
             updateCompareButtonVisibility();
         }
 
@@ -395,9 +452,16 @@
         function showNextComparison() {
             if (comparisonIndex < comparisons.length) {
                 const comparison = comparisons[comparisonIndex];
+                console.log(comparison);
                 const comparisonSection = document.getElementById('comparisonSection');
                 comparisonSection.innerHTML = `
                 <div class="comparisonBlock d-flex justify-content-around my-3">
+                    <label>
+                        <input type="radio" name="preference" id="prefLeft" class="preference-radio"/>
+                        <span class="custom-radio">
+                        </span>
+                    </label>
+                    <input type="radio" name="preference" id="prefLeft" class="preference-radio"/>
                     <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 0)">
                         <div class="card-body">
                             <h5 class="card-title">${comparison[0]}</h5>
@@ -409,6 +473,11 @@
                             <h5 class="card-title">${comparison[1]}</h5>
                         </div>
                     </div>
+                    <label>
+                        <input type="radio" name="preference" id="prefRight" class="preference-radio"/>
+                        <span class="custom-radio">
+                        </span>
+                    </label>
                 </div>
             `;
             } else {
@@ -418,9 +487,16 @@
 
         function choose(index, choice) {
             const chosenTask = comparisons[index][choice];
-            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1;
+            // Check if the hearted task should receive extra points
+            if (heartedTaskIndex !== null) {
+                const heartedTask = comparisons[index][heartedTaskIndex];
+                results[heartedTask] = results[heartedTask] ? results[heartedTask] + 0.2 : 0.2;
+            }
+            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1; // Add 1 point to chosen task
             comparisonIndex++;
+            heartedTaskIndex = null; // Reset hearted task index
             showNextComparison();
+            updateScoresDisplay();
         }
 
         function displayResults() {
@@ -481,9 +557,11 @@
 
         function showTiebreakerComparison(tasks) {
             const comparisonSection = document.getElementById('comparisonSection');
+            console.log(tasks);
             comparisonSection.style.display = 'flex';
             comparisonSection.innerHTML = `
             <div class="comparisonBlock d-flex justify-content-around my-3">
+                <!-- <input type="radio" name="preference" id="prefLeft" class="preference-radio"/> -->
                 <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="chooseTiebreaker('${tasks[0]}')">
                     <div class="card-body">
                         <h5 class="card-title">${tasks[0]}</h5>
@@ -495,38 +573,62 @@
                         <h5 class="card-title">${tasks[1]}</h5>
                     </div>
                 </div>
+                <!-- <input type="radio" name="preference" id="prefRight" class="preference-radio"/> -->
             </div>
         `;
         }
 
         function chooseTiebreaker(chosenTask) {
+            // Removed reliance on the 'index' variable, which was not defined in this context
+            console.log('heartedTaskIndex', heartedTaskIndex);
+            // If there was a hearted task, adjust its score
+            console.log('choosenTask', chosenTask)
+
+            if (heartedTaskIndex !== null) {
+                // Determine the other task in the comparison
+                const otherTaskIndex = heartedTaskIndex === 0 ? 1 : 0; // Switch the index to get the other task
+                const otherTask = chosenTask[otherTaskIndex]; // Retrieve the other task from the current comparison
+
+                // Only adjust score for the hearted task if it's the other task
+                if (otherTask === chosenTask[otherTaskIndex]) {
+                    results[otherTask] = results[otherTask] ? results[otherTask] + 0.1 : 0.1;
+                }
+            }
+
+            // Then adjust the score for the chosen task
             results[chosenTask] = results[chosenTask] ? results[chosenTask] + 0.1 : 0.1;
-            startTiebreakerComparison(); // Continue with the next tiebreaker comparison
+
+            // Reset heartedTaskIndex after each comparison
+            heartedTaskIndex = null;
+            startTiebreakerComparison();
+            updateScoresDisplay();
         }
 
         function finalizeResultsDisplay(sortedTasks) {
             exitTiePhase();
             document.getElementById('comparisonSection').style.display = 'none';
             const resultsSection = document.getElementById('resultsSection');
-            // Start leaderboard HTML with a header
             let leaderboardHTML = '<h3>High Scores</h3>';
             leaderboardHTML += '<div class="mt-3 leaderboard">';
-            // Add each task as a row in the leaderboard
             sortedTasks.forEach((task, index) => {
+                //GPT ADDS: Generate filled hearts based on the heart count for each task
+                const heartCount = heartCounts[task[0]] || 0; // Default to 0 if no hearts
+                let heartsHTML = '';
+                for (let i = 0; i < heartCount; i++) {
+                    heartsHTML += '<img src="./img/heart-fill.png" width="24" height="24">';
+                }
+
                 leaderboardHTML += `
-                <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
-                    <span class="leaderboard-rank">${index + 1}</span>
-                    <span class="leaderboard-name">${task[0]}</span>
-                    <span class="leaderboard-score">${task[1].toFixed(1)}</span>
-                </div>
-            `;
+            <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
+                <span class="leaderboard-rank">${index + 1}</span>
+                <span class="leaderboard-name">${task[0]}</span>
+                <span class="leaderboard-hearts">${heartsHTML}</span>
+                <span class="leaderboard-score">${task[1].toFixed(2)}</span>
+            </div>
+        `;
             });
             leaderboardHTML += '</div>';
             resultsSection.innerHTML = leaderboardHTML;
-
-            let resetButtonHTML = '<button id="resetButton" class="mt-3 btn brutalButton" style="width: 100%;" onclick="resetComparisons()">Reset</button>';
-            // Append the reset button HTML to the resultsSection or another appropriate section based on your layout
-            resultsSection.innerHTML += resetButtonHTML;
         }
 
         document.getElementById('compareButton').style.display = 'block';
@@ -537,6 +639,36 @@
         }
 
         document.getElementById('compareButton').style.display = 'none';
+
+        document.addEventListener('change', function (event) {
+            if (event.target.classList.contains('preference-radio')) {
+                heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
+                //GPT ADDS: Get the task name using the heartedTaskIndex and increment its heart count
+                const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
+                if (!heartCounts[chosenTask]) {
+                    heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
+                } else {
+                    heartCounts[chosenTask]++; // Increment if already exists
+                }
+            }
+        });
+
+        function updateScoresDisplay() {
+            const scoresSection = document.getElementById('scoresSection');
+            // Start with an empty string or a basic message
+            let scoresHTML = '<h3>Current Scores</h3><div class="leaderboard">';
+            // Iterate through the results object to append each task's score
+            Object.entries(results).forEach(([task, score], index) => {
+                scoresHTML += `
+                <div class="leaderboard-row">
+                    <span class="leaderboard-name">${task}</span>
+                    <span class="leaderboard-score">${score.toFixed(2)}</span>
+                </div>
+            `;
+            });
+            scoresHTML += '</div>';
+            scoresSection.innerHTML = scoresHTML;
+        }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
