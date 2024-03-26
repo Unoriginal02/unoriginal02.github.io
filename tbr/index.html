@@ -46,7 +46,7 @@
         }
 
         /* hide the default radio buttons */
-        input[type="radio"] {
+        input[type="checkbox"] {
             display: none;
         }
 
@@ -247,6 +247,28 @@
             white-space: nowrap;
         }
 
+        @keyframes push {
+            0% {
+                transform: scale(1);
+                /* Original size */
+            }
+
+            20% {
+                transform: scale(0.8);
+                /* Shrink */
+            }
+
+            70% {
+                transform: scale(1.2);
+                /* Slightly larger */
+            }
+
+            100% {
+                transform: scale(1);
+                /* Return to original size */
+            }
+        }
+
         /* style the custom radio buttons */
         .custom-radio {
             display: flex;
@@ -259,21 +281,24 @@
             background-size: contain;
             cursor: pointer;
             opacity: 0.4;
+            transition: opacity 0.25s ease-out;
+            /* Smooth transition for opacity change */
         }
 
         .custom-radio:hover {
             opacity: 0.6;
         }
 
-        input[type="radio"]:checked+.custom-radio {
+        input[type="checkbox"]:checked+.custom-radio {
             background-image: url('./img/heart-fill.png');
             opacity: 1;
+            animation: push 0.25s ease-out;
         }
 
         .leaderboard-hearts {
             display: flex;
             margin-right: 1rem;
-            gap: .25rem;
+            gap: .5rem;
             align-items: center;
         }
     </style>
@@ -362,6 +387,20 @@
 
             });
             updateCompareButtonVisibility();
+
+            const cardBodies = document.querySelectorAll('.card-body');
+
+            cardBodies.forEach(cardBody => {
+                cardBody.addEventListener('click', function () {
+                    // Apply the push-animation class
+                    this.classList.add('push-animation');
+
+                    // Listen for the end of the animation and then remove the class
+                    this.addEventListener('animationend', () => {
+                        this.classList.remove('push-animation');
+                    }, { once: true }); // The { once: true } option auto-removes the event listener after it fires
+                });
+            });
         });
 
 
@@ -456,13 +495,13 @@
                 console.log(comparison);
                 const comparisonSection = document.getElementById('comparisonSection');
                 comparisonSection.innerHTML = `
+                <p>Choose the task you consider more important, or chronologically logic.</p>
                 <div class="comparisonBlock d-flex justify-content-around my-3">
                     <label>
-                        <input type="radio" name="preference" id="prefLeft" class="preference-radio"/>
+                        <input type="checkbox" name="preference" id="prefLeft" class="preference-checkbox"/>
                         <span class="custom-radio">
                         </span>
                     </label>
-                    <input type="radio" name="preference" id="prefLeft" class="preference-radio"/>
                     <div class="brutal-card marginAdjust-right" style="cursor: pointer;" onclick="choose(${comparisonIndex}, 0)">
                         <div class="card-body">
                             <h5 class="card-title">${comparison[0]}</h5>
@@ -475,11 +514,12 @@
                         </div>
                     </div>
                     <label>
-                        <input type="radio" name="preference" id="prefRight" class="preference-radio"/>
+                        <input type="checkbox" name="preference" id="prefRight" class="preference-checkbox"/>
                         <span class="custom-radio">
                         </span>
                     </label>
                 </div>
+                <p>Give a like to any task you'd enjoy, but select the one that's most important. Be honest.</p>
             `;
             } else {
                 displayResults();
@@ -645,14 +685,26 @@
         document.getElementById('compareButton').style.display = 'none';
 
         document.addEventListener('change', function (event) {
-            if (event.target.classList.contains('preference-radio')) {
-                heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
-                //GPT ADDS: Get the task name using the heartedTaskIndex and increment its heart count
-                const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
-                if (!heartCounts[chosenTask]) {
-                    heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
-                } else {
-                    heartCounts[chosenTask]++; // Increment if already exists
+            if (event.target.classList.contains('preference-checkbox')) {
+                //GPT ADDS: Deselect other checkboxes if this one is checked
+                if (event.target.checked) {
+                    document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
+                        // Ensure we're only affecting other checkboxes
+                        if (checkbox !== event.target) {
+                            checkbox.checked = false; // Deselect all other checkboxes
+                        }
+                    });
+                }
+                //GPT ADDS: Check which checkbox is selected to update the heartedTaskIndex
+                const heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
+                // Only proceed if the checkbox is checked
+                if (event.target.checked) {
+                    const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
+                    if (!heartCounts[chosenTask]) {
+                        heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
+                    } else {
+                        heartCounts[chosenTask]++; // Increment if already exists
+                    }
                 }
             }
         });
@@ -673,7 +725,7 @@
         //     scoresHTML += '</div>';
         //     scoresSection.innerHTML = scoresHTML;
         // }
-        
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
