@@ -377,6 +377,7 @@
             document.getElementById('compareButton').style.display = 'block'; // Show compare button
             document.getElementById('welcome').style.display = 'block';
             updateTaskListSection(); // Ensure the task list UI is correctly updated
+            heartCounts = {};
             isInTiebreakerPhase = false;
         }
 
@@ -490,13 +491,13 @@
             // Check if the hearted task should receive extra points
             if (heartedTaskIndex !== null) {
                 const heartedTask = comparisons[index][heartedTaskIndex];
-                results[heartedTask] = results[heartedTask] ? results[heartedTask] + 0.2 : 0.2;
+                results[heartedTask] = results[heartedTask] ? results[heartedTask] + 0.25 : 0.25;
             }
             results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1; // Add 1 point to chosen task
             comparisonIndex++;
             heartedTaskIndex = null; // Reset hearted task index
             showNextComparison();
-            updateScoresDisplay();
+            // updateScoresDisplay();
         }
 
         function displayResults() {
@@ -513,7 +514,7 @@
             // The rest of the displayResults function remains unchanged
             let tiesExist = checkForTies(sortedTasks);
             if (tiesExist) {
-                performTiebreakers(); // Handle tiebreakers
+                performTiebreakers(); // Handle tiebreakers.
             } else {
                 finalizeResultsDisplay(sortedTasks); // Directly display results if no ties
             }
@@ -601,7 +602,7 @@
             // Reset heartedTaskIndex after each comparison
             heartedTaskIndex = null;
             startTiebreakerComparison();
-            updateScoresDisplay();
+            // updateScoresDisplay();
         }
 
         function finalizeResultsDisplay(sortedTasks) {
@@ -625,10 +626,13 @@
                 <span class="leaderboard-hearts">${heartsHTML}</span>
                 <span class="leaderboard-score">${task[1].toFixed(2)}</span>
             </div>
-        `;
+           `;
             });
             leaderboardHTML += '</div>';
             resultsSection.innerHTML = leaderboardHTML;
+            let resetButtonHTML = '<button id="resetButton" class="mt-3 btn brutalButton" style="width: 100%;" onclick="resetComparisons()">Reset</button>';
+            // Append the reset button HTML to the resultsSection or another appropriate section based on your layout
+            resultsSection.innerHTML += resetButtonHTML;
         }
 
         document.getElementById('compareButton').style.display = 'block';
@@ -653,22 +657,23 @@
             }
         });
 
-        function updateScoresDisplay() {
-            const scoresSection = document.getElementById('scoresSection');
-            // Start with an empty string or a basic message
-            let scoresHTML = '<h3>Current Scores</h3><div class="leaderboard">';
-            // Iterate through the results object to append each task's score
-            Object.entries(results).forEach(([task, score], index) => {
-                scoresHTML += `
-                <div class="leaderboard-row">
-                    <span class="leaderboard-name">${task}</span>
-                    <span class="leaderboard-score">${score.toFixed(2)}</span>
-                </div>
-            `;
-            });
-            scoresHTML += '</div>';
-            scoresSection.innerHTML = scoresHTML;
-        }
+        // function updateScoresDisplay() {
+        //     const scoresSection = document.getElementById('scoresSection');
+        //     // Start with an empty string or a basic message
+        //     let scoresHTML = '<h3>Current Scores</h3><div class="leaderboard">';
+        //     // Iterate through the results object to append each task's score
+        //     Object.entries(results).forEach(([task, score], index) => {
+        //         scoresHTML += `
+        //         <div class="leaderboard-row">
+        //             <span class="leaderboard-name">${task}</span>
+        //             <span class="leaderboard-score">${score.toFixed(2)}</span>
+        //         </div>
+        //     `;
+        //     });
+        //     scoresHTML += '</div>';
+        //     scoresSection.innerHTML = scoresHTML;
+        // }
+        
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
