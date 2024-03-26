@@ -528,16 +528,20 @@
 
         function choose(index, choice) {
             const chosenTask = comparisons[index][choice];
-            // Check if the hearted task should receive extra points
+            // Apply 1 point to the chosen task
+            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1;
+
+            //GPT ADDS: Check if a task was hearted and apply extra points
             if (heartedTaskIndex !== null) {
                 const heartedTask = comparisons[index][heartedTaskIndex];
-                results[heartedTask] = results[heartedTask] ? results[heartedTask] + 0.25 : 0.25;
+                if (heartCounts[heartedTask]) { // Ensure there's a heart count to work with
+                    results[heartedTask] = results[heartedTask] ? results[heartedTask] + 0.25 : 0.25;
+                }
             }
-            results[chosenTask] = results[chosenTask] ? results[chosenTask] + 1 : 1; // Add 1 point to chosen task
+
             comparisonIndex++;
-            heartedTaskIndex = null; // Reset hearted task index
+            heartedTaskIndex = null; // Reset hearted task index for the next comparison
             showNextComparison();
-            // updateScoresDisplay();
         }
 
         function displayResults() {
@@ -689,17 +693,16 @@
                 //GPT ADDS: Deselect other checkboxes if this one is checked
                 if (event.target.checked) {
                     document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
-                        // Ensure we're only affecting other checkboxes
                         if (checkbox !== event.target) {
                             checkbox.checked = false; // Deselect all other checkboxes
                         }
                     });
                 }
-                //GPT ADDS: Check which checkbox is selected to update the heartedTaskIndex
-                const heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
-                // Only proceed if the checkbox is checked
+                //GPT ADDS: Correctly update the global heartedTaskIndex based on the selected checkbox
+                heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
+                //GPT ADDS: Ensure the hearted task is accounted for in heartCounts
+                const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
                 if (event.target.checked) {
-                    const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
                     if (!heartCounts[chosenTask]) {
                         heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
                     } else {
