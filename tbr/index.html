@@ -259,7 +259,7 @@
             }
 
             70% {
-                transform: scale(1.2);
+                transform: scale(1.1);
                 /* Slightly larger */
             }
 
@@ -324,8 +324,6 @@
         </div>
         <!-- <div id="scoresSection" class="my-3"></div> -->
     </div>
-
-
 
     <script>
         let heartedTaskIndex = null;
@@ -688,29 +686,40 @@
 
         document.getElementById('compareButton').style.display = 'none';
 
-        document.addEventListener('change', function (event) {
-            if (event.target.classList.contains('preference-checkbox')) {
-                //GPT ADDS: Deselect other checkboxes if this one is checked
-                if (event.target.checked) {
-                    document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
-                        if (checkbox !== event.target) {
-                            checkbox.checked = false; // Deselect all other checkboxes
-                        }
-                    });
+document.addEventListener('change', function (event) {
+    if (event.target.classList.contains('preference-checkbox')) {
+        const comparisonIndexAdjustment = isInTiebreakerPhase ? 0 : comparisonIndex; // Adjust for tiebreaker phase if necessary
+        const chosenTask = comparisons[comparisonIndexAdjustment][event.target.id === 'prefLeft' ? 0 : 1];
+
+        // Check if the checkbox is being checked
+        if (event.target.checked) {
+            // Ensure we deselect other checkboxes
+            document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
+                if (checkbox !== event.target) {
+                    checkbox.checked = false; // Deselect all other checkboxes
                 }
-                //GPT ADDS: Correctly update the global heartedTaskIndex based on the selected checkbox
-                heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1;
-                //GPT ADDS: Ensure the hearted task is accounted for in heartCounts
-                const chosenTask = comparisons[comparisonIndex][heartedTaskIndex];
-                if (event.target.checked) {
-                    if (!heartCounts[chosenTask]) {
-                        heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
-                    } else {
-                        heartCounts[chosenTask]++; // Increment if already exists
-                    }
+            });
+
+            heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1; // Update the global heartedTaskIndex
+
+            // Increment the heart count for the chosen task
+            if (!heartCounts[chosenTask]) {
+                heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
+            } else {
+                heartCounts[chosenTask]++; // Increment if already exists
+            }
+        } else {
+            // If the checkbox is being unchecked, decrement the heart count
+            if (heartCounts[chosenTask] && heartCounts[chosenTask] > 0) {
+                heartCounts[chosenTask]--; // Decrement the count
+                if (heartCounts[chosenTask] === 0) {
+                    delete heartCounts[chosenTask]; // Optional: Remove the entry if count drops to 0
                 }
             }
-        });
+            heartedTaskIndex = null; // Reset heartedTaskIndex since no task is currently hearted
+        }
+    }
+});
 
         // function updateScoresDisplay() {
         //     const scoresSection = document.getElementById('scoresSection');
