@@ -1,0 +1,955 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/thomas-lowry/figma-plugin-ds/dist/figma-plugin-ds.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.1/tinycolor.min.js"></script>
+<style>
+  body {
+    padding-top: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-bottom: 0;
+    overflow-y: hidden;
+  }
+
+  .content {
+    margin-top: 20px;
+  }
+
+  .grouped {
+    margin-bottom: .5rem;
+  }
+
+  input {
+    display: block;
+  }
+
+  label {
+    font-size: var(--font-size-xsmall);
+  }
+
+
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    justify-content: space-between;
+    align-items: end;
+  }
+
+  .flex-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .flex-item {
+    flex: 1;
+  }
+
+  .flex-item:not(:last-child) {
+    margin-right: 10px;
+  }
+
+  .flex-item-big {
+    flex: 1;
+  }
+
+  .flex-item-big:not(:last-child) {
+    margin-right: 60px;
+  }
+
+  .input__field {
+    font-size: var(--font-size-small);
+    border-color: #DEE1E5;
+    width: 100%;
+    min-height: 32px;
+  }
+
+  .button--primary-j {
+    background-color: var(--blue);
+    color: var(--white);
+  }
+
+  .button--secondary-j {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #EAECEE;
+    color: var(--black) !important;
+  }
+
+  .button-j {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    align-items: center;
+    border-radius: 4px;
+    color: var(--white);
+    flex-shrink: 0;
+    font-family: var(--font-stack);
+    font-size: var(--font-size-xsmall);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: var(--font-letter-spacing-neg-small);
+    line-height: var(--font-line-height);
+    height: var(--size-large);
+    padding: 0 var(--size-xsmall) 0 var(--size-xsmall);
+    text-decoration: none;
+    outline: none;
+    border: 2px solid transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  .button--primary-j:hover {
+    background: #026CD1;
+    cursor: pointer;
+  }
+
+  .button--secondary-j:hover {
+    background-color: #DEE1E5;
+  }
+
+  .inputswithLabels {
+    margin-top: 8px;
+  }
+
+  .spacer {
+    margin-bottom: 16px;
+  }
+
+
+
+  .input__field:disabled:hover {
+    border: 1px solid #DEE1E5 !important;
+  }
+
+  .additional-flex-space {
+    margin-right: 20px;
+  }
+
+  .colorSwatchesStyle {
+    display: flex;
+    /* Aligns the child divs horizontally */
+    flex-wrap: nowrap;
+    /* gap: 8px; */
+    /* Center the swatches horizontally */
+  }
+
+  .colorSwatch {
+    flex: 1 1 0;
+    /* This means the child divs will grow and shrink as necessary, and their initial size is 0 */
+    min-width: 50px;
+    /* This sets a minimum width for the child divs */
+    overflow: hidden;
+  }
+
+  .infoWrapper {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .baseColorSwatch {
+    position: relative;
+    /* Establish a positioning context for the pseudo-element */
+  }
+
+  .baseColorSwatch::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    /* Half of the triangle's width */
+    border-right: 6px solid transparent;
+    /* Half of the triangle's width */
+    border-top: 6px solid white;
+    /* The triangle's height */
+    position: absolute;
+    top: 0px;
+    /* Position it above the base color swatch */
+    left: 50%;
+    /* Center it horizontally */
+    transform: translateX(-50%);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 10px 0;
+    width: 100%;
+  }
+
+  input[type=range]:focus {
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    box-shadow: 0px 0px 0px #000000;
+    background: #E3E3E3;
+    border-radius: 1px;
+    border: 0px solid #000000;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    box-shadow: 0px 0px 0px #000000;
+    border: 0px solid #000203;
+    height: 8px;
+    width: 8px;
+    border-radius: 0px;
+    background: #222222;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: 0px;
+  }
+
+  input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #E3E3E3;
+  }
+
+  input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    box-shadow: 0px 0px 0px #000000;
+    background: #E3E3E3;
+    border-radius: 1px;
+    border: 0px solid #000000;
+  }
+
+  input[type=range]::-moz-range-thumb {
+    box-shadow: 0px 0px 0px #000000;
+    border: 0px solid #000203;
+    height: 8px;
+    width: 8px;
+    border-radius: 0px;
+    background: #222222;
+    cursor: pointer;
+  }
+
+  input[type=range]::-ms-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+  }
+
+  input[type=range]::-ms-fill-lower {
+    background: #E3E3E3;
+    border: 0px solid #000000;
+    border-radius: 2px;
+    box-shadow: 0px 0px 0px #000000;
+  }
+
+  input[type=range]::-ms-fill-upper {
+    background: #E3E3E3;
+    border: 0px solid #000000;
+    border-radius: 2px;
+    box-shadow: 0px 0px 0px #000000;
+  }
+
+  input[type=range]::-ms-thumb {
+    margin-top: 1px;
+    box-shadow: 0px 0px 0px #000000;
+    border: 0px solid #000203;
+    height: 8px;
+    width: 8px;
+    border-radius: 0px;
+    background: #222222;
+    cursor: pointer;
+  }
+
+  input[type=range]:focus::-ms-fill-lower {
+    background: #E3E3E3;
+  }
+
+  input[type=range]:focus::-ms-fill-upper {
+    background: #E3E3E3;
+  }
+
+  /* Select the input with class "headerInput" */
+  /* input.headerInput {
+
+  } */
+  input[type=range].headerInput {
+    margin-top: 8px;
+  }
+
+  /* Styles for the thumb when the slider is in focus */
+  input[type=range]:focus::-webkit-slider-thumb {
+    background: #18A0FB;
+  }
+
+  input[type=range]:focus::-moz-range-thumb {
+    background: #18A0FB;
+  }
+
+  .slider-container {
+    position: relative;
+  }
+
+  .slider-value {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #333;
+  }
+
+  .bottomInput {
+    margin: 0 16px;
+  }
+
+  .title {
+    position: relative;
+  }
+
+  .pro-badge {
+    position: absolute;
+    color: #E94C38;
+    border: 2px solid #E94C38;
+    border-radius: 8px;
+    padding-top: 4px;
+    padding-right: 6px;
+    padding-bottom: 4px;
+    padding-left: 7px;
+    margin-left: 8px;
+    font-size: 0.6em;
+    margin-top: 4px;
+  }
+
+  .verified {
+    position: absolute;
+    margin-left: 72px;
+    padding-top: 4px;
+  }
+
+  .collapsed {
+    cursor: pointer;
+  }
+
+  .uncollapsed {
+    cursor: pointer;
+  }
+
+</style>
+
+<h2 class="tittle">🌈 Palettes 2
+  <span class="pro-badge">PRO +</span>
+  <!-- <img class="verified" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Twitter_Verified_Badge.svg/1200px-Twitter_Verified_Badge.svg.png" alt="Image description" width="32" height="32"> -->
+</h2>
+
+<div class="spacer flex-container">
+  <div class="flex-item-big">
+    <label for="hexInput">Hex Color Base</label>
+    <input class="input__field inputswithLabels" type="text" onclick="" id="hexInput" value="#026CD1">
+  </div>
+
+  <div class="flex-item">
+    <label for="brightStepsInput">Bright Steps</label>
+    <input class="input__field inputswithLabels" type="number" onclick="" id="brightStepsInput" value="4">
+  </div>
+  <div class="flex-item">
+    <label for="brightTargetInput">Bright Target</label>
+    <div id="brightTargetValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="0" max="100" style="width: 100%;"
+      id="brightTargetInput" value="98">
+  </div>
+  <div class="flex-item">
+    <label for="brightHueInput">Hue Shift</label>
+    <div id="brightHueValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="-180" max="180" style="width: 100%;"
+      id="brightHueInput" value="0">
+  </div>
+  <div class="flex-item-big">
+    <label for="brightSaturationInput">Saturation Shift</label>
+    <div id="brightSaturationValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="-99" max="99" style="width: 100%;"
+      id="brightSaturationInput" value="0">
+  </div>
+  <div class="flex-item">
+    <label for="darkStepsInput">Dark Steps</label>
+    <input class="input__field inputswithLabels" type="number" onclick="" id="darkStepsInput" value="4">
+  </div>
+  <div class="flex-item">
+    <label for="darkTargetInput">Dark Target</label>
+    <div id="darkTargetValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="0" max="100" style="width: 100%;" id="darkTargetInput"
+      value="10">
+  </div>
+  <div class="flex-item">
+    <label for="darkHueInput">Hue Shift</label>
+    <div id="darkHueValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="-179" max="179" style="width: 100%;" id="darkHueInput"
+      value="0">
+  </div>
+  <div class="flex-item">
+    <label for="darkSaturationInput">Saturation Shift</label>
+    <div id="darkSaturationValueRange" class="slider-value">0</div>
+    <input class="headerInput inputswithLabels" type="range" min="-99" max="99" style="width: 100%;"
+      id="darkSaturationInput" value="0">
+  </div>
+</div>
+
+
+<div id="colorSwatches" class="colorSwatchesStyle">
+  <!-- Colors goes here xD -->
+</div>
+
+<div class="spacer collapsed" id="gradientStrip" style="width: 100%; height: 64px;"></div>
+
+<div class="spacer flex-container">
+  <div class="flex-item">
+    <label for="globalHueInput">Global Hue</label>
+    <div id="globalHueValueRange" class="slider-value">0</div>
+    <input class="inputswithLabels" type="range" min="-179" max="179" style="width: 100%;" id="globalHueInput"
+      value="0">
+  </div>
+  <div class="flex-item">
+    <label for="globalSaturationInput">Global Saturation</label>
+    <div id="globalSaturationValueRange" class="slider-value">0</div>
+    <input class="inputswithLabels" type="range" min="-99" max="99" style="width: 100%;" id="globalSaturationInput"
+      value="0">
+  </div>
+
+  <div class="flex-item">
+    <label for="globalLightInput">Global Light</label>
+    <div id="globalLightValueRange" class="slider-value">0</div>
+    <input class="inputswithLabels" type="range" min="-99" max="99" style="width: 100%;" id="globalLightInput"
+      value="0">
+  </div>
+
+  <div class="flex-item">
+    <label for="exponentRange">Easing</label>
+    <div id="exponentValueRange" class="slider-value">0</div>
+    <input class="inputswithLabels" type="range" id="exponentRange" name="exponent" min="0.1" max="2" step="0.1"
+      value="1">
+  </div>
+</div>
+
+<div class="spacer flex-container">
+  <button class="button--primary-j button" id="downloadButton">Download</button>
+  <input type="text" class="input__field bottomInput" id="uploadInput" placeholder="Paste palette data here" />
+  <button class="button--primary-j button" id="uploadButton">Upload</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.1/tinycolor.min.js"></script>
+<script>
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const gradientStrip = document.getElementById('gradientStrip');
+
+    gradientStrip.addEventListener('click', function () {
+      if (this.classList.contains('collapsed')) {
+        this.style.height = '128px';
+        this.style.transition = 'height 0.3s ease-out';
+        this.classList.remove('collapsed');
+        //GPT ADDS: Adding a bounce effect using keyframes defined in CSS.
+        this.classList.add('uncollapsed');
+      } else {
+        this.style.height = '64px';
+        this.classList.add('collapsed');
+        //GPT ADDS: Removing the bounce effect when div collapses.
+        this.classList.remove('uncollapsed');
+      }
+    });
+  });
+  // Get the inputs
+  let hexInput = document.getElementById('hexInput');
+  let brightStepsInput = document.getElementById('brightStepsInput');
+  let darkStepsInput = document.getElementById('darkStepsInput');
+  let brightTargetInput = document.getElementById('brightTargetInput');
+  let darkTargetInput = document.getElementById('darkTargetInput');
+  let brightHueInput = document.getElementById('brightHueInput');
+  let darkHueInput = document.getElementById('darkHueInput');
+  let brightSaturationInput = document.getElementById('brightSaturationInput');
+  let darkSaturationInput = document.getElementById('darkSaturationInput');
+  let colorSwatches = document.getElementById('colorSwatches');
+
+  const brightHueValueRange = document.getElementById('brightHueValueRange');
+  const darkHueValueRange = document.getElementById('darkHueValueRange');
+  const brightSaturationValueRange = document.getElementById('brightSaturationValueRange');
+  const darkSaturationValueRange = document.getElementById('darkSaturationValueRange');
+  const brightTargetValueRange = document.getElementById('brightTargetValueRange');
+  const darkTargetValueRange = document.getElementById('darkTargetValueRange');
+  const globalHueValueRange = document.getElementById('globalHueValueRange');
+  const globalSaturationValueRange = document.getElementById('globalSaturationValueRange');
+  const globalLightValueRange = document.getElementById('globalLightValueRange');
+  const exponentValueRange = document.getElementById('exponentValueRange');
+
+  brightHueInput.oninput = function () {
+    brightHueValueRange.textContent = this.value;
+  }
+
+  darkHueInput.oninput = function () {
+    darkHueValueRange.textContent = this.value;
+  }
+
+  brightSaturationInput.oninput = function () {
+    brightSaturationValueRange.textContent = this.value;
+  }
+
+  darkSaturationInput.oninput = function () {
+    darkSaturationValueRange.textContent = this.value;
+  }
+
+  brightTargetInput.oninput = function () {
+    brightTargetValueRange.textContent = this.value;
+  }
+
+  darkTargetInput.oninput = function () {
+    darkTargetValueRange.textContent = this.value;
+  }
+
+  globalHueInput.oninput = function () {
+    globalHueValueRange.textContent = this.value;
+  }
+
+  globalSaturationInput.oninput = function () {
+    globalSaturationValueRange.textContent = this.value;
+  }
+
+  globalLightInput.oninput = function () {
+    globalLightValueRange.textContent = this.value;
+  }
+
+  exponentRange.oninput = function () {
+    exponentValueRange.textContent = this.value;
+  }
+
+  // Refresh inputs
+  brightHueInput.dispatchEvent(new Event('input'));
+  darkHueInput.dispatchEvent(new Event('input'));
+  brightSaturationInput.dispatchEvent(new Event('input'));
+  darkSaturationInput.dispatchEvent(new Event('input'));
+  brightTargetInput.dispatchEvent(new Event('input'));
+  darkTargetInput.dispatchEvent(new Event('input'));
+  globalHueInput.dispatchEvent(new Event('input'));
+  globalSaturationInput.dispatchEvent(new Event('input'));
+  globalLightInput.dispatchEvent(new Event('input'));
+
+
+
+  // Function to create a color swatch
+  function createColorSwatch(colorHex, lightnessShift, hueShift, saturationShift) {
+    let color = tinycolor(colorHex);
+
+
+    // Apply lightness, hue and saturation shift if they're provided
+    if (lightnessShift !== undefined || hueShift !== undefined || saturationShift !== undefined) {
+      let hsl = color.toHsl();
+      hsl.l += lightnessShift;
+      hsl.h = (hsl.h + hueShift) % 360; // Ensure the hue value stays within [0, 360)
+      hsl.s += saturationShift;
+      hsl.s = Math.min(1, Math.max(0, hsl.s)); // Ensure the saturation value stays within [0, 1]
+      color = tinycolor(hsl);
+      colorHex = color.toHexString();
+    }
+
+    // Create main div
+    let mainDiv = document.createElement('div');
+    mainDiv.classList.add('colorSwatch');
+    mainDiv.style.display = 'flex';
+    mainDiv.style.flexDirection = 'column';
+    mainDiv.style.alignItems = 'start';
+
+    // Create swatch div
+    let swatch = document.createElement('div');
+    swatch.id = 'swatch_' + colorHex.replace('#', '');
+    swatch.style.width = '100%';
+    swatch.style.height = '128px';
+    swatch.style.backgroundColor = colorHex;
+    mainDiv.appendChild(swatch);
+
+    // The colorSwatches div
+    let colorSwatches = document.getElementById('colorSwatches');
+
+    // Determine the color of the text based on the luminance
+    let textColor = color.getLuminance() < 0 ? '#ffffff' : '#000000';
+
+    // Make the swatch clickable
+    swatch.style.cursor = 'pointer';
+
+    // Copy color values when swatch is clicked
+
+    swatch.addEventListener('click', function () {
+      // Remove border from all swatches
+      let swatches = colorSwatches.querySelectorAll('.colorSwatch > div');
+      swatches.forEach(function (swatch) {
+        swatch.style.boxShadow = 'none';
+      });
+
+      // If the clicked swatch was the previously clicked swatch, don't add the border
+      if (this.id === colorSwatches.getAttribute('data-lastClicked')) {
+        colorSwatches.removeAttribute('data-lastClicked');
+      } else {
+        // Otherwise, add border to the clicked swatch and update the lastClicked attribute
+        this.style.boxShadow = 'inset 0 0 0 2px rgba(0,0,0, .6)';
+        colorSwatches.setAttribute('data-lastClicked', this.id);
+      }
+
+      let colorToCopy = this.id.replace('swatch_', '#');
+
+      // Use the Clipboard API to copy the color values
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(colorToCopy).then(function () {
+          // console.log('Hex value copied to clipboard:', colorToCopy);
+          // Add inner border to the swatch to indicate that the color values have been copied
+          swatch.style.boxShadow = 'inset 0 0 0 2px #000';
+        }, function (err) {
+          console.error('Could not copy hex value:', err);
+        });
+      } else {
+        // Fallback for older browsers
+        let textarea = document.createElement('textarea');
+        textarea.value = colorToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          // console.log('Hex value copied to clipboard:', colorToCopy);
+          // Add inner border to the swatch to indicate that the color values have been copied
+          swatch.style.boxShadow = 'inset 0 0 0 2px #000';
+        } catch (err) {
+          console.error('Could not copy hex value:', err);
+        }
+        document.body.removeChild(textarea);
+      }
+    });
+
+
+    // Create a wrapper div to hold the text information and sliders
+    let infoWrapper = document.createElement('div');
+    infoWrapper.classList.add('infoWrapper');
+
+    let luminanceText = document.createElement('p');
+    luminanceText.textContent = `L: ${(color.getLuminance() * 100).toFixed(2)}%`;
+    luminanceText.style.color = textColor;
+    luminanceText.style.fontSize = '10px'; // Set font size to 8px
+    luminanceText.style.margin = '4px 0'; // Reducing the margin between lines
+
+    let hexValueText = document.createElement('p');
+    hexValueText.textContent = `${colorHex}`;
+    hexValueText.style.color = textColor;
+    hexValueText.style.fontSize = '14px'; // Set font size to 12px
+    hexValueText.style.fontWeight = 'semibold'; // Make the HEX value bold
+    hexValueText.style.margin = '4px 0'; // Reducing the margin between lines
+
+    let hslValue = color.toHsl();
+    let hslValueText = document.createElement('p');
+    hslValueText.textContent = `HSL: ${hslValue.h.toFixed(0)}, ${Math.round(hslValue.s * 100)}%, ${Math.round(hslValue.l * 100)}%`;
+    hslValueText.style.color = textColor;
+    hslValueText.style.fontSize = '10px'; // Set font size to 8px
+    hslValueText.style.margin = '4px 0'; // Reducing the margin between lines
+
+    // GPT ADDS: Logic to calculate and display the class identifier based on lightness
+    let classIdentifier = document.createElement('p');
+    classIdentifier.textContent = getClassIdentifier(hslValue.l * 100);
+    classIdentifier.style.color = textColor;
+    classIdentifier.style.fontSize = '12px'; // Font size adjusted for better visibility
+    classIdentifier.style.fontWeight = 'bold'; // Bold for emphasis
+    classIdentifier.style.marginTop = '8px'; // Added margin for better spacing
+
+    // Append text info to infoWrapper div
+    infoWrapper.appendChild(luminanceText);
+    infoWrapper.appendChild(hexValueText);
+    infoWrapper.appendChild(hslValueText);
+    infoWrapper.appendChild(classIdentifier);
+    // Append sliders to infoWrapper div
+
+
+
+    mainDiv.appendChild(infoWrapper);
+
+    return mainDiv;
+
+    function getClassIdentifier(colorHex) {
+      let brightness = color.getBrightness(); // Gets brightness in 0-255 format
+      let brightnessPercent = (brightness / 255) * 100; // Convert to percentage
+
+      // if (brightnessPercent < 5) return '950';
+      if (brightnessPercent < 10) return '900';
+      if (brightnessPercent < 20) return '800';
+      if (brightnessPercent < 30) return '700';
+      if (brightnessPercent < 40) return '600';
+      if (brightnessPercent < 50) return '500';
+      if (brightnessPercent < 60) return '400';
+      if (brightnessPercent < 70) return '300';
+      if (brightnessPercent < 80) return '200';
+      if (brightnessPercent < 90) return '100';
+      // if (brightnessPercent < 95) return '50';
+      return '100'; // For brightnessPercent from 90 to 100%, also return '100'
+    }
+  }
+
+  // function getClassIdentifier(colorHex) {
+  //   let color = tinycolor(colorHex);
+  //   let brightness = color.getBrightness(); // Gets brightness in 0-255 format
+  //   let brightnessPercent = (brightness / 255) * 100; // Convert to percentage
+
+  //   if (brightnessPercent < 10) return '900';
+  //   if (brightnessPercent < 20) return '800';
+  //   if (brightnessPercent < 30) return '700';
+  //   if (brightnessPercent < 40) return '600';
+  //   if (brightnessPercent < 50) return '500';
+  //   if (brightnessPercent < 60) return '400';
+  //   if (brightnessPercent < 70) return '300';
+  //   if (brightnessPercent < 80) return '200';
+  //   if (brightnessPercent < 90) return '100';
+  //   return '100'; // For brightnessPercent from 90 to 100%, also return '100'
+  // }
+
+  let exponent = 1; // Define the exponent in the global scope so it can be used in your updateSwatches function
+
+  document.getElementById('exponentRange').addEventListener('input', function () {
+    // console.log(this.value);
+    exponent = parseFloat(this.value); // Change the exponent value
+    updateSwatches(); // Rerun the color generation
+  });
+
+  // Function to update the swatches
+  function updateSwatches() {
+    // Clear existing swatches
+    colorSwatches.innerHTML = '';
+
+    // Get the base color and apply global changes
+    let baseColorHex = applyGlobalChanges(hexInput.value);
+
+    // Get the base color
+    let baseColor = tinycolor(baseColorHex);
+    let baseLightness = baseColor.toHsl().l;
+
+    // Get the Bright Steps and Dark Steps values
+    let brightSteps = parseInt(brightStepsInput.value, 10);
+    let darkSteps = parseInt(darkStepsInput.value, 10);
+
+    // Get the Hue and Saturation shift values
+    let brightHueShift = parseInt(brightHueInput.value, 10) / brightSteps;
+    let darkHueShift = parseInt(darkHueInput.value, 10) / darkSteps;
+    let brightSaturationShift = parseInt(brightSaturationInput.value, 10) / 100 / brightSteps;
+    let darkSaturationShift = parseInt(darkSaturationInput.value, 10) / 100 / darkSteps;
+
+    // Calculate the lightness shift per step for bright and dark swatches
+    let brightTargetLightness = parseInt(brightTargetInput.value, 10) / 100;
+    let darkTargetLightness = parseInt(darkTargetInput.value, 10) / 100;
+    let brightLightnessShift = (brightTargetLightness - baseLightness) / brightSteps;
+    let darkLightnessShift = (baseLightness - darkTargetLightness) / darkSteps;
+
+    // Calculate the amount of white and black to mix per step for bright and dark swatches
+    let brightTargetMix = parseInt(brightTargetInput.value, 10) / 100;
+    let darkTargetMix = (100 - parseInt(darkTargetInput.value, 10)) / 100; // Invert the dark target logic
+    let brightMixPerStep = brightTargetMix / Math.pow(brightSteps, exponent);
+    let darkMixPerStep = darkTargetMix / Math.pow(darkSteps, exponent);
+
+
+    // Create the bright swatches and add them to the right of the base swatch
+    for (let i = brightSteps; i > 0; i--) {
+      let t = i / brightSteps; // Normalized step
+      let easedT = 1 - Math.pow(1 - t, exponent); // Apply "ease out" effect
+      let mixPercentage = easedT * brightTargetMix * 100;
+      let brightColor = tinycolor.mix(baseColor, "#ffffff", mixPercentage); // Mix with white
+      let brightSwatch = createColorSwatch(brightColor.toHexString(), 0, (brightHueShift * i + 360) % 360, brightSaturationShift * i);
+      colorSwatches.appendChild(brightSwatch);
+      // console.log(`Bright swatch ${i} mix percentage: ${mixPercentage}%`);  // Added logging statement
+    }
+
+
+    // Append base swatch
+    let baseColorSwatch = createColorSwatch(baseColorHex, 0, 0, 0); // Base color does not shift
+    baseColorSwatch.classList.add('baseColorSwatch');
+    colorSwatches.appendChild(baseColorSwatch);
+
+    // Create the dark swatches and append them to the right of the base swatch
+    for (let i = 1; i <= darkSteps; i++) {
+      let t = i / darkSteps; // Normalized step
+      let easedT = 1 - Math.pow(1 - t, exponent); // Apply "ease out" effect
+      let mixPercentage = easedT * darkTargetMix * 100;
+      let darkColor = tinycolor.mix(baseColor, "#000000", mixPercentage); // Mix with black
+      let darkSwatch = createColorSwatch(darkColor.toHexString(), 0, (darkHueShift * i + 360) % 360, darkSaturationShift * i);
+      colorSwatches.appendChild(darkSwatch);
+      // console.log(`Dark swatch ${i} mix percentage: ${mixPercentage}%`);  // Added logging statement
+    }
+
+    generateAndApplyGradient();
+  }
+
+  // Function to apply global changes to base color
+  function applyGlobalChanges(baseColorHex) {
+    let baseColor = tinycolor(baseColorHex);
+    let hsl = baseColor.toHsl();
+
+    // Apply global hue shift
+    hsl.h = (hsl.h + parseInt(globalHueInput.value) + 360) % 360;
+
+    // Apply global saturation shift
+    hsl.s += parseInt(globalSaturationInput.value) / 100;
+    hsl.s = Math.min(1, Math.max(0, hsl.s));
+
+    // Apply global lightness shift
+    hsl.l += parseInt(globalLightInput.value) / 100;
+    hsl.l = Math.min(1, Math.max(0, hsl.l));
+
+    return tinycolor(hsl).toHexString();
+  }
+
+  // Update the swatches initially and whenever the inputs change
+  updateSwatches();
+  hexInput.addEventListener('input', updateSwatches);
+  brightStepsInput.addEventListener('input', updateSwatches);
+  darkStepsInput.addEventListener('input', updateSwatches);
+  brightTargetInput.addEventListener('input', updateSwatches);
+  darkTargetInput.addEventListener('input', updateSwatches);
+  brightHueInput.addEventListener('input', updateSwatches);
+  darkHueInput.addEventListener('input', updateSwatches);
+  brightSaturationInput.addEventListener('input', updateSwatches);
+  darkSaturationInput.addEventListener('input', updateSwatches);
+  globalHueInput.addEventListener('input', updateSwatches);
+  globalSaturationInput.addEventListener('input', updateSwatches);
+  globalLightInput.addEventListener('input', updateSwatches);
+  // Get the Download button
+  let downloadButton = document.getElementById('downloadButton');
+
+
+  downloadButton.addEventListener('click', function () {
+
+    let globalHueInputValue = globalHueInput.value;
+    let globalSaturationInputValue = globalSaturationInput.value;
+    let globalLightInputValue = globalLightInput.value;
+    let exponentRangeValue = exponentRange.value;
+
+    let lightValues = [];
+    let saturationValues = [];
+
+    // Get the values of the inputs and sliders
+    let paletteData = {
+      hexInput: hexInput.value,
+      brightStepsInput: brightStepsInput.value,
+      darkStepsInput: darkStepsInput.value,
+      brightTargetInput: brightTargetInput.value,
+      darkTargetInput: darkTargetInput.value,
+      brightHueInput: brightHueInput.value,
+      darkHueInput: darkHueInput.value,
+      brightSaturationInput: brightSaturationInput.value,
+      darkSaturationInput: darkSaturationInput.value,
+      globalHueInput: globalHueInputValue,
+      globalSaturationInput: globalSaturationInputValue,
+      globalLightInput: globalLightInputValue,
+      exponentRange: exponentRangeValue,
+    };
+
+    // Convert the palette data to a JSON string
+    let paletteDataJson = JSON.stringify(paletteData);
+
+    // Copy the JSON string to the clipboard
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(paletteDataJson).then(function () {
+        // console.log('Palette data copied to clipboard');
+      }, function (err) {
+        console.error('Could not copy palette data', err);
+      });
+    } else {
+      // Fallback for older browsers
+      let textarea = document.createElement('textarea');
+      textarea.value = paletteDataJson;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        // console.log('Palette data copied to clipboard');
+      } catch (err) {
+        console.error('Could not copy palette data', err);
+      }
+      document.body.removeChild(textarea);
+    }
+  });
+
+  // Get the Upload button and input
+  let uploadButton = document.getElementById('uploadButton');
+  let uploadInput = document.getElementById('uploadInput');
+
+  uploadButton.addEventListener('click', function () {
+    // Get the palette data from the input
+    let paletteDataJson = uploadInput.value;
+
+    // Parse the JSON string into an object
+    let paletteData;
+    try {
+      paletteData = JSON.parse(paletteDataJson);
+    } catch (err) {
+      console.error('Invalid palette data', err);
+      return;
+    }
+
+    // Set the values of the inputs and sliders
+    hexInput.value = paletteData.hexInput;
+    brightStepsInput.value = paletteData.brightStepsInput;
+    darkStepsInput.value = paletteData.darkStepsInput;
+    brightTargetInput.value = paletteData.brightTargetInput;
+    darkTargetInput.value = paletteData.darkTargetInput;
+    brightHueInput.value = paletteData.brightHueInput;
+    darkHueInput.value = paletteData.darkHueInput;
+    brightSaturationInput.value = paletteData.brightSaturationInput;
+    darkSaturationInput.value = paletteData.darkSaturationInput;
+    globalHueInput.value = paletteData.globalHueInput;
+    globalSaturationInput.value = paletteData.globalSaturationInput;
+    globalLightInput.value = paletteData.globalLightInput;
+    exponentRange.value = paletteData.exponentRange;
+
+    // Update the swatches to reflect the new values
+    updateSwatches();
+
+    brightHueInput.dispatchEvent(new Event('input'));
+    darkHueInput.dispatchEvent(new Event('input'));
+    brightSaturationInput.dispatchEvent(new Event('input'));
+    darkSaturationInput.dispatchEvent(new Event('input'));
+    brightTargetInput.dispatchEvent(new Event('input'));
+    darkTargetInput.dispatchEvent(new Event('input'));
+    globalHueInput.dispatchEvent(new Event('input'));
+    globalSaturationInput.dispatchEvent(new Event('input'));
+    globalLightInput.dispatchEvent(new Event('input'));
+    exponentRange.dispatchEvent(new Event('input'));
+
+    // Set the values of light and saturation inputs
+    let swatches = Array.from(colorSwatches.children);
+
+    paletteData.lightValues.forEach((value, i) => {
+      if (swatches[i]) {
+        let lightInput = swatches[i].querySelector('input[type="range"]:nth-of-type(1)');
+        if (lightInput) {
+          lightInput.value = value;
+          lightInput.dispatchEvent(new Event('input')); // Trigger input event
+        }
+      }
+    });
+
+    paletteData.saturationValues.forEach((value, i) => {
+      if (swatches[i]) {
+        let saturationInput = swatches[i].querySelector('input[type="range"]:nth-of-type(2)');
+        if (saturationInput) {
+          saturationInput.value = value;
+          saturationInput.dispatchEvent(new Event('input')); // Trigger input event
+        }
+      }
+    });
+  });
+
+
+  // Function to generate and apply the gradient
+  function generateAndApplyGradient() {
+    let swatches = document.querySelectorAll('.colorSwatch > div[id^="swatch_"]'); // Select only the divs that have an ID starting with "swatch_"
+    let colors = Array.from(swatches).map(swatch => swatch.style.backgroundColor); // Collecting colors
+
+    // Filter out empty values and convert RGBA to hex
+    colors = colors.filter(color => color).map(rgba => tinycolor(rgba).toHexString());
+
+    // Creating a linear gradient CSS string
+    let gradient = `linear-gradient(to right, ${colors.join(', ')})`;
+
+    // Applying the gradient to the gradientStrip element
+    document.getElementById('gradientStrip').style.backgroundImage = gradient;
+  }
+
+</script>
