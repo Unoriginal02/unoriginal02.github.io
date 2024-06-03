@@ -181,7 +181,7 @@
             border: 1px solid var(--main-color);
             margin-top: -1px;
             align-items: center;
-            height:100%
+            height: 100%
         }
 
         .brutal-card:hover {
@@ -323,6 +323,7 @@
             <p>Welcome to Task Battle Royale.</p>
             <p>This app will allow you to sort your daily tasks by importance</p>
         </div>
+        <div id="rankingSection" class="my-3"></div>
         <!-- <div id="scoresSection" class="my-3"></div> -->
     </div>
 
@@ -335,6 +336,7 @@
             document.documentElement.style.setProperty('--main-color', '#FC6B5B');
             document.documentElement.style.setProperty('--main-color-hover', 'rgba(252,107,91,.1)');
             isInTiebreakerPhase = true;
+            document.getElementById('rankingSection').style.display = 'none'; 
         }
 
         function exitTiePhase() {
@@ -486,6 +488,7 @@
                 alert("Please add at least two tasks for comparison.");
                 resetComparisons();
             }
+            document.getElementById('rankingSection').style.display = 'block';
         }
 
         function showNextComparison() {
@@ -519,7 +522,7 @@
                     </label>
                 </div>
                 <p>Give a like to any task you'd enjoy, but select the one that's most important. Be honest.</p>
-            `;
+            `; updateRankingSection();
             } else {
                 displayResults();
             }
@@ -676,9 +679,43 @@
             let resetButtonHTML = '<button id="resetButton" class="mt-3 btn brutalButton" style="width: 100%;" onclick="resetComparisons()">Reset</button>';
             // Append the reset button HTML to the resultsSection or another appropriate section based on your layout
             resultsSection.innerHTML += resetButtonHTML;
+            document.getElementById('rankingSection').style.display = 'none'; 
         }
 
         document.getElementById('compareButton').style.display = 'block';
+
+        function updateRankingSection() { // GPT ADDS: New function to update the rankings dynamically
+            const rankingSection = document.getElementById('rankingSection');
+            let rankingHTML = '<h3>Current Rankings</h3>';
+            rankingHTML += '<div class="mt-3 leaderboard">';
+
+            // Ensure all tasks are in the results, even if they have 0 points
+            tasks.forEach(task => {
+                if (results[task] === undefined) {
+                    results[task] = 0;
+                }
+            });
+
+            const sortedTasks = Object.entries(results).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+            sortedTasks.forEach((task, index) => {
+                const heartCount = heartCounts[task[0]] || 0; // Default to 0 if no hearts
+                let heartsHTML = '';
+                for (let i = 0; i < heartCount; i++) {
+                    heartsHTML += '<img src="./img/heart-fill.png" width="24" height="24">';
+                }
+                rankingHTML += `
+        <div class="leaderboard-row ${index === 0 ? 'leaderboard-top' : ''}">
+            <span class="leaderboard-rank">${index + 1}</span>
+            <span class="leaderboard-name">${task[0]}</span>
+            <span class="leaderboard-hearts">${heartsHTML}</span>
+            <span class="leaderboard-score">${task[1].toFixed(2)}</span>
+        </div>
+        `;
+            });
+            rankingHTML += '</div>';
+            rankingSection.innerHTML = rankingHTML;
+        }
+
 
         function updateCompareButtonVisibility() {
             const compareButton = document.getElementById('compareButton');
@@ -687,57 +724,40 @@
 
         document.getElementById('compareButton').style.display = 'none';
 
-document.addEventListener('change', function (event) {
-    if (event.target.classList.contains('preference-checkbox')) {
-        const comparisonIndexAdjustment = isInTiebreakerPhase ? 0 : comparisonIndex; // Adjust for tiebreaker phase if necessary
-        const chosenTask = comparisons[comparisonIndexAdjustment][event.target.id === 'prefLeft' ? 0 : 1];
+        document.addEventListener('change', function (event) {
+            if (event.target.classList.contains('preference-checkbox')) {
+                const comparisonIndexAdjustment = isInTiebreakerPhase ? 0 : comparisonIndex; // Adjust for tiebreaker phase if necessary
+                const chosenTask = comparisons[comparisonIndexAdjustment][event.target.id === 'prefLeft' ? 0 : 1];
 
-        // Check if the checkbox is being checked
-        if (event.target.checked) {
-            // Ensure we deselect other checkboxes
-            document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
-                if (checkbox !== event.target) {
-                    checkbox.checked = false; // Deselect all other checkboxes
+                // Check if the checkbox is being checked
+                if (event.target.checked) {
+                    // Ensure we deselect other checkboxes
+                    document.querySelectorAll('.preference-checkbox').forEach(function (checkbox) {
+                        if (checkbox !== event.target) {
+                            checkbox.checked = false; // Deselect all other checkboxes
+                        }
+                    });
+
+                    heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1; // Update the global heartedTaskIndex
+
+                    // Increment the heart count for the chosen task
+                    if (!heartCounts[chosenTask]) {
+                        heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
+                    } else {
+                        heartCounts[chosenTask]++; // Increment if already exists
+                    }
+                } else {
+                    // If the checkbox is being unchecked, decrement the heart count
+                    if (heartCounts[chosenTask] && heartCounts[chosenTask] > 0) {
+                        heartCounts[chosenTask]--; // Decrement the count
+                        if (heartCounts[chosenTask] === 0) {
+                            delete heartCounts[chosenTask]; // Optional: Remove the entry if count drops to 0
+                        }
+                    }
+                    heartedTaskIndex = null; // Reset heartedTaskIndex since no task is currently hearted
                 }
-            });
-
-            heartedTaskIndex = event.target.id === 'prefLeft' ? 0 : 1; // Update the global heartedTaskIndex
-
-            // Increment the heart count for the chosen task
-            if (!heartCounts[chosenTask]) {
-                heartCounts[chosenTask] = 1; // Initialize with 1 if it does not exist
-            } else {
-                heartCounts[chosenTask]++; // Increment if already exists
             }
-        } else {
-            // If the checkbox is being unchecked, decrement the heart count
-            if (heartCounts[chosenTask] && heartCounts[chosenTask] > 0) {
-                heartCounts[chosenTask]--; // Decrement the count
-                if (heartCounts[chosenTask] === 0) {
-                    delete heartCounts[chosenTask]; // Optional: Remove the entry if count drops to 0
-                }
-            }
-            heartedTaskIndex = null; // Reset heartedTaskIndex since no task is currently hearted
-        }
-    }
-});
-
-        // function updateScoresDisplay() {
-        //     const scoresSection = document.getElementById('scoresSection');
-        //     // Start with an empty string or a basic message
-        //     let scoresHTML = '<h3>Current Scores</h3><div class="leaderboard">';
-        //     // Iterate through the results object to append each task's score
-        //     Object.entries(results).forEach(([task, score], index) => {
-        //         scoresHTML += `
-        //         <div class="leaderboard-row">
-        //             <span class="leaderboard-name">${task}</span>
-        //             <span class="leaderboard-score">${score.toFixed(2)}</span>
-        //         </div>
-        //     `;
-        //     });
-        //     scoresHTML += '</div>';
-        //     scoresSection.innerHTML = scoresHTML;
-        // }
+        });
 
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
