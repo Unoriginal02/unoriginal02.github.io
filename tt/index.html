@@ -30,7 +30,7 @@
             color: var(--main-color);
             font-family: 'JetBrains Mono', monospace;
             display: flex;
-            justify-content: center;
+            /* justify-content: center; */
             align-items: center;
             flex-direction: column;
             min-height: 100vh;
@@ -179,6 +179,7 @@
 
         .mt-neg-1 {
             margin-top: -1px;
+            
         }
     </style>
 </head>
@@ -186,11 +187,10 @@
 <body>
 
     <div class="maxwidth container text-center my-5">
-        <div id="tasks"></div>
-        <div id="totalsSum" class="mt-3 hidden"></div>
-        <button id="addTaskButton" class="brutalButton mt-3">Add New Task</button>
+        <button id="addTaskButton" class="brutalButton">Add New Task</button>
         <button id="toggleTotalsButton" class="brutalButton mt-neg-1">Show Totals</button>
-        
+        <div id="tasks" class="mt-3"></div>
+        <div id="totalsSum" class="mt-3 hidden"></div>
     </div>
 
     <script>
