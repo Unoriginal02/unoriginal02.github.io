@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Task Tracker</title>
+    <title>Taskifactorio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,8 @@
         :root {
             --main-color: #eeeeee;
             --main-color-hover: rgba(238, 238, 238, .1);
-            --button-active-color: #ff4d4d; /* Red color for active button */
+            --button-active-color: #ff4d4d;
+            /* Red color for active button */
         }
 
         html,
@@ -50,43 +51,46 @@
             display: flex;
             align-items: center;
             margin-bottom: 10px;
-            padding: 10px;
         }
 
         .task-row input[type="text"] {
             flex-grow: 1;
+            height: 32px;
+            padding: 16px;
             background-color: #000000;
             color: var(--main-color);
             border: 1px solid var(--main-color);
-            margin-right: 10px;
+            margin-right: 16px;
         }
 
         .task-row button {
             border: 1px solid var(--main-color);
             background-color: #000000;
             color: var(--main-color);
-            padding: 5px 10px;
+            padding: 8px 13px;
             border-radius: 0;
-            margin-right: 5px;
+            margin-right: -1px;
         }
 
         .task-row .timer {
             min-width: 80px;
             text-align: center;
+            margin-right: 16px;
         }
 
         .task-row .adjust-buttons {
             display: flex;
             align-items: center;
+            margin-right: 16px;
         }
 
         .task-row .adjust-buttons button {
-            margin-right: 5px;
-            font-size: 1.5rem;
+            margin-right: -1px;
+            font-size: 1rem;
         }
 
         .task-row .decimal-time {
-            font-size: 1.5rem;
+            font-size: 1rem;
             margin-left: auto;
         }
 
@@ -100,8 +104,81 @@
             color: black !important;
         }
 
-        .StartStop{
+        .StartStop {
             width: 96px;
+        }
+
+        .brutalButton {
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem 0;
+            border-radius: 0;
+            white-space: nowrap;
+            /* Prevent text wrapping */
+            min-width: 100px;
+            /* Adjust based on your needs */
+        }
+
+        .brutalButton:hover {
+            background-color: var(--main-color-hover);
+            color: var(--main-color);
+        }
+
+        .brutalButton:last-child {
+            margin-right: 0;
+        }
+
+        .brutal-list-group {
+            flex-grow: 1;
+            /* Make input take up available space */
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem .5rem;
+            margin-right: -1px;
+            /* Overlap borders */
+            border-radius: 0;
+            text-align: center;
+        }
+
+        .brutalInput {
+            flex-grow: 1;
+            /* Make input take up available space */
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--main-color);
+            background-color: #000000;
+            color: var(--main-color);
+            padding: .5rem .5rem;
+            margin-right: -1px;
+            /* Overlap borders */
+            border-radius: 0;
+            text-align: center;
+        }
+
+        .form-control:focus {
+            background-color: rgba(255, 255, 255, .1) !important;
+            border-color: var(--main-color);
+            outline: 0;
+            box-shadow: none;
+        }
+
+        .brutalInput:focus {
+            background-color: #333333;
+            color: var(--main-color);
+            /* Change text color to light gray when focused */
+            outline: none;
+            /* Remove the default focus outline */
+        }
+
+        .brutalInput::placeholder {
+            /* Change the color of placeholders */
+            color: var(--main-color);
+        }
+
+        .mt-neg-1 {
+            margin-top: -1px;
         }
     </style>
 </head>
@@ -109,16 +186,17 @@
 <body>
 
     <div class="maxwidth container text-center my-5">
-        <h2>Task Tracker</h2>
         <div id="tasks"></div>
         <button id="addTaskButton" class="brutalButton mt-3">Add New Task</button>
-        <button id="toggleTotalsButton" class="brutalButton mt-3">Show Totals</button>
+        <button id="toggleTotalsButton" class="brutalButton mt-neg-1">Show Totals</button>
         <div id="totalsSum" class="mt-3 hidden"></div>
     </div>
 
     <script>
         let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
         let showTotals = false;
+
+        // const totalShiftSeconds = 8 * 60 * 60; // 9 hours in seconds
 
         function updateLocalStorage() {
             localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -147,6 +225,15 @@
                 tasks[index].name = taskInput.value;
                 updateLocalStorage();
             });
+
+            // Calculate the total time of all tasks
+            const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
+
+            // Calculate the percentage of total time that the task represents
+            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 100 : 0;
+
+            // Apply a linear gradient to fill the input background based on task time
+            taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
 
             const timerDisplay = document.createElement('div');
             timerDisplay.className = 'timer';
