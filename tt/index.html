@@ -55,8 +55,8 @@
 
         .task-row input[type="text"] {
             flex-grow: 1;
-            height: 32px;
-            padding: 16px;
+            height: 42px;
+            padding: 4px 16px;
             background-color: #000000;
             color: var(--main-color);
             border: 1px solid var(--main-color);
@@ -187,9 +187,10 @@
 
     <div class="maxwidth container text-center my-5">
         <div id="tasks"></div>
+        <div id="totalsSum" class="mt-3 hidden"></div>
         <button id="addTaskButton" class="brutalButton mt-3">Add New Task</button>
         <button id="toggleTotalsButton" class="brutalButton mt-neg-1">Show Totals</button>
-        <div id="totalsSum" class="mt-3 hidden"></div>
+        
     </div>
 
     <script>
@@ -312,7 +313,20 @@
             const tasksContainer = document.getElementById('tasks');
             tasksContainer.innerHTML = '';
             tasks.forEach((task, index) => {
-                tasksContainer.appendChild(createTaskRow(task, index));
+                const taskRow = createTaskRow(task, index);
+
+                // Hide start/stop and delete buttons when totals are shown
+                const startStopButton = taskRow.querySelector('.StartStop');
+                const deleteButton = taskRow.querySelector('.fa-trash-alt').parentElement; // Select the parent button of trash icon
+                if (showTotals) {
+                    startStopButton.classList.add('hidden');
+                    deleteButton.classList.add('hidden');
+                } else {
+                    startStopButton.classList.remove('hidden');
+                    deleteButton.classList.remove('hidden');
+                }
+
+                tasksContainer.appendChild(taskRow);
             });
             if (showTotals) {
                 calculateTotalSum();
@@ -345,12 +359,17 @@
 
         document.getElementById('toggleTotalsButton').addEventListener('click', () => {
             showTotals = !showTotals;
+
+            // Stop any running timers when showing totals
             if (showTotals) {
+                tasks.forEach(task => task.isRunning = false);
+                updateLocalStorage();
                 document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
             } else {
                 document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
                 document.getElementById('totalsSum').classList.add('hidden');
             }
+
             renderTasks();
         });
 
