@@ -231,7 +231,7 @@
             const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
 
             // Calculate the percentage of total time that the task represents
-            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 200 : 0;
+            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 100 : 0;
 
             // Apply a linear gradient to fill the input background based on task time
             taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
