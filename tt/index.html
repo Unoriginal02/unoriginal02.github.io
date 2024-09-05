@@ -179,7 +179,7 @@
 
         .mt-neg-1 {
             margin-top: -1px;
-
+            
         }
     </style>
 </head>
@@ -231,7 +231,7 @@
             const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
 
             // Calculate the percentage of total time that the task represents
-            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
+            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 200 : 0;
 
             // Apply a linear gradient to fill the input background based on task time
             taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
@@ -344,7 +344,7 @@
         function updateTimers() {
             tasks.forEach((task, index) => {
                 if (task.isRunning) {
-                    task.time = Math.floor((Date.now() - task.startTime) / 60000) * 60;
+                    task.time = Math.floor((Date.now() - task.startTime) / 1000);
                     document.getElementById(`timer-${index}`).textContent = formatTime(task.time);
                 }
             });
@@ -374,7 +374,7 @@
         });
 
         renderTasks();
-        setInterval(updateTimers, 60000);
+        setInterval(updateTimers, 1000);
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
