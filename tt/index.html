@@ -179,7 +179,7 @@
 
         .mt-neg-1 {
             margin-top: -1px;
-            
+
         }
     </style>
 </head>
@@ -320,10 +320,10 @@
                 const deleteButton = taskRow.querySelector('.fa-trash-alt').parentElement; // Select the parent button of trash icon
                 if (showTotals) {
                     startStopButton.classList.add('hidden');
-                    deleteButton.classList.add('hidden');
+                    // deleteButton.classList.add('hidden');
                 } else {
                     startStopButton.classList.remove('hidden');
-                    deleteButton.classList.remove('hidden');
+                    // deleteButton.classList.remove('hidden');
                 }
 
                 tasksContainer.appendChild(taskRow);
@@ -344,7 +344,7 @@
         function updateTimers() {
             tasks.forEach((task, index) => {
                 if (task.isRunning) {
-                    task.time = Math.floor((Date.now() - task.startTime) / 1000);
+                    task.time = Math.floor((Date.now() - task.startTime) / 60000) * 60;
                     document.getElementById(`timer-${index}`).textContent = formatTime(task.time);
                 }
             });
@@ -374,7 +374,7 @@
         });
 
         renderTasks();
-        setInterval(updateTimers, 1000);
+        setInterval(updateTimers, 60000);
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
