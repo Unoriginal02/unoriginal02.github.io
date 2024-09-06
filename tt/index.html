@@ -179,7 +179,7 @@
 
         .mt-neg-1 {
             margin-top: -1px;
-            
+
         }
     </style>
 </head>
@@ -347,6 +347,12 @@
                     task.time = Math.floor((Date.now() - task.startTime) / 1000);
                     document.getElementById(`timer-${index}`).textContent = formatTime(task.time);
                 }
+
+                // Update the background gradient for the task input field to reflect the time
+                const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
+                const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
+                const taskInput = document.querySelector(`#tasks input[type="text"]:nth-child(${index + 1})`);
+                taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
             });
             updateLocalStorage();
         }
@@ -374,7 +380,7 @@
         });
 
         renderTasks();
-        setInterval(updateTimers, 1000);
+        setInterval(updateTimers, 60000);
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
