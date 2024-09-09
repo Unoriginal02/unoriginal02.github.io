@@ -92,6 +92,8 @@
         .task-row .decimal-time {
             font-size: 1rem;
             margin-left: auto;
+            width: 64px;
+            text-align: left;
         }
 
         .hidden {
@@ -334,7 +336,8 @@
             decimalTime.className = `decimal-time ${showTotals ? '' : 'hidden'}`;
             decimalTime.id = `decimal-time-${index}`;
             const decimalValue = roundToQuarterHour(task.time / 60);
-            decimalTime.textContent = decimalValue.toFixed(2);
+            decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
+            
 
             adjustButtons.appendChild(minusButton);
             adjustButtons.appendChild(plusButton);
