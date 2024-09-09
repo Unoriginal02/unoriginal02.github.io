@@ -372,7 +372,7 @@
 
         function calculateTotalSum() {
             let totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
-            document.getElementById('totalsSum').textContent = `Total: ${totalSum.toFixed(2)} hours`;
+            document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
             document.getElementById('totalsSum').classList.remove('hidden');
         }
 
