@@ -355,6 +355,11 @@
             tasks.push({ name: '', time: 0, isRunning: false, startTime: null });
             updateLocalStorage();
             renderTasks();
+
+            // Focus on the last task's input field (the newly created one)
+            const taskInputs = document.querySelectorAll('.task-row input[type="text"]');
+            const lastTaskInput = taskInputs[taskInputs.length - 1];
+            lastTaskInput.focus();
         });
 
         document.getElementById('toggleTotalsButton').addEventListener('click', () => {
