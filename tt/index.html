@@ -279,10 +279,39 @@
             adjustButtons.className = `adjust-buttons ${showTotals ? '' : 'hidden'}`;
             adjustButtons.id = `adjust-buttons-${index}`;
 
+            // Function to round up to the nearest 15-minute interval
+            function roundUpToNearest15Minutes(seconds) {
+                const minutes = Math.ceil(seconds / 60);
+                const remainder = minutes % 15;
+                if (remainder === 0) {
+                    return seconds; // Already on a 15-minute boundary
+                } else {
+                    return (minutes + (15 - remainder)) * 60; // Round up to the next 15-minute slot
+                }
+            }
+
+            // Function to round down to the nearest 15-minute interval
+            function roundDownToNearest15Minutes(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainder = minutes % 15;
+                if (remainder === 0) {
+                    return seconds; // Already on a 15-minute boundary
+                } else {
+                    return (minutes - remainder) * 60; // Round down to the previous 15-minute slot
+                }
+            }
+
+
             const minusButton = document.createElement('button');
             minusButton.textContent = '-';
             minusButton.addEventListener('click', () => {
-                task.time = Math.max(0, task.time - 900); // Subtract 15 minutes
+                if (task.time % 900 !== 0) { // 900 seconds = 15 minutes
+                    // Round down to the nearest 15-minute interval first
+                    task.time = roundDownToNearest15Minutes(task.time);
+                } else {
+                    // Already aligned with 15 minutes, just subtract 15 minutes
+                    task.time = Math.max(0, task.time - 900); // Subtract 15 minutes
+                }
                 updateLocalStorage();
                 renderTasks();
             });
@@ -290,7 +319,13 @@
             const plusButton = document.createElement('button');
             plusButton.textContent = '+';
             plusButton.addEventListener('click', () => {
-                task.time += 900; // Add 15 minutes
+                if (task.time % 900 !== 0) { // 900 seconds = 15 minutes
+                    // Round up to the nearest 15-minute interval first
+                    task.time = roundUpToNearest15Minutes(task.time);
+                } else {
+                    // Already aligned with 15 minutes, just add 15 minutes
+                    task.time += 900; // Add 15 minutes
+                }
                 updateLocalStorage();
                 renderTasks();
             });
