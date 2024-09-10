@@ -266,9 +266,11 @@
             const deleteButton = document.createElement('button');
             deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; // Trash icon
             deleteButton.addEventListener('click', () => {
-                tasks.splice(index, 1);
-                updateLocalStorage();
-                renderTasks();
+                if (confirm('Are you sure you want to delete this task?')) {
+                    tasks.splice(index, 1);
+                    updateLocalStorage();
+                    renderTasks();
+                }
             });
 
             taskRow.appendChild(taskInput);
@@ -337,7 +339,7 @@
             decimalTime.id = `decimal-time-${index}`;
             const decimalValue = roundToQuarterHour(task.time / 60);
             decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
-            
+
 
             adjustButtons.appendChild(minusButton);
             adjustButtons.appendChild(plusButton);
