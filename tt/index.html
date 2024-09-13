@@ -5,13 +5,12 @@
     <meta charset="UTF-8">
     <title>Taskifactorio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Fonts and CSS -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <!-- Include Font Awesome CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
             --main-color: #eeeeee;
@@ -19,12 +18,8 @@
             --button-active-color: #ff4d4d;
         }
 
-        html,
         body {
             margin: 0;
-        }
-
-        body {
             background-color: #000000;
             color: var(--main-color);
             font-family: 'JetBrains Mono', monospace;
@@ -32,10 +27,6 @@
             align-items: center;
             flex-direction: column;
             min-height: 100vh;
-        }
-
-        h2 {
-            text-align: center;
         }
 
         .maxwidth {
@@ -124,10 +115,6 @@
             color: var(--main-color);
         }
 
-        .brutalButton:last-child {
-            margin-right: 0;
-        }
-
         .brutal-list-group {
             flex-grow: 1;
             font-family: 'JetBrains Mono', monospace;
@@ -159,6 +146,15 @@
             box-shadow: none;
         }
 
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            /* Disables the default focus outline */
+            box-shadow: none;
+            /* Removes any default focus shadow (if any) */
+        }
+
         .brutalInput:focus {
             background-color: #333333;
             color: var(--main-color);
@@ -177,15 +173,7 @@
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
-            width: 10%;
-        }
-
-        .task-row input[type="text"]:not(.brutalInput) {
-            width: 20%;
-        }
-
-        .task-row input[type="text"].brutalInput {
-            width: 0%;
+            width: 5%;
         }
 
         .buttonGroup {
@@ -193,11 +181,17 @@
             flex-direction: row;
             gap: 16px;
         }
+
+        #project-id-field{
+            width: 5%;
+        }
+        #task-input{
+            width: 30%;
+        }
     </style>
 </head>
 
 <body>
-
     <div class="maxwidth container text-center my-5">
         <div class="buttonGroup mt-3">
             <button id="addTaskButton" class="brutalButton">Add New Task</button>
@@ -207,160 +201,57 @@
         <div id="totalsSum" class="mt-3 hidden"></div>
         <div class="buttonGroup mt-3">
             <button id="toggleProjectsButton" class="brutalButton">Projects</button>
-            <button id="wipeTimersButton" class="brutalButton ">Wipe Timers</button>
-            <button id="deleteTasksButton" class="brutalButton ">Delete Tasks</button>
+            <button id="wipeTimersButton" class="brutalButton">Wipe Timers</button>
+            <button id="deleteTasksButton" class="brutalButton">Delete Tasks</button>
         </div>
         <div id="projects" class="mt-3 hidden"></div>
     </div>
 
     <script>
-        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-        let projects = JSON.parse(localStorage.getItem('projects')) || [];
-        let showTotals = false;
+        (function () {
+            'use strict';
 
-        function copyTextToClipboard(element, originalText) {
-            navigator.clipboard.writeText(element.value || element.textContent).then(() => {
-                const previousText = element.value || element.textContent;
-                if (element.tagName === 'INPUT') {
-                    element.value = 'Copied!';
-                } else {
-                    element.textContent = 'Copied!';
-                }
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            let projects = JSON.parse(localStorage.getItem('projects')) || [];
+            let showTotals = false;
 
-                setTimeout(() => {
+            function copyTextToClipboard(element, originalText) {
+                navigator.clipboard.writeText(element.value || element.textContent).then(() => {
+                    const previousText = element.value || element.textContent;
                     if (element.tagName === 'INPUT') {
-                        element.value = originalText || previousText;
+                        element.value = 'Copied!';
                     } else {
-                        element.textContent = originalText || previousText;
+                        element.textContent = 'Copied!';
                     }
-                }, 1000);
-            });
-        }
 
-        function updateProjectsLocalStorage() {
-            localStorage.setItem('projects', JSON.stringify(projects));
-        }
-
-        function updateLocalStorage() {
-            localStorage.setItem('tasks', JSON.stringify(tasks));
-        }
-
-        function formatTime(seconds) {
-            const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
-            const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-            const secs = (seconds % 60).toString().padStart(2, '0');
-            return `${hrs}:${mins}:${secs}`;
-        }
-
-        function roundToQuarterHour(minutes) {
-            return Math.round(minutes / 15) * 0.25;
-        }
-
-        function createTaskRow(task, index) {
-            const taskRow = document.createElement('div');
-            taskRow.className = 'task-row';
-
-            const projectDropdown = document.createElement('select');
-            projectDropdown.className = 'brutal-list-group';
-            const defaultOption = document.createElement('option');
-            defaultOption.text = 'Select';
-            defaultOption.value = '';
-            projectDropdown.appendChild(defaultOption);
-
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.id;
-                option.text = project.name;
-                option.selected = task.projectId === project.id;
-                projectDropdown.appendChild(option);
-            });
-
-            projectDropdown.addEventListener('change', () => {
-                const selectedProject = projects.find(project => project.id === projectDropdown.value);
-                if (selectedProject) {
-                    task.projectId = selectedProject.id;
-                    task.projectName = selectedProject.name;
-                } else {
-                    task.projectId = '';
-                    task.projectName = '';
-                }
-                projectIdField.value = task.projectId;
-                updateLocalStorage();
-            });
-
-            const projectIdField = document.createElement('input');
-            projectIdField.type = 'text';
-            projectIdField.value = task.projectId || '';
-            projectIdField.className = 'brutalInput';
-            projectIdField.readOnly = true; // Set to readonly instead of disabled
-            projectIdField.addEventListener('click', () => {
-                if (showTotals) {
-                    copyTextToClipboard(projectIdField, task.projectId);
-                }
-            });
-
-            // Task input field
-            const taskInput = document.createElement('input');
-            taskInput.type = 'text';
-            taskInput.value = task.name;
-            taskInput.placeholder = 'Enter task name';
-            taskInput.readOnly = showTotals; // Disable editing when showTotals is true
-            taskInput.addEventListener('input', () => {
-                if (!showTotals) {
-                    tasks[index].name = taskInput.value;
-                    updateLocalStorage();
-                }
-            });
-            taskInput.addEventListener('click', () => {
-                if (showTotals) {
-                    copyTextToClipboard(taskInput, task.name);
-                }
-            });
-
-            const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
-
-
-            const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
-
-            taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
-
-            const timerDisplay = document.createElement('div');
-            timerDisplay.className = 'timer';
-            timerDisplay.textContent = formatTime(task.time);
-            timerDisplay.id = `timer-${index}`;
-
-            const startStopButton = document.createElement('button');
-            startStopButton.textContent = task.isRunning ? 'Stop' : 'Start';
-            startStopButton.classList.add('StartStop');
-            startStopButton.classList.toggle('button-active', task.isRunning);
-            startStopButton.addEventListener('click', () => {
-                tasks.forEach((t, i) => {
-                    if (i !== index) {
-                        t.isRunning = false;
-                    }
+                    setTimeout(() => {
+                        if (element.tagName === 'INPUT') {
+                            element.value = originalText || previousText;
+                        } else {
+                            element.textContent = originalText || previousText;
+                        }
+                    }, 1000);
                 });
+            }
 
-                task.isRunning = !task.isRunning;
-                if (task.isRunning) {
-                    task.startTime = Date.now() - task.time * 1000;
-                }
-                updateLocalStorage();
-                renderTasks();
-            });
+            function updateLocalStorage() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
 
-            const deleteButton = document.createElement('button');
-            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
-            deleteButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete this task?')) {
-                    tasks.splice(index, 1);
-                    updateLocalStorage();
-                    renderTasks();
-                }
-            });
+            function updateProjectsLocalStorage() {
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
 
-            const adjustButtons = document.createElement('div');
-            adjustButtons.className = `adjust-buttons ${showTotals ? '' : 'hidden'}`;
-            adjustButtons.id = `adjust-buttons-${index}`;
+            function formatTime(seconds) {
+                const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+                const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+                const secs = String(seconds % 60).padStart(2, '0');
+                return `${hrs}:${mins}:${secs}`;
+            }
+
+            function roundToQuarterHour(minutes) {
+                return Math.round(minutes / 15) * 0.25;
+            }
 
             function roundUpToNearest15Minutes(seconds) {
                 const minutes = Math.ceil(seconds / 60);
@@ -382,227 +273,334 @@
                 }
             }
 
-            const minusButton = document.createElement('button');
-            minusButton.textContent = '-';
-            minusButton.addEventListener('click', () => {
-                if (task.time % 900 !== 0) {
-                    task.time = roundDownToNearest15Minutes(task.time);
-                } else {
-                    task.time = Math.max(0, task.time - 900);
-                }
-                updateLocalStorage();
-                renderTasks();
-            });
+            function createTaskRow(task, index, totalTaskTime) {
+                const taskRow = document.createElement('div');
+                taskRow.className = 'task-row';
 
-            const plusButton = document.createElement('button');
-            plusButton.textContent = '+';
-            plusButton.addEventListener('click', () => {
-                if (task.time % 900 !== 0) {
-                    task.time = roundUpToNearest15Minutes(task.time);
-                } else {
-                    task.time += 900;
-                }
-                updateLocalStorage();
-                renderTasks();
-            });
+                // Project dropdown
+                const projectDropdown = document.createElement('select');
+                projectDropdown.className = 'brutal-list-group';
 
-            // Decimal time
-            const decimalTime = document.createElement('div');
-            decimalTime.className = `decimal-time ${showTotals ? '' : 'hidden'}`;
-            decimalTime.id = `decimal-time-${index}`;
-            const decimalValue = roundToQuarterHour(task.time / 60);
-            decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
-            decimalTime.addEventListener('click', () => {
-                copyTextToClipboard(decimalTime, decimalTime.textContent);
-            });
+                const defaultOption = document.createElement('option');
+                defaultOption.text = 'Select';
+                defaultOption.value = '';
+                projectDropdown.appendChild(defaultOption);
 
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.text = project.name;
+                    if (task.projectId === project.id) {
+                        option.selected = true;
+                    }
+                    projectDropdown.appendChild(option);
+                });
 
+                projectDropdown.addEventListener('change', () => {
+                    const selectedProject = projects.find(project => project.id === projectDropdown.value);
+                    if (selectedProject) {
+                        task.projectId = selectedProject.id;
+                        task.projectName = selectedProject.name;
+                    } else {
+                        task.projectId = '';
+                        task.projectName = '';
+                    }
+                    projectIdField.value = task.projectId;
+                    updateLocalStorage();
+                });
 
-            taskRow.appendChild(projectDropdown);
-            taskRow.appendChild(projectIdField);
-            taskRow.appendChild(taskInput);
-            taskRow.appendChild(timerDisplay);
-            taskRow.appendChild(startStopButton);
-            taskRow.appendChild(deleteButton);
-            adjustButtons.appendChild(minusButton);
-            adjustButtons.appendChild(plusButton);
-            taskRow.appendChild(adjustButtons);
-            taskRow.appendChild(decimalTime);
+                const projectIdField = document.createElement('input');
+                projectIdField.type = 'text';
+                projectIdField.id = 'project-id-field'
+                projectIdField.value = task.projectId || '';
+                projectIdField.className = 'brutalInput';
+                projectIdField.readOnly = true;
+                projectIdField.addEventListener('click', () => {
+                    if (showTotals) {
+                        copyTextToClipboard(projectIdField, task.projectId);
+                    }
+                });
 
-            return taskRow;
-        }
-
-        function renderTasks() {
-            const tasksContainer = document.getElementById('tasks');
-            tasksContainer.innerHTML = '';
-            tasks.forEach((task, index) => {
-                const taskRow = createTaskRow(task, index);
-
-                const taskInput = taskRow.querySelector('input[type="text"]');
-                const startStopButton = taskRow.querySelector('.StartStop');
-                const deleteButton = taskRow.querySelector('.fa-trash-alt').parentElement;
-
-                // Toggle readonly attribute and disable buttons in totals mode
+                // Task input field
+                const taskInput = document.createElement('input');
+                taskInput.type = 'text';
+                taskInput.id = 'task-input';
+                taskInput.value = task.name;
+                taskInput.placeholder = 'Enter task name';
                 taskInput.readOnly = showTotals;
-                if (showTotals) {
-                    startStopButton.classList.add('hidden');
+                taskInput.addEventListener('input', () => {
+                    if (!showTotals) {
+                        task.name = taskInput.value;
+                        updateLocalStorage();
+                    }
+                });
+                taskInput.addEventListener('click', () => {
+                    if (showTotals) {
+                        copyTextToClipboard(taskInput, task.name);
+                    }
+                });
+
+                const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
+                taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #000000 0%)`;
+
+                // Timer display
+                const timerDisplay = document.createElement('div');
+                timerDisplay.className = 'timer';
+                timerDisplay.textContent = formatTime(task.time);
+                timerDisplay.id = `timer-${index}`;
+
+                // Start/Stop button
+                const startStopButton = document.createElement('button');
+                startStopButton.textContent = task.isRunning ? 'Stop' : 'Start';
+                startStopButton.classList.add('StartStop');
+                if (task.isRunning) {
+                    startStopButton.classList.add('button-active');
                 } else {
-                    startStopButton.classList.remove('hidden');
+                    startStopButton.classList.remove('button-active');
                 }
+                startStopButton.addEventListener('click', () => {
+                    tasks.forEach((t, i) => {
+                        if (i !== index) {
+                            t.isRunning = false;
+                        }
+                    });
+                    task.isRunning = !task.isRunning;
+                    if (task.isRunning) {
+                        task.startTime = Date.now() - task.time * 1000;
+                    }
+                    updateLocalStorage();
+                    renderTasks();
+                });
 
-                tasksContainer.appendChild(taskRow);
-            });
+                // Delete button
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteButton.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to delete this task?')) {
+                        tasks.splice(index, 1);
+                        updateLocalStorage();
+                        renderTasks();
+                    }
+                });
 
-            if (showTotals) {
-                calculateTotalSum();
-            } else {
-                document.getElementById('totalsSum').classList.add('hidden');
+                // Adjust buttons
+                const adjustButtons = document.createElement('div');
+                adjustButtons.className = `adjust-buttons ${showTotals ? '' : 'hidden'}`;
+                adjustButtons.id = `adjust-buttons-${index}`;
+
+                const minusButton = document.createElement('button');
+                minusButton.textContent = '-';
+                minusButton.addEventListener('click', () => {
+                    if (task.time % 900 !== 0) {
+                        task.time = roundDownToNearest15Minutes(task.time);
+                    } else {
+                        task.time = Math.max(0, task.time - 900);
+                    }
+                    updateLocalStorage();
+                    renderTasks();
+                });
+
+                const plusButton = document.createElement('button');
+                plusButton.textContent = '+';
+                plusButton.addEventListener('click', () => {
+                    if (task.time % 900 !== 0) {
+                        task.time = roundUpToNearest15Minutes(task.time);
+                    } else {
+                        task.time += 900;
+                    }
+                    updateLocalStorage();
+                    renderTasks();
+                });
+
+                adjustButtons.appendChild(minusButton);
+                adjustButtons.appendChild(plusButton);
+
+                // Decimal time display
+                const decimalTime = document.createElement('div');
+                decimalTime.className = `decimal-time ${showTotals ? '' : 'hidden'}`;
+                decimalTime.id = `decimal-time-${index}`;
+                const decimalValue = roundToQuarterHour(task.time / 60);
+                decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
+                decimalTime.addEventListener('click', () => {
+                    copyTextToClipboard(decimalTime, decimalTime.textContent);
+                });
+
+                // Append elements to taskRow
+                taskRow.appendChild(projectDropdown);
+                taskRow.appendChild(projectIdField);
+                taskRow.appendChild(taskInput);
+                taskRow.appendChild(timerDisplay);
+                taskRow.appendChild(startStopButton);
+                taskRow.appendChild(deleteButton);
+                taskRow.appendChild(adjustButtons);
+                taskRow.appendChild(decimalTime);
+
+                return taskRow;
             }
-        }
 
-        function updateProjectsLocalStorage() {
-            localStorage.setItem('projects', JSON.stringify(projects));
-        }
+            function renderTasks() {
+                const tasksContainer = document.getElementById('tasks');
+                tasksContainer.innerHTML = '';
+                const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
 
-        function createProjectRow(project, index) {
-            const projectRow = document.createElement('div');
-            projectRow.className = 'task-row';
+                tasks.forEach((task, index) => {
+                    const taskRow = createTaskRow(task, index, totalTaskTime);
+                    const taskInput = taskRow.querySelector('input[type="text"]');
+                    const startStopButton = taskRow.querySelector('.StartStop');
 
-            const projectNameInput = document.createElement('input');
-            projectNameInput.type = 'text';
-            projectNameInput.value = project.name;
-            projectNameInput.placeholder = 'Enter project name';
-            projectNameInput.addEventListener('input', () => {
-                projects[index].name = projectNameInput.value;
-                updateProjectsLocalStorage();
-            });
+                    // Toggle readonly attribute and disable buttons in totals mode
+                    taskInput.readOnly = showTotals;
+                    if (showTotals) {
+                        startStopButton.classList.add('hidden');
+                    } else {
+                        startStopButton.classList.remove('hidden');
+                    }
 
-            const projectIdInput = document.createElement('input');
-            projectIdInput.type = 'text';
-            projectIdInput.value = project.id;
-            projectIdInput.placeholder = 'Enter project ID';
-            projectIdInput.addEventListener('input', () => {
-                projects[index].id = projectIdInput.value;
-                updateProjectsLocalStorage();
-            });
+                    tasksContainer.appendChild(taskRow);
+                });
 
-            const deleteButton = document.createElement('button');
-            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
-            deleteButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete this project?')) {
-                    projects.splice(index, 1);
+                if (showTotals) {
+                    calculateTotalSum();
+                } else {
+                    document.getElementById('totalsSum').classList.add('hidden');
+                }
+            }
+
+            function createProjectRow(project, index) {
+                const projectRow = document.createElement('div');
+                projectRow.className = 'task-row';
+
+                const projectNameInput = document.createElement('input');
+                projectNameInput.type = 'text';
+                projectNameInput.value = project.name;
+                projectNameInput.placeholder = 'Enter project name';
+                projectNameInput.addEventListener('input', () => {
+                    project.name = projectNameInput.value;
+                    updateProjectsLocalStorage();
+                });
+
+                const projectIdInput = document.createElement('input');
+                projectIdInput.type = 'text';
+                projectIdInput.value = project.id;
+                projectIdInput.placeholder = 'Enter project ID';
+                projectIdInput.addEventListener('input', () => {
+                    project.id = projectIdInput.value;
+                    updateProjectsLocalStorage();
+                });
+
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteButton.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to delete this project?')) {
+                        projects.splice(index, 1);
+                        updateProjectsLocalStorage();
+                        renderProjects();
+                    }
+                });
+
+                projectRow.appendChild(projectNameInput);
+                projectRow.appendChild(projectIdInput);
+                projectRow.appendChild(deleteButton);
+
+                return projectRow;
+            }
+
+            function renderProjects() {
+                const projectsContainer = document.getElementById('projects');
+                projectsContainer.innerHTML = '';
+                projects.forEach((project, index) => {
+                    const projectRow = createProjectRow(project, index);
+                    projectsContainer.appendChild(projectRow);
+                });
+
+                const addProjectButton = document.createElement('button');
+                addProjectButton.className = 'brutalButton mt-neg-1';
+                addProjectButton.textContent = 'Add New Project';
+                addProjectButton.addEventListener('click', () => {
+                    projects.push({ name: '', id: 'PRJ-' });
                     updateProjectsLocalStorage();
                     renderProjects();
+                });
+                projectsContainer.appendChild(addProjectButton);
+            }
+
+            document.getElementById('toggleProjectsButton').addEventListener('click', () => {
+                const projectsContainer = document.getElementById('projects');
+                if (projectsContainer.classList.contains('hidden')) {
+                    projectsContainer.classList.remove('hidden');
+                    renderProjects();
+                } else {
+                    projectsContainer.classList.add('hidden');
+                    updateProjectsLocalStorage();
+                    renderTasks();
                 }
             });
 
-            projectRow.appendChild(projectNameInput);
-            projectRow.appendChild(projectIdInput);
-            projectRow.appendChild(deleteButton);
-
-            return projectRow;
-        }
-
-        function renderProjects() {
-            const projectsContainer = document.getElementById('projects');
-            projectsContainer.innerHTML = '';
-            projects.forEach((project, index) => {
-                const projectRow = createProjectRow(project, index);
-                projectsContainer.appendChild(projectRow);
-            });
-
-            const addProjectButton = document.createElement('button');
-            addProjectButton.className = 'brutalButton mt-neg-1';
-            addProjectButton.textContent = 'Add New Project';
-            addProjectButton.addEventListener('click', () => {
-                projects.push({ name: '', id: 'PRJ-' });
-                updateProjectsLocalStorage();
-                renderProjects();
-            });
-            projectsContainer.appendChild(addProjectButton);
-        }
-
-        document.getElementById('toggleProjectsButton').addEventListener('click', () => {
-            const projectsContainer = document.getElementById('projects');
-            if (projectsContainer.classList.contains('hidden')) {
-                projectsContainer.classList.remove('hidden');
-                renderProjects();
-            } else {
-                projectsContainer.classList.add('hidden');
-                updateProjectsLocalStorage(); // Save projects to local storage
-                renderTasks(); // Refresh task rows to update dropdowns
+            function calculateTotalSum() {
+                const totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
+                document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
+                document.getElementById('totalsSum').classList.remove('hidden');
             }
-        });
 
-        renderProjects();
+            function updateTimers() {
+                tasks.forEach((task, index) => {
+                    if (task.isRunning) {
+                        task.time = Math.floor((Date.now() - task.startTime) / 1000);
+                        const timerDisplay = document.getElementById(`timer-${index}`);
+                        if (timerDisplay) {
+                            timerDisplay.textContent = formatTime(task.time);
+                        }
+                    }
+                });
+                updateLocalStorage();
+            }
 
-        function calculateTotalSum() {
-            let totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
-            document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
-            document.getElementById('totalsSum').classList.remove('hidden');
-        }
-
-        function updateTimers() {
-            tasks.forEach((task, index) => {
-                if (task.isRunning) {
-                    task.time = Math.floor((Date.now() - task.startTime) / 1000);
-                    document.getElementById(`timer-${index}`).textContent = formatTime(task.time);
+            document.getElementById('addTaskButton').addEventListener('click', () => {
+                tasks.push({ name: '', time: 0, isRunning: false, startTime: null });
+                updateLocalStorage();
+                renderTasks();
+                const taskInputs = document.querySelectorAll('.task-row input[type="text"]');
+                const lastTaskInput = taskInputs[taskInputs.length - 1];
+                if (lastTaskInput) {
+                    lastTaskInput.focus();
                 }
             });
-            updateLocalStorage();
-        }
 
-        document.getElementById('addTaskButton').addEventListener('click', () => {
-            tasks.push({ name: '', time: 0, isRunning: false, startTime: null });
-            updateLocalStorage();
-            renderTasks();
+            document.getElementById('toggleTotalsButton').addEventListener('click', () => {
+                showTotals = !showTotals;
 
-            const taskInputs = document.querySelectorAll('.task-row input[type="text"]');
-            const lastTaskInput = taskInputs[taskInputs.length - 1];
-            lastTaskInput.focus();
-        });
+                if (showTotals) {
+                    tasks.forEach(task => task.isRunning = false);
+                    updateLocalStorage();
+                    document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
+                } else {
+                    document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
+                    document.getElementById('totalsSum').classList.add('hidden');
+                }
 
-        document.getElementById('toggleTotalsButton').addEventListener('click', () => {
-            showTotals = !showTotals;
-
-            if (showTotals) {
-                tasks.forEach(task => task.isRunning = false);
-                updateLocalStorage();
-                document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
-            } else {
-                document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
-                document.getElementById('totalsSum').classList.add('hidden');
-            }
-
-            renderTasks();
-        });
-
-        // Wipe Timers: Set all task timers to 0
-        document.getElementById('wipeTimersButton').addEventListener('click', () => {
-            if (confirm('Are you sure you want to reset all timers to 0?')) {
-                tasks.forEach(task => task.time = 0);
-                updateLocalStorage();
                 renderTasks();
-            }
-        });
+            });
 
-        // Delete Tasks: Clear the entire task list
-        document.getElementById('deleteTasksButton').addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete all tasks?')) {
-                tasks = [];
-                updateLocalStorage();
-                renderTasks();
-            }
-        });
+            document.getElementById('wipeTimersButton').addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset all timers to 0?')) {
+                    tasks.forEach(task => task.time = 0);
+                    updateLocalStorage();
+                    renderTasks();
+                }
+            });
 
-        renderTasks();
-        setInterval(updateTimers, 1000);
+            document.getElementById('deleteTasksButton').addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete all tasks?')) {
+                    tasks = [];
+                    updateLocalStorage();
+                    renderTasks();
+                }
+            });
 
+            renderTasks();
+            setInterval(updateTimers, 1000);
+        })();
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
-        crossorigin="anonymous"></script>
 </body>
 
 </html>
