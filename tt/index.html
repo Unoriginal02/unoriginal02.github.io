@@ -182,11 +182,19 @@
             gap: 16px;
         }
 
-        #project-id-field{
+        #project-id-field {
             width: 5%;
         }
-        #task-input{
+
+        #task-input {
             width: 30%;
+        }
+
+        .task-row button.move-button {
+            margin-right: 5px;
+        }
+        .mt-xusta {
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -425,6 +433,32 @@
                     copyTextToClipboard(decimalTime, decimalTime.textContent);
                 });
 
+                // Move Up Button
+                const moveUpButton = document.createElement('button');
+                moveUpButton.innerHTML = '<i class="fas fa-arrow-up"></i>';
+                moveUpButton.addEventListener('click', () => {
+                    if (index > 0) {
+                        [tasks[index - 1], tasks[index]] = [tasks[index], tasks[index - 1]];
+                        updateLocalStorage();
+                        renderTasks();
+                    }
+                });
+
+                // Move Down Button
+                const moveDownButton = document.createElement('button');
+                moveDownButton.innerHTML = '<i class="fas fa-arrow-down"></i>';
+                moveDownButton.addEventListener('click', () => {
+                    if (index < tasks.length - 1) {
+                        [tasks[index], tasks[index + 1]] = [tasks[index + 1], tasks[index]];
+                        updateLocalStorage();
+                        renderTasks();
+                    }
+                });
+
+                // Append the move buttons to the taskRow
+                taskRow.appendChild(moveUpButton);
+                taskRow.appendChild(moveDownButton);
+
                 // Append elements to taskRow
                 taskRow.appendChild(projectDropdown);
                 taskRow.appendChild(projectIdField);
@@ -498,6 +532,32 @@
                     }
                 });
 
+                // Move Up Button
+                const moveUpButton = document.createElement('button');
+                moveUpButton.innerHTML = '<i class="fas fa-arrow-up"></i>';
+                moveUpButton.addEventListener('click', () => {
+                    if (index > 0) {
+                        [projects[index - 1], projects[index]] = [projects[index], projects[index - 1]];
+                        updateProjectsLocalStorage();
+                        renderProjects();
+                    }
+                });
+
+                // Move Down Button
+                const moveDownButton = document.createElement('button');
+                moveDownButton.innerHTML = '<i class="fas fa-arrow-down"></i>';
+                moveDownButton.addEventListener('click', () => {
+                    if (index < projects.length - 1) {
+                        [projects[index], projects[index + 1]] = [projects[index + 1], projects[index]];
+                        updateProjectsLocalStorage();
+                        renderProjects();
+                    }
+                });
+
+                // Append the move buttons to the projectRow
+                projectRow.appendChild(moveUpButton);
+                projectRow.appendChild(moveDownButton);
+
                 projectRow.appendChild(projectNameInput);
                 projectRow.appendChild(projectIdInput);
                 projectRow.appendChild(deleteButton);
@@ -514,7 +574,7 @@
                 });
 
                 const addProjectButton = document.createElement('button');
-                addProjectButton.className = 'brutalButton mt-neg-1';
+                addProjectButton.className = 'brutalButton mt-xusta';
                 addProjectButton.textContent = 'Add New Project';
                 addProjectButton.addEventListener('click', () => {
                     projects.push({ name: '', id: 'PRJ-' });
