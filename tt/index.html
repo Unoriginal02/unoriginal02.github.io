@@ -273,424 +273,491 @@
         (function () {
             'use strict';
 
-            let sortableInstance;
-            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-            let projects = JSON.parse(localStorage.getItem('projects')) || [];
-            let showTotals = false;
+            (function () {
+                const HEARTBEAT_KEY = 'app_heartbeat';
+                const HEARTBEAT_INTERVAL = 1000; // 1 second
+                const HEARTBEAT_EXPIRATION = 5000; // 5 seconds
 
-            function copyTextToClipboard(element) {
-                navigator.clipboard.writeText(element.value || element.textContent).then(() => {
-                    element.classList.add('copy-effect');
-                    setTimeout(() => {
-                        element.classList.remove('copy-effect');
-                    }, 500); // Match this duration to the CSS animation duration
-                });
-            }
+                const instanceId = Date.now() + '_' + Math.random();
 
-            function updateLocalStorage() {
-                localStorage.setItem('tasks', JSON.stringify(tasks));
-            }
-
-            function updateProjectsLocalStorage() {
-                localStorage.setItem('projects', JSON.stringify(projects));
-            }
-
-            function formatTime(seconds) {
-                const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
-                const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-                const secs = String(seconds % 60).padStart(2, '0');
-                return `${hrs}:${mins}:${secs}`;
-            }
-
-            function roundToQuarterHour(minutes) {
-                return Math.round(minutes / 15) * 0.25;
-            }
-
-            function roundUpToNearest15Minutes(seconds) {
-                const minutes = Math.ceil(seconds / 60);
-                const remainder = minutes % 15;
-                if (remainder === 0) {
-                    return seconds;
-                } else {
-                    return (minutes + (15 - remainder)) * 60;
+                function sendHeartbeat() {
+                    const heartbeat = {
+                        id: instanceId,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem(HEARTBEAT_KEY, JSON.stringify(heartbeat));
                 }
-            }
 
-            function roundDownToNearest15Minutes(seconds) {
-                const minutes = Math.floor(seconds / 60);
-                const remainder = minutes % 15;
-                if (remainder === 0) {
-                    return seconds;
-                } else {
-                    return (minutes - remainder) * 60;
+                function getHeartbeat() {
+                    const heartbeatData = localStorage.getItem(HEARTBEAT_KEY);
+                    return heartbeatData ? JSON.parse(heartbeatData) : null;
                 }
-            }
 
-            function createTaskRow(task, index, totalTaskTime) {
-                const taskRow = document.createElement('div');
-                taskRow.className = 'task-row';
+                function isHeartbeatValid(heartbeat) {
+                    return (Date.now() - heartbeat.timestamp) < HEARTBEAT_EXPIRATION;
+                }
 
-                // Drag Handle
-                const dragHandle = document.createElement('div');
-                dragHandle.className = 'drag-handle';
-                dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-                taskRow.appendChild(dragHandle);
+                // On page load
+                const existingHeartbeat = getHeartbeat();
+                if (existingHeartbeat && isHeartbeatValid(existingHeartbeat) && existingHeartbeat.id !== instanceId) {
+                    // Another instance is running
+                    document.head.innerHTML = ''; // Clear any existing head content
+                    document.body.innerHTML = '<h3 id="block-message">There is another instance of this app open.</h3>';
 
-                // Project dropdown
-                const projectDropdown = document.createElement('select');
-                projectDropdown.className = 'brutal-list-group';
-
-                const defaultOption = document.createElement('option');
-                defaultOption.text = 'Select';
-                defaultOption.value = '';
-                projectDropdown.appendChild(defaultOption);
-
-                projects.forEach(project => {
-                    const option = document.createElement('option');
-                    option.value = project.id;
-                    option.text = project.name;
-                    if (task.projectId === project.id) {
-                        option.selected = true;
+                    // Add CSS styles to center the message
+                    const style = document.createElement('style');
+                    style.innerHTML = `
+                    body {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #000000;
+                        color: #eeeeee;
                     }
-                    projectDropdown.appendChild(option);
-                });
 
-                projectDropdown.addEventListener('change', () => {
-                    const selectedProject = projects.find(project => project.id === projectDropdown.value);
-                    if (selectedProject) {
-                        task.projectId = selectedProject.id;
-                        task.projectName = selectedProject.name;
+                    #block-message {
+                        text-align: center;
+                        font-family: 'JetBrains Mono', monospace;
+                    }
+                    `;
+                    document.head.appendChild(style);
+                    return; // Stop execution
+                } else {
+                    // No valid heartbeat, proceed to run
+                    sendHeartbeat();
+
+                    // Update the heartbeat periodically
+                    const heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+
+                    // Clean up on unload
+                    window.addEventListener('beforeunload', () => {
+                        localStorage.removeItem(HEARTBEAT_KEY);
+                        clearInterval(heartbeatInterval);
+                    });
+                }
+
+                let sortableInstance;
+                let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                let projects = JSON.parse(localStorage.getItem('projects')) || [];
+                let showTotals = false;
+
+                function copyTextToClipboard(element) {
+                    navigator.clipboard.writeText(element.value || element.textContent).then(() => {
+                        element.classList.add('copy-effect');
+                        setTimeout(() => {
+                            element.classList.remove('copy-effect');
+                        }, 500); // Match this duration to the CSS animation duration
+                    });
+                }
+
+                function updateLocalStorage() {
+                    localStorage.setItem('tasks', JSON.stringify(tasks));
+                }
+
+                function updateProjectsLocalStorage() {
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+
+                function formatTime(seconds) {
+                    const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+                    const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+                    const secs = String(seconds % 60).padStart(2, '0');
+                    return `${hrs}:${mins}:${secs}`;
+                }
+
+                function roundToQuarterHour(minutes) {
+                    return Math.round(minutes / 15) * 0.25;
+                }
+
+                function roundUpToNearest15Minutes(seconds) {
+                    const minutes = Math.ceil(seconds / 60);
+                    const remainder = minutes % 15;
+                    if (remainder === 0) {
+                        return seconds;
                     } else {
-                        task.projectId = '';
-                        task.projectName = '';
+                        return (minutes + (15 - remainder)) * 60;
                     }
-                    projectIdField.value = task.projectId;
-                    updateLocalStorage();
-                });
-
-                const projectIdField = document.createElement('input');
-                projectIdField.type = 'text';
-                projectIdField.id = 'project-id-field'
-                projectIdField.value = task.projectId || '';
-                projectIdField.className = 'brutalInput';
-                projectIdField.readOnly = true;
-                projectIdField.addEventListener('click', () => {
-                    if (showTotals) {
-                        copyTextToClipboard(projectIdField, task.projectId);
-                    }
-                });
-
-                // Task input field
-                const taskInput = document.createElement('input');
-                taskInput.type = 'text';
-                taskInput.id = 'task-input';
-                taskInput.value = task.name;
-                taskInput.placeholder = 'Enter task name';
-                taskInput.readOnly = showTotals;
-                taskInput.addEventListener('input', () => {
-                    if (!showTotals) {
-                        task.name = taskInput.value;
-                        updateLocalStorage();
-                    }
-                });
-                taskInput.addEventListener('click', () => {
-                    if (showTotals) {
-                        copyTextToClipboard(taskInput, task.name);
-                    }
-                });
-
-                const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
-                taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #00000000 0%)`;
-
-                // Timer display
-                const timerDisplay = document.createElement('div');
-                timerDisplay.className = 'timer';
-                timerDisplay.textContent = formatTime(task.time);
-                timerDisplay.id = `timer-${index}`;
-
-                // Start/Stop button
-                const startStopButton = document.createElement('button');
-                startStopButton.textContent = task.isRunning ? 'Stop' : 'Start';
-                startStopButton.classList.add('StartStop');
-                if (task.isRunning) {
-                    startStopButton.classList.add('button-active');
-                } else {
-                    startStopButton.classList.remove('button-active');
                 }
-                startStopButton.addEventListener('click', () => {
-                    tasks.forEach((t, i) => {
-                        if (i !== index) {
-                            t.isRunning = false;
+
+                function roundDownToNearest15Minutes(seconds) {
+                    const minutes = Math.floor(seconds / 60);
+                    const remainder = minutes % 15;
+                    if (remainder === 0) {
+                        return seconds;
+                    } else {
+                        return (minutes - remainder) * 60;
+                    }
+                }
+
+                function createTaskRow(task, index, totalTaskTime) {
+                    const taskRow = document.createElement('div');
+                    taskRow.className = 'task-row';
+
+                    // Drag Handle
+                    const dragHandle = document.createElement('div');
+                    dragHandle.className = 'drag-handle';
+                    dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+                    taskRow.appendChild(dragHandle);
+
+                    // Project dropdown
+                    const projectDropdown = document.createElement('select');
+                    projectDropdown.className = 'brutal-list-group';
+
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = 'Select';
+                    defaultOption.value = '';
+                    projectDropdown.appendChild(defaultOption);
+
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        option.text = project.name;
+                        if (task.projectId === project.id) {
+                            option.selected = true;
+                        }
+                        projectDropdown.appendChild(option);
+                    });
+
+                    projectDropdown.addEventListener('change', () => {
+                        const selectedProject = projects.find(project => project.id === projectDropdown.value);
+                        if (selectedProject) {
+                            task.projectId = selectedProject.id;
+                            task.projectName = selectedProject.name;
+                        } else {
+                            task.projectId = '';
+                            task.projectName = '';
+                        }
+                        projectIdField.value = task.projectId;
+                        updateLocalStorage();
+                    });
+
+                    const projectIdField = document.createElement('input');
+                    projectIdField.type = 'text';
+                    projectIdField.id = 'project-id-field'
+                    projectIdField.value = task.projectId || '';
+                    projectIdField.className = 'brutalInput';
+                    projectIdField.readOnly = true;
+                    projectIdField.addEventListener('click', () => {
+                        if (showTotals) {
+                            copyTextToClipboard(projectIdField, task.projectId);
                         }
                     });
-                    task.isRunning = !task.isRunning;
-                    if (task.isRunning) {
-                        task.startTime = Date.now() - task.time * 1000;
-                    }
-                    updateLocalStorage();
-                    renderTasks();
-                });
 
-                // Delete button
-                const deleteButton = document.createElement('button');
-                deleteButton.innerHTML = '<i class="bi bi-trash3"></i>';
-                deleteButton.addEventListener('click', () => {
-                    if (confirm('Are you sure you want to delete this task?')) {
-                        tasks.splice(index, 1);
-                        updateLocalStorage();
-                        renderTasks();
-                    }
-                });
-
-                // Adjust buttons
-                const adjustButtons = document.createElement('div');
-                adjustButtons.className = `adjust-buttons ${showTotals ? '' : 'hidden'}`;
-                adjustButtons.id = `adjust-buttons-${index}`;
-
-                const minusButton = document.createElement('button');
-                minusButton.className = 'bi bi-dash-lg';
-                minusButton.addEventListener('click', () => {
-                    if (task.time % 900 !== 0) {
-                        task.time = roundDownToNearest15Minutes(task.time);
-                    } else {
-                        task.time = Math.max(0, task.time - 900);
-                    }
-                    updateLocalStorage();
-                    renderTasks();
-                });
-
-                const plusButton = document.createElement('button');
-                plusButton.className = 'bi bi-plus-lg';
-                plusButton.addEventListener('click', () => {
-                    if (task.time % 900 !== 0) {
-                        task.time = roundUpToNearest15Minutes(task.time);
-                    } else {
-                        task.time += 900;
-                    }
-                    updateLocalStorage();
-                    renderTasks();
-                });
-
-                adjustButtons.appendChild(minusButton);
-                adjustButtons.appendChild(plusButton);
-
-                // Decimal time display
-                const decimalTime = document.createElement('div');
-                decimalTime.className = `decimal-time ${showTotals ? '' : 'hidden'}`;
-                decimalTime.id = `decimal-time-${index}`;
-                const decimalValue = roundToQuarterHour(task.time / 60);
-                decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
-                decimalTime.addEventListener('click', () => {
-                    copyTextToClipboard(decimalTime, decimalTime.textContent);
-                });
-
-                // Append elements to taskRow
-                taskRow.appendChild(projectDropdown);
-                taskRow.appendChild(projectIdField);
-                taskRow.appendChild(taskInput);
-                taskRow.appendChild(timerDisplay);
-                taskRow.appendChild(startStopButton);
-                taskRow.appendChild(deleteButton);
-                taskRow.appendChild(adjustButtons);
-                taskRow.appendChild(decimalTime);
-
-                return taskRow;
-            }
-
-            function renderTasks() {
-                const tasksContainer = document.getElementById('tasks');
-                tasksContainer.innerHTML = '';
-                const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
-
-                tasks.forEach((task, index) => {
-                    const taskRow = createTaskRow(task, index, totalTaskTime);
-                    const taskInput = taskRow.querySelector('input[type="text"]');
-                    const startStopButton = taskRow.querySelector('.StartStop');
-
-                    // Toggle readonly attribute and disable buttons in totals mode
+                    // Task input field
+                    const taskInput = document.createElement('input');
+                    taskInput.type = 'text';
+                    taskInput.id = 'task-input';
+                    taskInput.value = task.name;
+                    taskInput.placeholder = 'Enter task name';
                     taskInput.readOnly = showTotals;
-                    if (showTotals) {
-                        startStopButton.classList.add('hidden');
+                    taskInput.addEventListener('input', () => {
+                        if (!showTotals) {
+                            task.name = taskInput.value;
+                            updateLocalStorage();
+                        }
+                    });
+                    taskInput.addEventListener('click', () => {
+                        if (showTotals) {
+                            copyTextToClipboard(taskInput, task.name);
+                        }
+                    });
+
+                    const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
+                    taskInput.style.background = `linear-gradient(to right, #ffffff1f ${percentageOfTotal}%, #00000000 0%)`;
+
+                    // Timer display
+                    const timerDisplay = document.createElement('div');
+                    timerDisplay.className = 'timer';
+                    timerDisplay.textContent = formatTime(task.time);
+                    timerDisplay.id = `timer-${index}`;
+
+                    // Start/Stop button
+                    const startStopButton = document.createElement('button');
+                    startStopButton.textContent = task.isRunning ? 'Stop' : 'Start';
+                    startStopButton.classList.add('StartStop');
+                    if (task.isRunning) {
+                        startStopButton.classList.add('button-active');
                     } else {
-                        startStopButton.classList.remove('hidden');
+                        startStopButton.classList.remove('button-active');
                     }
-
-                    tasksContainer.appendChild(taskRow);
-                });
-
-                // Re-initialize SortableJS
-                sortableInstance = Sortable.create(tasksContainer, {
-                    animation: 150,
-                    handle: '.drag-handle',
-                    onEnd: function (evt) {
-                        const movedItem = tasks.splice(evt.oldIndex, 1)[0];
-                        tasks.splice(evt.newIndex, 0, movedItem);
+                    startStopButton.addEventListener('click', () => {
+                        tasks.forEach((t, i) => {
+                            if (i !== index) {
+                                t.isRunning = false;
+                            }
+                        });
+                        task.isRunning = !task.isRunning;
+                        if (task.isRunning) {
+                            task.startTime = Date.now() - task.time * 1000;
+                        }
                         updateLocalStorage();
                         renderTasks();
-                    },
-                });
+                    });
 
-                if (showTotals) {
-                    calculateTotalSum();
-                } else {
-                    document.getElementById('totalsSum').classList.add('hidden');
+                    // Delete button
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerHTML = '<i class="bi bi-trash3"></i>';
+                    deleteButton.addEventListener('click', () => {
+                        if (confirm('Are you sure you want to delete this task?')) {
+                            tasks.splice(index, 1);
+                            updateLocalStorage();
+                            renderTasks();
+                        }
+                    });
+
+                    // Adjust buttons
+                    const adjustButtons = document.createElement('div');
+                    adjustButtons.className = `adjust-buttons ${showTotals ? '' : 'hidden'}`;
+                    adjustButtons.id = `adjust-buttons-${index}`;
+
+                    const minusButton = document.createElement('button');
+                    minusButton.className = 'bi bi-dash-lg';
+                    minusButton.addEventListener('click', () => {
+                        if (task.time % 900 !== 0) {
+                            task.time = roundDownToNearest15Minutes(task.time);
+                        } else {
+                            task.time = Math.max(0, task.time - 900);
+                        }
+                        updateLocalStorage();
+                        renderTasks();
+                    });
+
+                    const plusButton = document.createElement('button');
+                    plusButton.className = 'bi bi-plus-lg';
+                    plusButton.addEventListener('click', () => {
+                        if (task.time % 900 !== 0) {
+                            task.time = roundUpToNearest15Minutes(task.time);
+                        } else {
+                            task.time += 900;
+                        }
+                        updateLocalStorage();
+                        renderTasks();
+                    });
+
+                    adjustButtons.appendChild(minusButton);
+                    adjustButtons.appendChild(plusButton);
+
+                    // Decimal time display
+                    const decimalTime = document.createElement('div');
+                    decimalTime.className = `decimal-time ${showTotals ? '' : 'hidden'}`;
+                    decimalTime.id = `decimal-time-${index}`;
+                    const decimalValue = roundToQuarterHour(task.time / 60);
+                    decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
+                    decimalTime.addEventListener('click', () => {
+                        copyTextToClipboard(decimalTime, decimalTime.textContent);
+                    });
+
+                    // Append elements to taskRow
+                    taskRow.appendChild(projectDropdown);
+                    taskRow.appendChild(projectIdField);
+                    taskRow.appendChild(taskInput);
+                    taskRow.appendChild(timerDisplay);
+                    taskRow.appendChild(startStopButton);
+                    taskRow.appendChild(deleteButton);
+                    taskRow.appendChild(adjustButtons);
+                    taskRow.appendChild(decimalTime);
+
+                    return taskRow;
                 }
-            }
 
-            function createProjectRow(project, index) {
-                const projectRow = document.createElement('div');
-                projectRow.className = 'task-row';
+                function renderTasks() {
+                    const tasksContainer = document.getElementById('tasks');
+                    tasksContainer.innerHTML = '';
+                    const totalTaskTime = tasks.reduce((sum, task) => sum + task.time, 0);
 
-                // Drag Handle
-                const dragHandle = document.createElement('div');
-                dragHandle.className = 'drag-handle';
-                dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-                projectRow.appendChild(dragHandle);
+                    tasks.forEach((task, index) => {
+                        const taskRow = createTaskRow(task, index, totalTaskTime);
+                        const taskInput = taskRow.querySelector('input[type="text"]');
+                        const startStopButton = taskRow.querySelector('.StartStop');
 
-                const projectNameInput = document.createElement('input');
-                projectNameInput.type = 'text';
-                projectNameInput.value = project.name;
-                projectNameInput.placeholder = 'Enter project name';
-                projectNameInput.addEventListener('input', () => {
-                    project.name = projectNameInput.value;
-                    updateProjectsLocalStorage();
-                });
+                        // Toggle readonly attribute and disable buttons in totals mode
+                        taskInput.readOnly = showTotals;
+                        if (showTotals) {
+                            startStopButton.classList.add('hidden');
+                        } else {
+                            startStopButton.classList.remove('hidden');
+                        }
 
-                const projectIdInput = document.createElement('input');
-                projectIdInput.type = 'text';
-                projectIdInput.value = project.id;
-                projectIdInput.placeholder = 'Enter project ID';
-                projectIdInput.addEventListener('input', () => {
-                    project.id = projectIdInput.value;
-                    updateProjectsLocalStorage();
-                });
+                        tasksContainer.appendChild(taskRow);
+                    });
 
-                const deleteButton = document.createElement('button');
-                deleteButton.innerHTML = '<i class="bi bi-trash3"></i>';
-                deleteButton.addEventListener('click', () => {
-                    if (confirm('Are you sure you want to delete this project?')) {
-                        projects.splice(index, 1);
+                    // Re-initialize SortableJS
+                    sortableInstance = Sortable.create(tasksContainer, {
+                        animation: 150,
+                        handle: '.drag-handle',
+                        onEnd: function (evt) {
+                            const movedItem = tasks.splice(evt.oldIndex, 1)[0];
+                            tasks.splice(evt.newIndex, 0, movedItem);
+                            updateLocalStorage();
+                            renderTasks();
+                        },
+                    });
+
+                    if (showTotals) {
+                        calculateTotalSum();
+                    } else {
+                        document.getElementById('totalsSum').classList.add('hidden');
+                    }
+                }
+
+                function createProjectRow(project, index) {
+                    const projectRow = document.createElement('div');
+                    projectRow.className = 'task-row';
+
+                    // Drag Handle
+                    const dragHandle = document.createElement('div');
+                    dragHandle.className = 'drag-handle';
+                    dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+                    projectRow.appendChild(dragHandle);
+
+                    const projectNameInput = document.createElement('input');
+                    projectNameInput.type = 'text';
+                    projectNameInput.value = project.name;
+                    projectNameInput.placeholder = 'Enter project name';
+                    projectNameInput.addEventListener('input', () => {
+                        project.name = projectNameInput.value;
+                        updateProjectsLocalStorage();
+                    });
+
+                    const projectIdInput = document.createElement('input');
+                    projectIdInput.type = 'text';
+                    projectIdInput.value = project.id;
+                    projectIdInput.placeholder = 'Enter project ID';
+                    projectIdInput.addEventListener('input', () => {
+                        project.id = projectIdInput.value;
+                        updateProjectsLocalStorage();
+                    });
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerHTML = '<i class="bi bi-trash3"></i>';
+                    deleteButton.addEventListener('click', () => {
+                        if (confirm('Are you sure you want to delete this project?')) {
+                            projects.splice(index, 1);
+                            updateProjectsLocalStorage();
+                            renderProjects();
+                        }
+                    });
+
+                    projectRow.appendChild(projectNameInput);
+                    projectRow.appendChild(projectIdInput);
+                    projectRow.appendChild(deleteButton);
+
+                    return projectRow;
+                }
+
+                function renderProjects() {
+                    const projectsContainer = document.getElementById('projects');
+                    projectsContainer.innerHTML = '';
+                    projects.forEach((project, index) => {
+                        const projectRow = createProjectRow(project, index);
+                        projectsContainer.appendChild(projectRow);
+                    });
+
+                    const addProjectButton = document.createElement('button');
+                    addProjectButton.className = 'brutalButton mt-xusta';
+                    addProjectButton.textContent = 'Add New Project';
+                    addProjectButton.addEventListener('click', () => {
+                        projects.push({ name: '', id: 'PRJ-' });
                         updateProjectsLocalStorage();
                         renderProjects();
-                    }
-                });
+                    });
+                    projectsContainer.appendChild(addProjectButton);
 
-                projectRow.appendChild(projectNameInput);
-                projectRow.appendChild(projectIdInput);
-                projectRow.appendChild(deleteButton);
+                    // Re-initialize SortableJS
+                    sortableInstance = Sortable.create(projectsContainer, {
+                        animation: 150,
+                        handle: '.drag-handle',
+                        onEnd: function (evt) {
+                            const movedItem = projects.splice(evt.oldIndex, 1)[0];
+                            projects.splice(evt.newIndex, 0, movedItem);
+                            updateLocalStorage();
+                            renderProjects();
+                        },
+                    });
+                }
 
-                return projectRow;
-            }
-
-            function renderProjects() {
-                const projectsContainer = document.getElementById('projects');
-                projectsContainer.innerHTML = '';
-                projects.forEach((project, index) => {
-                    const projectRow = createProjectRow(project, index);
-                    projectsContainer.appendChild(projectRow);
-                });
-
-                const addProjectButton = document.createElement('button');
-                addProjectButton.className = 'brutalButton mt-xusta';
-                addProjectButton.textContent = 'Add New Project';
-                addProjectButton.addEventListener('click', () => {
-                    projects.push({ name: '', id: 'PRJ-' });
-                    updateProjectsLocalStorage();
-                    renderProjects();
-                });
-                projectsContainer.appendChild(addProjectButton);
-
-                // Re-initialize SortableJS
-                sortableInstance = Sortable.create(projectsContainer, {
-                    animation: 150,
-                    handle: '.drag-handle',
-                    onEnd: function (evt) {
-                        const movedItem = projects.splice(evt.oldIndex, 1)[0];
-                        projects.splice(evt.newIndex, 0, movedItem);
-                        updateLocalStorage();
+                document.getElementById('toggleProjectsButton').addEventListener('click', () => {
+                    const projectsContainer = document.getElementById('projects');
+                    const toggleProjectsButton = document.getElementById('toggleProjectsButton'); // get the button element
+                    if (projectsContainer.classList.contains('hidden')) {
+                        projectsContainer.classList.remove('hidden');
+                        toggleProjectsButton.textContent = 'Save'; // change to "Save"
                         renderProjects();
-                    },
-                });
-            }
-
-            document.getElementById('toggleProjectsButton').addEventListener('click', () => {
-                const projectsContainer = document.getElementById('projects');
-                const toggleProjectsButton = document.getElementById('toggleProjectsButton'); // get the button element
-                if (projectsContainer.classList.contains('hidden')) {
-                    projectsContainer.classList.remove('hidden');
-                    toggleProjectsButton.textContent = 'Save'; // change to "Save"
-                    renderProjects();
-                } else {
-                    projectsContainer.classList.add('hidden');
-                    toggleProjectsButton.textContent = 'Projects'; // change back to "Projects"
-                    updateProjectsLocalStorage();
-                    renderTasks();
-                }
-            });
-
-            function calculateTotalSum() {
-                const totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
-                document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
-                document.getElementById('totalsSum').classList.remove('hidden');
-            }
-
-            function updateTimers() {
-                tasks.forEach((task, index) => {
-                    if (task.isRunning) {
-                        task.time = Math.floor((Date.now() - task.startTime) / 1000);
-                        const timerDisplay = document.getElementById(`timer-${index}`);
-                        if (timerDisplay) {
-                            timerDisplay.textContent = formatTime(task.time);
-                        }
+                    } else {
+                        projectsContainer.classList.add('hidden');
+                        toggleProjectsButton.textContent = 'Projects'; // change back to "Projects"
+                        updateProjectsLocalStorage();
+                        renderTasks();
                     }
                 });
-                updateLocalStorage();
-            }
 
-            document.getElementById('addTaskButton').addEventListener('click', () => {
-                tasks.push({ name: '', time: 0, isRunning: false, startTime: null });
-                updateLocalStorage();
-                renderTasks();
-                const taskInputs = document.querySelectorAll('.task-row input[type="text"]');
-                const lastTaskInput = taskInputs[taskInputs.length - 1];
-                if (lastTaskInput) {
-                    lastTaskInput.focus();
+                function calculateTotalSum() {
+                    const totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
+                    document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
+                    document.getElementById('totalsSum').classList.remove('hidden');
                 }
-            });
 
-            document.getElementById('toggleTotalsButton').addEventListener('click', () => {
-                showTotals = !showTotals;
-
-                if (showTotals) {
-                    tasks.forEach(task => task.isRunning = false);
+                function updateTimers() {
+                    tasks.forEach((task, index) => {
+                        if (task.isRunning) {
+                            task.time = Math.floor((Date.now() - task.startTime) / 1000);
+                            const timerDisplay = document.getElementById(`timer-${index}`);
+                            if (timerDisplay) {
+                                timerDisplay.textContent = formatTime(task.time);
+                            }
+                        }
+                    });
                     updateLocalStorage();
-                    document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
-                } else {
-                    document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
-                    document.getElementById('totalsSum').classList.add('hidden');
                 }
 
-                renderTasks();
-            });
-
-            document.getElementById('wipeTimersButton').addEventListener('click', () => {
-                if (confirm('Are you sure you want to reset all timers to 0?')) {
-                    tasks.forEach(task => task.time = 0);
+                document.getElementById('addTaskButton').addEventListener('click', () => {
+                    tasks.push({ name: '', time: 0, isRunning: false, startTime: null });
                     updateLocalStorage();
                     renderTasks();
-                }
-            });
+                    const taskInputs = document.querySelectorAll('.task-row input[type="text"]');
+                    const lastTaskInput = taskInputs[taskInputs.length - 1];
+                    if (lastTaskInput) {
+                        lastTaskInput.focus();
+                    }
+                });
 
-            document.getElementById('deleteTasksButton').addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete all tasks?')) {
-                    tasks = [];
-                    updateLocalStorage();
+                document.getElementById('toggleTotalsButton').addEventListener('click', () => {
+                    showTotals = !showTotals;
+
+                    if (showTotals) {
+                        tasks.forEach(task => task.isRunning = false);
+                        updateLocalStorage();
+                        document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
+                    } else {
+                        document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
+                        document.getElementById('totalsSum').classList.add('hidden');
+                    }
+
                     renderTasks();
-                }
-            });
+                });
 
-            renderTasks();
-            setInterval(updateTimers, 1000);
+                document.getElementById('wipeTimersButton').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to reset all timers to 0?')) {
+                        tasks.forEach(task => task.time = 0);
+                        updateLocalStorage();
+                        renderTasks();
+                    }
+                });
+
+                document.getElementById('deleteTasksButton').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to delete all tasks?')) {
+                        tasks = [];
+                        updateLocalStorage();
+                        renderTasks();
+                    }
+                });
+
+                renderTasks();
+                setInterval(updateTimers, 1000);
+
+            })();
         })();
     </script>
 
