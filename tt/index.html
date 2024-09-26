@@ -433,6 +433,25 @@
         .pointer-cursor {
             cursor: pointer;
         }
+
+        .copy-button {
+            height: 42px;
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+            padding: 8px 13px;
+            border-radius: 0;
+            margin-right: -1px;
+        }
+
+        .copy-button:hover {
+            background-color: var(--main-color-hover);
+            color: var(--main-color);
+        }
+
+        .copy-button i {
+            font-size: 1rem;
+        }
     </style>
 </head>
 
@@ -715,17 +734,26 @@
                     taskInput.id = 'task-input';
                     taskInput.value = task.name;
                     taskInput.placeholder = 'Enter task name';
-                    taskInput.readOnly = showTotals;
+                    // taskInput.readOnly = showTotals;
                     taskInput.addEventListener('input', () => {
                         if (!showTotals) {
                             task.name = taskInput.value;
                             updateLocalStorage();
                         }
                     });
-                    taskInput.addEventListener('click', () => {
-                        if (showTotals) {
-                            copyTextToClipboard(taskInput, task.name);
-                        }
+                    // taskInput.addEventListener('click', () => {
+                    //     if (showTotals) {
+                    //         copyTextToClipboard(taskInput, task.name);
+                    //     }
+                    // });
+
+
+                    // Copy button
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'copy-button ' + (showTotals ? '' : 'hidden'); // Make it hidden unless showTotals is active
+                    copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
+                    copyButton.addEventListener('click', () => {
+                        copyTextToClipboard(taskInput, copyButton); // Pass copyButton to apply flashing effect
                     });
 
                     const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
@@ -819,6 +847,7 @@
                     taskRow.appendChild(projectIdField);
                     taskRow.appendChild(linkButton); // Add this line
                     taskRow.appendChild(taskInput);
+                    taskRow.appendChild(copyButton); // Add this line
                     taskRow.appendChild(timerDisplay);
                     taskRow.appendChild(startStopButton);
                     taskRow.appendChild(deleteButton);
@@ -838,8 +867,7 @@
                         const taskInput = taskRow.querySelector('input[type="text"]');
                         const startStopButton = taskRow.querySelector('.StartStop');
 
-                        // Toggle readonly attribute and disable buttons in totals mode
-                        taskInput.readOnly = showTotals;
+                        // taskInput.readOnly = showTotals;
                         if (showTotals) {
                             startStopButton.classList.add('hidden');
                         } else {
