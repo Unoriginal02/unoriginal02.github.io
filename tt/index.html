@@ -204,7 +204,7 @@
             gap: 16px;
         }
 
-        #project-id-field {
+        .project-id-field {
             width: 10%;
         }
 
@@ -434,23 +434,14 @@
             cursor: pointer;
         }
 
-        .copy-button {
-            height: 42px;
-            border: 1px solid var(--main-color);
-            background-color: var(--background-color);
-            color: var(--main-color);
-            padding: 8px 13px;
-            border-radius: 0;
-            margin-right: -1px;
+        .show-totals-active .project-id-field,
+        .show-totals-active .decimal-time {
+            cursor: pointer;
         }
 
-        .copy-button:hover {
+        .show-totals-active .project-id-field:hover,
+        .show-totals-active .decimal-time:hover {
             background-color: var(--main-color-hover);
-            color: var(--main-color);
-        }
-
-        .copy-button i {
-            font-size: 1rem;
         }
     </style>
 </head>
@@ -704,9 +695,9 @@
 
                     const projectIdField = document.createElement('input');
                     projectIdField.type = 'text';
-                    projectIdField.id = 'project-id-field'
+                    // projectIdField.id = 'project-id-field';
                     projectIdField.value = task.projectId || '';
-                    projectIdField.className = 'brutalInput';
+                    projectIdField.className = 'brutalInput project-id-field';
                     projectIdField.readOnly = true;
                     projectIdField.addEventListener('click', () => {
                         if (showTotals) {
@@ -736,10 +727,8 @@
                     taskInput.placeholder = 'Enter task name';
                     // taskInput.readOnly = showTotals;
                     taskInput.addEventListener('input', () => {
-                        if (!showTotals) {
-                            task.name = taskInput.value;
-                            updateLocalStorage();
-                        }
+                        task.name = taskInput.value;
+                        updateLocalStorage();
                     });
                     // taskInput.addEventListener('click', () => {
                     //     if (showTotals) {
@@ -867,7 +856,6 @@
                         const taskInput = taskRow.querySelector('input[type="text"]');
                         const startStopButton = taskRow.querySelector('.StartStop');
 
-                        // taskInput.readOnly = showTotals;
                         if (showTotals) {
                             startStopButton.classList.add('hidden');
                         } else {
