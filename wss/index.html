@@ -127,6 +127,7 @@
             table-layout: fixed; /* Ensures fixed table layout */
             width: 100%; /* Makes the table take up the full width of its container */
             border-collapse: collapse; /* Removes gaps between cells */
+            position: relative; /* For positioning the current time line */
         }
 
         .table th,
@@ -179,6 +180,18 @@
 
         .table-responsive {
             overflow-x: auto;
+            position: relative; /* To position the current time line absolutely within */
+        }
+
+        /* Current Time Line Styling */
+        .current-time-line {
+            position: absolute;
+            left: 0px; /* Overflow to the left */
+            right: 0px; /* Overflow to the right */
+            height: 2px;
+            background-color: var(--button-active-color);
+            z-index: 10;
+            pointer-events: none; /* Allows clicks to pass through */
         }
 
         /* Responsive Adjustments */
@@ -213,6 +226,8 @@
     <div class="maxwidth container text-center my-5">
         <div id="timetable-container" class="table-responsive">
             <!-- The timetable grid will be generated here -->
+            <!-- Current Time Line -->
+            <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
         </div>
         <!-- Display totals -->
         <div id="totals-container" class="mt-3">
@@ -536,6 +551,59 @@
                 }
             }
 
+            // Function to update the current time line
+            function updateCurrentTimeLine() {
+                const line = document.getElementById('currentTimeLine');
+                const timetableContainer = document.getElementById('timetable-container');
+                const table = timetableContainer.querySelector('table');
+                const times = generateTimes();
+
+                const now = new Date();
+                const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+
+                // Check if current day is Monday to Friday
+                if (currentDay < 1 || currentDay > 5) {
+                    line.style.display = 'none';
+                    return;
+                }
+
+                // Get current time in decimal
+                const currentTime = now.getHours() + now.getMinutes() / 60;
+
+                // Timetable starts at 6:00 and ends at 19:00
+                const startTime = 6;
+                const endTime = 19;
+
+                if (currentTime < startTime || currentTime > endTime) {
+                    line.style.display = 'none';
+                    return;
+                }
+
+                // Calculate the percentage of the time
+                const totalHours = endTime - startTime;
+                const elapsedHours = currentTime - startTime;
+                const percentage = (elapsedHours / totalHours) * 100;
+
+                // Get the height of the table
+                const tableHeight = table.offsetHeight;
+
+                // Set the top position
+                const topPosition = (elapsedHours / totalHours) * tableHeight;
+
+                // Set the line position
+                line.style.top = `${topPosition}px`;
+                line.style.display = 'block';
+            }
+
+            // Function to initialize the current time line and update it periodically
+            function initializeCurrentTimeLine() {
+                updateCurrentTimeLine(); // Initial update
+                // Update every minute
+                setInterval(updateCurrentTimeLine, 60000);
+                // Also update on window resize to adjust position
+                window.addEventListener('resize', updateCurrentTimeLine);
+            }
+
             // Event listeners for theme switcher buttons
             document.getElementById('darkModeButton').addEventListener('click', () => {
                 document.body.classList.remove('light-mode', 'demure-mode');
@@ -561,6 +629,7 @@
             generateTimetable();
             loadTheme();
             loadData();
+            initializeCurrentTimeLine(); // Initialize the current time line
 
             // Event listeners for buttons
             document.getElementById('exportButton').addEventListener('click', exportData);
