@@ -427,27 +427,28 @@
                     return;
                 }
 
-                let estimationIndex = timeIndex - 1;
+                // Get the time of the next cell
+                let estimationIndex = timeIndex + 1;
 
-                // Handle the case when there is no previous time slot
-                if (estimationIndex < 0) {
-                    estimationIndex = 0;
+                // Handle the case when there is no next time slot
+                if (estimationIndex >= times.length) {
+                    estimationIndex = times.length; // This ensures we consider up to the end of the day
                 }
 
-                const estimationTime = times[estimationIndex];
+                const estimationTime = estimationIndex < times.length ? times[estimationIndex] : "End of Day";
 
-                // Calculate the number of selected cells up to estimationIndex for the same day
+                // Calculate the number of selected cells up to and including the current cell for the same day
                 let countSelected = 0;
-                for (let i = 0; i <= estimationIndex; i++) {
-                    const previousTime = times[i];
-                    const selector = `.time-slot[data-day="${day}"][data-time="${previousTime}"]`;
-                    const prevCell = document.querySelector(selector);
-                    if (prevCell && prevCell.classList.contains('selected')) {
+                for (let i = 0; i <= timeIndex; i++) {
+                    const currentTime = times[i];
+                    const selector = `.time-slot[data-day="${day}"][data-time="${currentTime}"]`;
+                    const currentCell = document.querySelector(selector);
+                    if (currentCell && currentCell.classList.contains('selected')) {
                         countSelected++;
                     }
                 }
 
-                // Calculate estimated hours and format to remove unnecessary zeros
+                // Calculate estimated hours and format to two decimal places
                 const estimatedHoursValue = countSelected * 0.25;
                 const estimatedHours = parseFloat(estimatedHoursValue.toFixed(2));
 
