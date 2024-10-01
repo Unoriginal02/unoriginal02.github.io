@@ -415,7 +415,7 @@
                 saveData(); // Automatically save data on each selection/unselection
             }
 
-            // Handle hover on time slot to show estimated hours
+            // Handle hover on time slot to show estimated hours at the previous time slot
             function onTimeSlotHover(event) {
                 const cell = event.target;
                 const day = cell.dataset.day;
@@ -427,9 +427,18 @@
                     return;
                 }
 
-                // Calculate the number of selected cells before the hovered cell for the same day
+                let estimationIndex = timeIndex - 1;
+
+                // Handle the case when there is no previous time slot
+                if (estimationIndex < 0) {
+                    estimationIndex = 0;
+                }
+
+                const estimationTime = times[estimationIndex];
+
+                // Calculate the number of selected cells up to estimationIndex for the same day
                 let countSelected = 0;
-                for (let i = 0; i < timeIndex; i++) {
+                for (let i = 0; i <= estimationIndex; i++) {
                     const previousTime = times[i];
                     const selector = `.time-slot[data-day="${day}"][data-time="${previousTime}"]`;
                     const prevCell = document.querySelector(selector);
@@ -438,8 +447,11 @@
                     }
                 }
 
-                const estimatedHours = (countSelected * 0.25).toFixed(2); // Each slot is 0.25 hours
-                cell.title = `Estimated: ${estimatedHours}h`;
+                // Calculate estimated hours and format to remove unnecessary zeros
+                const estimatedHoursValue = countSelected * 0.25;
+                const estimatedHours = parseFloat(estimatedHoursValue.toFixed(2));
+
+                cell.title = `Estimated at ${estimationTime}: ${estimatedHours}h`;
             }
 
             // Update totals
