@@ -38,6 +38,10 @@
             min-height: 100vh;
         }
 
+        table {
+            position: relative;
+        }
+
         .maxwidth {
             max-width: 960px;
             margin: auto;
@@ -49,12 +53,14 @@
             border: 1px solid var(--main-color);
             background-color: var(--background-color);
             color: var(--main-color);
-            padding: .5rem 0;
+            padding: 0.5rem 1rem;
             border-radius: 0;
             white-space: nowrap;
-            width: 100%;
-            min-width: 100px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
         .brutalButton:hover {
@@ -66,11 +72,12 @@
             display: flex;
             flex-direction: row;
             gap: 16px;
+            justify-content: center;
         }
 
         .mode-buttons {
             position: fixed;
-            font-size: .75rem;
+            font-size: 0.75rem;
             bottom: 20px;
             right: 20px;
             display: flex;
@@ -114,8 +121,8 @@
             font-family: "Nunito", sans-serif;
             --main-color: #db7970;
             --main-color-hover: rgba(219, 121, 112, 0.1);
-            --button-active-color: #c9eed8;
-            --button-selection-color: var(--button-active-color);
+            --button-active-color: #db96fc;
+            --button-selection-color: #c9eed8;
             --background-color: #fef5f5;
             --main-color-rgb: 219, 121, 112;
             --main-color-opacity: rgba(var(--main-color-rgb), 0.09);
@@ -124,32 +131,28 @@
 
         /* Table Styling */
         .table {
-            table-layout: fixed; /* Ensures fixed table layout */
-            width: 100%; /* Makes the table take up the full width of its container */
-            border-collapse: collapse; /* Removes gaps between cells */
-            position: relative; /* For positioning the current time line */
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            position: relative;
         }
 
         .table th,
         .table td {
-            overflow: hidden; /* Ensures content doesn't overflow */
-            text-overflow: ellipsis; /* Adds ellipsis if content is too long */
-            word-wrap: break-word; /* Allows breaking long words */
-            padding: 0.1rem; /* Adds padding for better readability */
-            text-align: center; /* Centers the text */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+            padding: 0.1rem;
+            text-align: center;
+            border: 1px solid var(--main-color);
+            color: var(--main-color);
+            font-size: 0.75rem;
         }
 
         .table th:first-child,
         .table td:first-child {
-            width: 150px; /* Fixed width for the Time column */
-            white-space: nowrap; /* Prevents the Time text from wrapping */
-        }
-
-        .table th,
-        .table td {
-            border: 1px solid var(--main-color);
-            color: var(--main-color);
-            font-size: 0.75rem;
+            width: 150px;
+            white-space: nowrap;
         }
 
         .table thead th {
@@ -180,25 +183,56 @@
 
         .table-responsive {
             overflow-x: auto;
-            position: relative; /* To position the current time line absolutely within */
+            position: relative;
         }
 
         /* Current Time Line Styling */
         .current-time-line {
             position: absolute;
-            left: 0px; /* Overflow to the left */
-            right: 0px; /* Overflow to the right */
+            left: 0px;
+            right: 0px;
             height: 2px;
             background-color: var(--button-active-color);
             z-index: 10;
-            pointer-events: none; /* Allows clicks to pass through */
+            pointer-events: none;
+        }
+
+        /* New styles for totals and buttons section */
+        .totals-and-buttons {
+            /* Removed border */
+            padding: 1rem;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: var(--background-color);
+            text-align: center;
+        }
+
+        .totals-table {
+            width: 100%;
+            margin-bottom: 1rem;
+            border-collapse: collapse;
+        }
+
+        .totals-table th,
+        .totals-table td {
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .total-week-hours {
+            margin-top: 1rem;
+            font-weight: bold;
         }
 
         /* Responsive Adjustments */
         @media (max-width: 768px) {
+
             .table th:first-child,
             .table td:first-child {
-                width: 120px; /* Adjust Time column width on smaller screens */
+                width: 120px;
             }
 
             .mode-buttons {
@@ -206,17 +240,27 @@
                 bottom: 10px;
                 right: 10px;
             }
-        }
 
-        @media (max-width: 576px) {
-            .table th:first-child,
-            .table td:first-child {
-                width: 100px; /* Further adjust Time column width on very small screens */
+            .totals-and-buttons {
+                padding: 0.75rem;
             }
 
             .brutalButton {
-                min-width: 80px;
-                padding: 0.4rem 0;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+
+            .table th:first-child,
+            .table td:first-child {
+                width: 100px;
+            }
+
+            .brutalButton {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -229,15 +273,23 @@
             <!-- Current Time Line -->
             <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
         </div>
-        <!-- Display totals -->
-        <div id="totals-container" class="mt-3">
-            <!-- Totals will be displayed here -->
+        <!-- Totals Section -->
+        <div class="totals-and-buttons mt-3">
+            <div id="totals-container">
+                <!-- Totals will be displayed here -->
+            </div>
         </div>
-        <!-- Buttons for exporting, importing, and wiping data -->
+        <!-- Buttons -->
         <div class="buttonGroup mt-3">
-            <button id="exportButton" class="brutalButton">Export</button>
-            <button id="importButton" class="brutalButton">Import</button>
-            <button id="wipeButton" class="brutalButton">Wipe</button>
+            <button id="exportButton" class="brutalButton">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <button id="importButton" class="brutalButton">
+                <i class="bi bi-upload"></i> Import
+            </button>
+            <button id="wipeButton" class="brutalButton">
+                <i class="bi bi-trash"></i> Wipe
+            </button>
             <!-- Hidden file input for importing data -->
             <input type="file" id="importInput" accept=".json" style="display:none;">
         </div>
@@ -409,22 +461,47 @@
 
                 // Calculate total hours for the week
                 let totalWeekHours = 0;
-                const totalsList = document.createElement('ul');
-                totalsList.className = 'list-unstyled';
+
+                // Create a table to display totals
+                const totalsTable = document.createElement('table');
+                totalsTable.className = 'totals-table';
+
+                // Create header row
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+
+                days.forEach(day => {
+                    const dayHeader = document.createElement('th');
+                    dayHeader.textContent = day;
+                    headerRow.appendChild(dayHeader);
+                });
+
+                thead.appendChild(headerRow);
+                totalsTable.appendChild(thead);
+
+                // Create body row with totals
+                const tbody = document.createElement('tbody');
+                const totalsRow = document.createElement('tr');
 
                 days.forEach(day => {
                     const dayTotal = dayTotals[day];
                     totalWeekHours += dayTotal;
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `${day}: ${dayTotal} hours`;
-                    totalsList.appendChild(listItem);
+                    const totalCell = document.createElement('td');
+                    totalCell.textContent = `${dayTotal} hours`;
+                    totalsRow.appendChild(totalCell);
                 });
 
-                const totalItem = document.createElement('li');
-                totalItem.textContent = `Total Week Hours: ${totalWeekHours}/40 hours`;
-                totalsList.appendChild(totalItem);
+                tbody.appendChild(totalsRow);
 
-                totalsContainer.appendChild(totalsList);
+                totalsTable.appendChild(tbody);
+                totalsContainer.appendChild(totalsTable);
+
+                // Create total week hours display
+                const totalWeekDiv = document.createElement('div');
+                totalWeekDiv.className = 'total-week-hours';
+                totalWeekDiv.textContent = `Total Week Hours: ${totalWeekHours}/40 hours`;
+
+                totalsContainer.appendChild(totalWeekDiv);
             }
 
             // Save data to local storage
@@ -468,7 +545,7 @@
                 const day = String(today.getDate()).padStart(2, '0');
                 const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
                 const year = today.getFullYear();
-                const filename = `WorkShiftData_${year}-${month}-${day}.json`; // Updated filename format
+                const filename = `WorkShiftData_${year}-${month}-${day}.json`;
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
@@ -551,12 +628,11 @@
                 }
             }
 
-            // Function to update the current time line
             function updateCurrentTimeLine() {
                 const line = document.getElementById('currentTimeLine');
                 const timetableContainer = document.getElementById('timetable-container');
                 const table = timetableContainer.querySelector('table');
-                const times = generateTimes();
+                const tbody = table.querySelector('tbody');
 
                 const now = new Date();
                 const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
@@ -567,7 +643,7 @@
                     return;
                 }
 
-                // Get current time in decimal
+                // Get current time in decimal hours
                 const currentTime = now.getHours() + now.getMinutes() / 60;
 
                 // Timetable starts at 6:00 and ends at 19:00
@@ -579,23 +655,24 @@
                     return;
                 }
 
-                // Calculate the percentage of the time
-                const totalHours = endTime - startTime;
-                const elapsedHours = currentTime - startTime;
-                const percentage = (elapsedHours / totalHours) * 100;
+                // Calculate elapsed minutes since start time
+                const elapsedMinutes = (currentTime - startTime) * 60;
 
-                // Get the height of the table
-                const tableHeight = table.offsetHeight;
+                // Total minutes in the timetable
+                const totalMinutes = (endTime - startTime) * 60;
 
-                // Set the top position
-                const topPosition = (elapsedHours / totalHours) * tableHeight;
+                // Get the height of tbody and thead
+                const tbodyHeight = tbody.offsetHeight;
+                const theadHeight = table.querySelector('thead').offsetHeight;
+
+                // Calculate top position relative to the table
+                const topPosition = theadHeight + (elapsedMinutes / totalMinutes) * tbodyHeight;
 
                 // Set the line position
                 line.style.top = `${topPosition}px`;
                 line.style.display = 'block';
             }
 
-            // Function to initialize the current time line and update it periodically
             function initializeCurrentTimeLine() {
                 updateCurrentTimeLine(); // Initial update
                 // Update every minute
