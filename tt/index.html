@@ -458,6 +458,12 @@
         </div>
         <div id="tasks" class="mt-3"></div>
         <div id="totalsSum" class="mt-xusta hidden total-sum"></div>
+        <!-- Export/Import buttons under total hours -->
+        <div id="exportImportContainer" class="buttonGroup mt-3 hidden">
+            <button id="exportDataButton" class="brutalButton">Export</button>
+            <input type="file" id="importDataInput" class="hidden" accept=".json">
+            <button id="importDataButton" class="brutalButton">Import</button>
+        </div>
         <div class="buttonGroup mt-3">
             <button id="toggleProjectsButton" class="brutalButton">Projects</button>
             <button id="wipeTimersButton" class="brutalButton">Wipe Timers</button>
@@ -886,6 +892,7 @@
                         calculateTotalSum();
                     } else {
                         document.getElementById('totalsSum').classList.add('hidden');
+                        hideExportImportButtons();
                     }
                 }
 
@@ -959,32 +966,8 @@
                         renderProjects();
                     });
 
-                    // Create the "Export" button
-                    const exportProjectsButton = document.createElement('button');
-                    exportProjectsButton.id = 'exportProjectsButton';
-                    exportProjectsButton.className = 'brutalButton small-project-button';
-                    exportProjectsButton.textContent = 'Export';
-                    // Export functionality will be added later
-
-                    // Create the "Import" button
-                    const importProjectsButton = document.createElement('button');
-                    importProjectsButton.id = 'importProjectsButton';
-                    importProjectsButton.className = 'brutalButton small-project-button';
-                    importProjectsButton.textContent = 'Import';
-                    // Import functionality will be added later
-
-                    // Hidden File Input for Import
-                    const importProjectsInput = document.createElement('input');
-                    importProjectsInput.type = 'file';
-                    importProjectsInput.id = 'importProjectsInput';
-                    importProjectsInput.className = 'hidden';
-                    importProjectsInput.accept = '.json';
-
                     // Append buttons to buttonsContainer
                     buttonsContainer.appendChild(addProjectButton);
-                    buttonsContainer.appendChild(exportProjectsButton);
-                    buttonsContainer.appendChild(importProjectsInput);
-                    buttonsContainer.appendChild(importProjectsButton);
 
                     // Append buttonsContainer to projectsContainer
                     projectsContainer.appendChild(buttonsContainer);
@@ -999,59 +982,6 @@
                             updateProjectsLocalStorage(); // Correct function to update projects in local storage
                             renderProjects();
                         },
-                    });
-
-                    // Event Listeners for Export and Import Buttons
-                    exportProjectsButton.addEventListener('click', () => {
-                        const dataStr = JSON.stringify(projects, null, 2);
-                        const blob = new Blob([dataStr], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-
-                        const a = document.createElement('a');
-                        a.href = url;
-
-                        // Generate the date string in DD-MM-YYYY format with leading zeros
-                        const today = new Date();
-                        const day = String(today.getDate()).padStart(2, '0');
-                        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-                        const year = today.getFullYear();
-                        const filename = `Taskifactorio Projects ${day}-${month}-${year}.json`;
-
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                    });
-
-                    importProjectsButton.addEventListener('click', () => {
-                        importProjectsInput.click();
-                    });
-
-                    importProjectsInput.addEventListener('change', (event) => {
-                        const file = event.target.files[0];
-                        if (file && file.type === 'application/json') {
-                            const reader = new FileReader();
-                            reader.onload = function (e) {
-                                try {
-                                    const importedProjects = JSON.parse(e.target.result);
-                                    if (Array.isArray(importedProjects)) {
-                                        projects = importedProjects;
-                                        updateProjectsLocalStorage();
-                                        renderProjects();
-                                        renderTasks(); // Re-render tasks to update project dropdowns
-                                        alert('Projects imported successfully.');
-                                    } else {
-                                        alert('Invalid projects data.');
-                                    }
-                                } catch (error) {
-                                    alert('Error parsing JSON file.');
-                                }
-                            };
-                            reader.readAsText(file);
-                        } else {
-                            alert('Please select a valid JSON file.');
-                        }
                     });
                 }
 
@@ -1074,7 +1004,72 @@
                     const totalSum = tasks.reduce((sum, task) => sum + roundToQuarterHour(task.time / 60), 0);
                     document.getElementById('totalsSum').textContent = `Total: ${parseFloat(totalSum.toFixed(2))} hours`;
                     document.getElementById('totalsSum').classList.remove('hidden');
+
+                    // Show the export/import buttons when showing totals
+                    document.getElementById('exportImportContainer').classList.remove('hidden');
                 }
+
+                function hideExportImportButtons() {
+                    document.getElementById('exportImportContainer').classList.add('hidden');
+                }
+
+                // Add event listeners for the export/import buttons
+                document.getElementById('exportDataButton').addEventListener('click', () => {
+                    const data = {
+                        tasks: tasks,
+                        projects: projects
+                    };
+                    const dataStr = JSON.stringify(data, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = url;
+
+                    // Generate the date string in DD-MM-YYYY format with leading zeros
+                    const today = new Date();
+                    const day = String(today.getDate()).padStart(2, '0');
+                    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+                    const year = today.getFullYear();
+                    const filename = `Taskifactorio Data ${day}-${month}-${year}.json`;
+
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+
+                document.getElementById('importDataButton').addEventListener('click', () => {
+                    document.getElementById('importDataInput').click();
+                });
+
+                document.getElementById('importDataInput').addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file && file.type === 'application/json') {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            try {
+                                const importedData = JSON.parse(e.target.result);
+                                if (importedData.tasks && importedData.projects) {
+                                    tasks = importedData.tasks;
+                                    projects = importedData.projects;
+                                    updateLocalStorage();
+                                    updateProjectsLocalStorage();
+                                    renderTasks();
+                                    alert('Data imported successfully.');
+                                } else {
+                                    alert('Invalid data format.');
+                                }
+                            } catch (error) {
+                                alert('Error parsing JSON file.');
+                            }
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        alert('Please select a valid JSON file.');
+                    }
+                });
 
                 function updateTimers() {
                     tasks.forEach((task, index) => {
@@ -1100,6 +1095,7 @@
                     }
                 });
 
+                // Modify your toggleTotalsButton event listener to hide the export/import buttons when totals are hidden
                 document.getElementById('toggleTotalsButton').addEventListener('click', () => {
                     showTotals = !showTotals;
 
@@ -1107,14 +1103,15 @@
                         tasks.forEach(task => task.isRunning = false);
                         updateLocalStorage();
                         document.getElementById('toggleTotalsButton').textContent = 'Hide Totals';
-                        document.body.classList.add('show-totals-active'); // Add this line
+                        document.body.classList.add('show-totals-active');
+                        renderTasks();
                     } else {
                         document.getElementById('toggleTotalsButton').textContent = 'Show Totals';
                         document.getElementById('totalsSum').classList.add('hidden');
-                        document.body.classList.remove('show-totals-active'); // Add this line
+                        hideExportImportButtons(); // Hide the export/import buttons when totals are hidden
+                        document.body.classList.remove('show-totals-active');
+                        renderTasks();
                     }
-
-                    renderTasks();
                 });
 
                 document.getElementById('wipeTimersButton').addEventListener('click', () => {
@@ -1139,8 +1136,6 @@
             })();
         })();
     </script>
-
-
 
 </body>
 
