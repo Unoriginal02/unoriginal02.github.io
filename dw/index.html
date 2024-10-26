@@ -50,7 +50,6 @@
             position: relative;
             z-index: 1;
             /* Ensure table is below time blocks */
-            
         }
 
         .maxwidth {
@@ -337,7 +336,8 @@
         .form-control,
         .form-select,
         .btn,
-        .brutalButton { /* Ensure brutalButton shares styles with form controls if needed */
+        .brutalButton {
+            /* Ensure brutalButton shares styles with form controls if needed */
             background-color: var(--background-color);
             color: var(--main-color);
             border: 1px solid var(--main-color);
@@ -595,28 +595,31 @@
             // Define color themes with color names and their corresponding hex values
             const colorThemes = {
                 dark: {
-                    red: '#e34f4f',
-                    green: '#81C784',
-                    blue: '#5789de',
-                    yellow: '#e8cf61',
-                    purple: '#a680ed',
-                    gray: '#444'
+                    red: '#E36666',
+                    orange: '#F5AB73',
+                    yellow: '#F5D667',
+                    green: '#85C788',
+                    blue: '#5D8DDE',
+                    purple: '#AD84DB',
+                    gray: '#3B3B3C'
                 },
                 light: {
-                    red: '#E57373',
-                    green: '#81C784',
-                    blue: '#A4C6FF',
-                    yellow: '#FFF9C4',
-                    purple: '#D1C4E9',
-                    gray: '#CCCCCC'
+                    red: '#E36666',
+                    orange: '#F5AB73',
+                    yellow: '#F5D667',
+                    green: '#85C788',
+                    blue: '#5D8DDE',
+                    purple: '#AD84DB',
+                    gray: '#DBDBDD'
                 },
                 demure: {
-                    red: '#DB7970',
-                    green: '#C9EED8',
-                    blue: '#A4C6FF',
-                    yellow: '#FFF9C4',
-                    purple: '#D1C4E9',
-                    gray: '#CCCCCC'
+                    red: '#EE9B9B',
+                    orange: '#FFC993',
+                    yellow: '#FFE08C',
+                    green: '#99C79B',
+                    blue: '#739BDE',
+                    purple: '#B18CDB',
+                    gray: '#C9C9CB'
                 }
             };
 
@@ -748,10 +751,8 @@
             }
 
             function formatTimeDisplay(timeStr) {
-                const [hours, minutes] = timeStr.split(':').map(Number);
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                // Return time in 24-hour format without AM/PM
+                return timeStr;
             }
 
             function renderSchedule() {
