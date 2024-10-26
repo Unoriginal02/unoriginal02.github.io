@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Work Shift Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Fonts and CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        :root {
+            --main-color: #eeeeee;
+            --main-color-hover: rgba(238, 238, 238, .1);
+            --button-active-color: #FC5B5B;
+            --button-selection-color: #5f92f0;
+            --background-color: #000000;
+            --main-color-rgb: 238, 238, 238;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.12);
+            --cell-height: 24px;
+            /* Define cell height here */
+            --hours-column-width: 10%;
+            /* Width for the Time column */
+            --day-column-width: calc((100% - var(--hours-column-width)) / 5);
+            /* Width for each Day column */
+
+            /* New primary text color variable */
+            --primary-text-color: var(--main-color);
+            /* Default to main color */
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        table {
+            position: relative;
+            z-index: 1;
+            /* Ensure table is below time blocks */
+            
+        }
+
+        .maxwidth {
+            max-width: 960px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brutalButton {
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0;
+            white-space: nowrap;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .brutalButton:hover {
+            background-color: var(--main-color-hover);
+            color: var(--main-color);
+        }
+
+        .buttonGroup {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .mode-buttons {
+            position: fixed;
+            font-size: 0.75rem;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 4;
+            /* Ensure mode buttons are above time blocks */
+        }
+
+        .mode-switcher {
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+        }
+
+        .mode-switcher.active-mode {
+            background-color: var(--main-color-opacity);
+            border: 1px solid var(--main-color);
+            color: var(--main-color);
+        }
+
+        .mode-switcher:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        /* Light Mode */
+        .light-mode {
+            --main-color: #333333;
+            --main-color-hover: rgba(0, 0, 0, 0.02);
+            --button-active-color: #FC5B5B;
+            --button-selection-color: #5f92f0;
+            --background-color: #ffffff;
+            --main-color-rgb: 0, 0, 0;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.04);
+            color: var(--main-color);
+
+            /* Update primary text color for light mode */
+            --primary-text-color: #333333;
+        }
+
+        /* Demure Mode (Pastel Palette) */
+        .demure-mode {
+            font-family: "Nunito", sans-serif;
+            --main-color: #db7970;
+            --main-color-hover: rgba(219, 121, 112, 0.1);
+            --button-active-color: #db96fc;
+            --button-selection-color: #c9eed8;
+            --background-color: #fef5f5;
+            --main-color-rgb: 219, 121, 112;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.09);
+            color: var(--main-color);
+
+            /* Update primary text color for demure mode */
+            --primary-text-color: #db7970;
+        }
+
+        /* Table Styling */
+        .table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            position: relative;
+            z-index: 1;
+            background-color: var(--background-color);
+        }
+
+        .table th,
+        .table td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+            padding: 0.1rem;
+            text-align: center;
+            border: 1px solid var(--main-color);
+            color: var(--main-color);
+            font-size: 0.75rem;
+            position: relative;
+            height: var(--cell-height);
+            /* Set cell height */
+            vertical-align: middle;
+            /* Ensure vertical alignment */
+        }
+
+        /* Define the first column (Time) using CSS variable */
+        .table th:first-child,
+        .table td:first-child {
+            width: var(--hours-column-width);
+            min-width: 150px;
+            white-space: nowrap;
+        }
+
+        /* Define the day columns using CSS variable */
+        .table th:not(:first-child),
+        .table td:not(:first-child) {
+            width: var(--day-column-width);
+            min-width: 120px;
+        }
+
+        .table thead th {
+            background-color: var(--background-color);
+        }
+
+        .time-slot {
+            cursor: pointer;
+            background-color: var(--background-color);
+            transition: background-color 0.2s;
+            height: var(--cell-height);
+            /* Set time-slot height based on variable */
+            /* Removed flexbox properties */
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .time-slot:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        .time-slot.selected {
+            background-color: var(--button-selection-color);
+        }
+
+        .list-unstyled li {
+            text-align: left;
+        }
+
+        .active-mode {
+            background-color: var(--main-color-opacity);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            position: relative;
+        }
+
+        /* Current Time Line Styling */
+        .current-time-line {
+            position: absolute;
+            left: var(--hours-column-width);
+            /* Start after the Time column */
+            right: 0;
+            height: 2px;
+            background-color: var(--button-active-color);
+            z-index: 5;
+            /* Ensure it's on top of everything */
+            pointer-events: none;
+        }
+
+        /* New styles for totals and buttons section */
+        .totals-and-buttons {
+            /* Removed border */
+            padding: 1rem;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: var(--background-color);
+            text-align: center;
+        }
+
+        .totals-table {
+            width: 100%;
+            margin-bottom: 1rem;
+            border-collapse: collapse;
+        }
+
+        .totals-table th,
+        .totals-table td {
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .total-week-hours {
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+
+            .table th:first-child,
+            .table td:first-child {
+                width: var(--hours-column-width);
+                min-width: 120px;
+            }
+
+            .table th:not(:first-child),
+            .table td:not(:first-child) {
+                width: var(--day-column-width);
+                min-width: 100px;
+            }
+
+            .mode-buttons {
+                font-size: 0.65rem;
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .totals-and-buttons {
+                padding: 0.75rem;
+            }
+
+            .brutalButton {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+
+            .table th:first-child,
+            .table td:first-child {
+                width: var(--hours-column-width);
+                min-width: 100px;
+            }
+
+            .table th:not(:first-child),
+            .table td:not(:first-child) {
+                width: var(--day-column-width);
+                min-width: 80px;
+            }
+
+            .brutalButton {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Modal Styling Overrides */
+        .modal-content {
+            background-color: var(--background-color);
+            color: var(--main-color);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--main-color);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--main-color);
+        }
+
+        .form-control,
+        .form-select,
+        .btn,
+        .brutalButton { /* Ensure brutalButton shares styles with form controls if needed */
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border-color: var(--button-selection-color);
+            box-shadow: none;
+        }
+
+        /* Time Block Styling */
+        .time-block {
+            position: absolute;
+            /* Remove the border */
+            border: none;
+
+            /* Add box-shadow to simulate a 1px border */
+            box-shadow: 0 0 0 1px var(--main-color);
+
+            border-radius: 0px;
+            padding: 0px 8px;
+            /* Left padding for the colored strip */
+            box-sizing: border-box;
+            color: var(--primary-text-color);
+            /* Updated to use primary text color */
+            cursor: pointer;
+            z-index: 3;
+            /* Above table and mode buttons, below current time line */
+            overflow: hidden;
+            font-size: 0.75rem;
+            background-color: var(--background-color);
+            border-left: 8px solid transparent;
+            /* Initialize with transparent color */
+
+            /* New styles for centering text */
+            /* Removed flexbox properties */
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .time-block:hover {
+            opacity: 0.9;
+            /* Optionally, change box-shadow color on hover */
+        }
+
+        /* Import Card Modal */
+        #importCardModal .modal-content {
+            width: 400px;
+        }
+
+        #importCardModal textarea {
+            width: 100%;
+            height: 150px;
+            /* Increased height for better visibility */
+        }
+
+        /* Hidden file input for JSON import */
+        #importFileInput {
+            display: none;
+        }
+
+        /* Style the select options to include color swatches */
+        /* Note: Limited support for styling option elements */
+        /* Alternative approach might be needed for full swatch display */
+        #modalColor option::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: attr(data-color color);
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .modal-dialog {
+            max-width: 580px;
+            margin: 1.75rem auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="maxwidth container text-center my-5">
+        <!-- Time Selectors -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-2">
+                <label for="startTime" class="form-label">Start Time</label>
+                <input type="time" id="startTime" class="form-control" value="08:00" step="900">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label for="endTime" class="form-label">End Time</label>
+                <input type="time" id="endTime" class="form-control" value="18:00" step="900">
+            </div>
+        </div>
+
+        <!-- The timetable grid will be generated here -->
+        <div id="timetable-container" class="table-responsive" style="position: relative;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-body">
+                    <!-- Time slots will be generated here -->
+                </tbody>
+            </table>
+            <!-- Current Time Line -->
+            <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="buttonGroup mt-3">
+            <button id="exportButton" class="brutalButton">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <button id="importButton" class="brutalButton">
+                <i class="bi bi-upload"></i> Import
+            </button>
+            <button id="wipeButton" class="brutalButton">
+                <i class="bi bi-trash"></i> Wipe
+            </button>
+            <button id="exportJpgButton" class="brutalButton">
+                <i class="bi bi-file-earmark-image"></i> Export as JPG
+            </button>
+            <!-- Hidden file input for JSON import -->
+            <input type="file" id="importFileInput" accept="application/json">
+        </div>
+    </div>
+
+    <!-- Mode Switch Buttons -->
+    <div class="mode-buttons">
+        <button id="lightModeButton" class="mode-switcher">
+            <i class="bi bi-sun"></i> Light Mode
+        </button>
+        <button id="darkModeButton" class="mode-switcher active-mode">
+            <i class="bi bi-moon"></i> Dark Mode
+        </button>
+        <button id="demureModeButton" class="mode-switcher">
+            <i class="bi bi-stars"></i> Demure Mode
+        </button>
+    </div>
+
+    <!-- Time Block Modal -->
+    <div class="modal fade" id="timeBlockModal" tabindex="-1" aria-labelledby="timeBlockModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="timeBlockModalLabel" class="modal-title">Create/Edit Time Block</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="timeBlockForm">
+                        <div class="mb-3">
+                            <label for="modalStartTime" class="form-label">Start Time</label>
+                            <input type="time" id="modalStartTime" class="form-control" required step="900">
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalEndTime" class="form-label">End Time</label>
+                            <input type="time" id="modalEndTime" class="form-control" required step="900">
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalProjectName" class="form-label">Project Name</label>
+                            <input type="text" id="modalProjectName" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalDescription" class="form-label">Task Description</label>
+                            <textarea id="modalDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalColor" class="form-label">Color</label>
+                            <select id="modalColor" class="form-select" required>
+                                <!-- Options will be populated dynamically via JavaScript -->
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="deleteButton" type="button" class="brutalButton" style="display: none;">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                    <button id="copyButton" type="button" class="brutalButton">
+                        <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                    <button id="importCardButton" type="button" class="brutalButton">
+                        <i class="bi bi-clipboard-plus"></i> Import
+                    </button>
+                    <button type="button" class="brutalButton" data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button id="acceptButton" type="button" class="brutalButton">
+                        Accept
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Card Modal -->
+    <div class="modal fade" id="importCardModal" tabindex="-1" aria-labelledby="importCardModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="importCardModalLabel" class="modal-title">Import Card</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="importCardForm">
+                        <div class="mb-3">
+                            <label for="importCardTextarea" class="form-label">Paste CSV Data</label>
+                            <!-- Removed placeholder and format instructions, increased textarea height -->
+                            <textarea id="importCardTextarea" class="form-control" rows="6"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="brutalButton" data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button id="importCardConfirmButton" type="button" class="brutalButton">
+                        Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- html2canvas JS -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <script>
+        (function () {
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+            const timeSlotInterval = 15; // minutes
+            let schedule = []; // Array to hold time blocks
+            let currentEditingBlock = null; // Currently editing block
+            let timerInterval = null;
+            let selectedDay = null; // Track the selected day
+            let currentTheme = 'dark'; // Default theme
+
+            // Define color themes with color names and their corresponding hex values
+            const colorThemes = {
+                dark: {
+                    red: '#e34f4f',
+                    green: '#81C784',
+                    blue: '#5789de',
+                    yellow: '#e8cf61',
+                    purple: '#a680ed',
+                    gray: '#444'
+                },
+                light: {
+                    red: '#E57373',
+                    green: '#81C784',
+                    blue: '#A4C6FF',
+                    yellow: '#FFF9C4',
+                    purple: '#D1C4E9',
+                    gray: '#CCCCCC'
+                },
+                demure: {
+                    red: '#DB7970',
+                    green: '#C9EED8',
+                    blue: '#A4C6FF',
+                    yellow: '#FFF9C4',
+                    purple: '#D1C4E9',
+                    gray: '#CCCCCC'
+                }
+            };
+
+            // List of available color names
+            const availableColors = Object.keys(colorThemes.dark);
+
+            // Initialize elements
+            const timetableBody = document.getElementById('timetable-body');
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+            const exportButton = document.getElementById('exportButton');
+            const exportJpgButton = document.getElementById('exportJpgButton'); // New Export as JPG button
+            const importButton = document.getElementById('importButton');
+            const wipeButton = document.getElementById('wipeButton');
+
+            const lightModeButton = document.getElementById('lightModeButton');
+            const darkModeButton = document.getElementById('darkModeButton');
+            const demureModeButton = document.getElementById('demureModeButton');
+
+            const timeBlockModalElement = document.getElementById('timeBlockModal');
+            const timeBlockModal = new bootstrap.Modal(timeBlockModalElement);
+            const timeBlockForm = document.getElementById('timeBlockForm');
+            const modalStartTime = document.getElementById('modalStartTime');
+            const modalEndTime = document.getElementById('modalEndTime');
+            const modalProjectName = document.getElementById('modalProjectName');
+            const modalDescription = document.getElementById('modalDescription');
+            const modalColor = document.getElementById('modalColor');
+            const acceptButton = document.getElementById('acceptButton');
+            const deleteButton = document.getElementById('deleteButton');
+            const copyButton = document.getElementById('copyButton');
+            const importCardButton = document.getElementById('importCardButton');
+
+            const importCardModalElement = document.getElementById('importCardModal');
+            const importCardModalInstance = new bootstrap.Modal(importCardModalElement);
+            const importCardTextarea = document.getElementById('importCardTextarea');
+            const importCardConfirmButton = document.getElementById('importCardConfirmButton');
+
+            const importFileInput = document.getElementById('importFileInput');
+
+            const currentTimeLine = document.getElementById('currentTimeLine');
+            const timetableContainer = document.getElementById('timetable-container');
+
+            // Utility Functions
+            function timeToMinutes(timeStr) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                return hours * 60 + minutes;
+            }
+
+            function minutesToTime(minutes) {
+                const hrs = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            }
+
+            function addMinutes(timeStr, mins) {
+                let total = timeToMinutes(timeStr) + mins;
+                total = total % (24 * 60);
+                return minutesToTime(total);
+            }
+
+            function generateTimeSlots(start, end, interval) {
+                const slots = [];
+                let current = timeToMinutes(start);
+                const endMinutes = timeToMinutes(end);
+                while (current < endMinutes) {
+                    slots.push(minutesToTime(current));
+                    current += interval;
+                }
+                return slots;
+            }
+
+            function loadSchedule() {
+                const stored = localStorage.getItem('scheduleData');
+                if (stored) {
+                    try {
+                        const data = JSON.parse(stored);
+                        schedule = data.schedule || [];
+                        startTimeInput.value = data.startTime || "08:00";
+                        endTimeInput.value = data.endTime || "18:00";
+                        currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
+                    } catch (err) {
+                        console.error("Failed to parse schedule data:", err);
+                        schedule = [];
+                        currentTheme = 'dark'; // Default theme in case of error
+                    }
+                } else {
+                    currentTheme = 'dark'; // Default theme if no data is stored
+                }
+            }
+
+            function saveSchedule() {
+                const data = {
+                    schedule: schedule,
+                    startTime: startTimeInput.value,
+                    endTime: endTimeInput.value,
+                    theme: currentTheme // Save the current theme
+                };
+                localStorage.setItem('scheduleData', JSON.stringify(data));
+            }
+
+            function clearTable() {
+                timetableBody.innerHTML = '';
+                // Remove existing time blocks
+                document.querySelectorAll('.time-block').forEach(block => block.remove());
+            }
+
+            function renderTable() {
+                clearTable();
+                const start = startTimeInput.value || "08:00";
+                const end = endTimeInput.value || "18:00";
+                const slots = generateTimeSlots(start, end, timeSlotInterval);
+                slots.forEach(time => {
+                    const tr = document.createElement('tr');
+                    const timeTd = document.createElement('td');
+                    timeTd.textContent = formatTimeDisplay(time);
+                    tr.appendChild(timeTd);
+                    days.forEach(day => {
+                        const td = document.createElement('td');
+                        td.classList.add('time-slot');
+                        td.dataset.day = day;
+                        td.dataset.time = time;
+                        td.addEventListener('click', onCellClick);
+                        tr.appendChild(td);
+                    });
+                    timetableBody.appendChild(tr);
+                });
+                renderSchedule();
+                updateCurrentTimeLine();
+            }
+
+            function formatTimeDisplay(timeStr) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            }
+
+            function renderSchedule() {
+                // Clear existing time blocks
+                document.querySelectorAll('.time-block').forEach(block => block.remove());
+
+                // Retrieve cell height from CSS
+                const cellHeightStr = getComputedStyle(document.documentElement).getPropertyValue('--cell-height');
+                const cellHeight = parseInt(cellHeightStr);
+
+                // Retrieve hours column width from CSS
+                const rootStyles = getComputedStyle(document.documentElement);
+                const hoursColumnWidthStr = rootStyles.getPropertyValue('--hours-column-width').trim();
+                const hoursColumnWidth = parseFloat(hoursColumnWidthStr) || 10; // Default to 10% if parsing fails
+
+                // Calculate day column width based on CSS variable
+                const dayColumnWidthStr = rootStyles.getPropertyValue('--day-column-width').trim();
+                const dayColumnWidth = 17.98; // Approximate value as CSS uses calc()
+
+                // Calculate header height
+                const headerHeight = document.querySelector('.table thead').offsetHeight;
+
+                const scheduleStart = timeToMinutes(startTimeInput.value);
+                const scheduleEnd = timeToMinutes(endTimeInput.value);
+
+                schedule.forEach(block => {
+                    const dayIndex = days.indexOf(block.day);
+                    if (dayIndex === -1) return;
+
+                    const startMinutes = timeToMinutes(block.start);
+                    const endMinutes = timeToMinutes(block.end);
+
+                    const adjustedStart = Math.max(startMinutes, scheduleStart);
+                    const adjustedEnd = Math.min(endMinutes, scheduleEnd);
+
+                    if (adjustedEnd <= adjustedStart) return; // Skip blocks outside the visible time range
+
+                    const topPixels = ((adjustedStart - scheduleStart) / timeSlotInterval) * cellHeight + headerHeight;
+                    const heightPixels = ((adjustedEnd - adjustedStart) / timeSlotInterval) * cellHeight;
+
+                    const leftPercentage = hoursColumnWidth + dayColumnWidth * dayIndex;
+
+                    // Get the color hex value based on the current theme and color name
+                    const colorHex = colorThemes[currentTheme][block.colorName] || '#FFFFFF'; // Default to white if not found
+
+                    // Create time block element
+                    const blockDiv = document.createElement('div');
+                    blockDiv.classList.add('time-block');
+                    blockDiv.style.top = `${topPixels}px`;
+                    blockDiv.style.left = `${leftPercentage}%`;
+                    blockDiv.style.width = `${dayColumnWidth}%`;
+                    blockDiv.style.height = `${heightPixels}px`;
+                    blockDiv.style.backgroundColor = 'var(--background-color)'; // Ensure background matches main background
+                    blockDiv.style.borderLeft = `8px solid ${colorHex}`; // Set the left border color based on theme
+
+                    // Create content elements
+                    if (block.projectName) {
+                        const projectNameEl = document.createElement('div');
+                        projectNameEl.style.fontWeight = 'bold';
+                        projectNameEl.textContent = block.projectName;
+                        blockDiv.appendChild(projectNameEl);
+                    }
+
+                    if (block.description) {
+                        const descriptionEl = document.createElement('div');
+                        descriptionEl.textContent = block.description;
+                        blockDiv.appendChild(descriptionEl);
+                    }
+
+                    blockDiv.title = `${block.start} - ${block.end}`;
+
+                    // Event listener for editing
+                    blockDiv.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openModal(block);
+                    });
+
+                    // Append to timetable container
+                    timetableContainer.appendChild(blockDiv);
+                });
+            }
+
+            function onCellClick(e) {
+                const day = e.currentTarget.dataset.day;
+                const time = e.currentTarget.dataset.time;
+                selectedDay = day; // Set the selectedDay when creating a new block
+                openModal(null, day, time);
+            }
+
+            function openModal(block = null, day = null, time = null) {
+                currentEditingBlock = block;
+                if (block) {
+                    // Editing existing block
+                    modalStartTime.value = block.start;
+                    modalEndTime.value = block.end;
+                    modalProjectName.value = block.projectName;
+                    modalDescription.value = block.description;
+                    modalColor.value = block.colorName;
+                    deleteButton.style.display = 'inline-block';
+                } else {
+                    // Creating new block
+                    modalStartTime.value = time;
+                    modalEndTime.value = addMinutes(time, timeSlotInterval);
+                    modalProjectName.value = '';
+                    modalDescription.value = '';
+                    modalColor.value = availableColors[0]; // Default to first color
+                    deleteButton.style.display = 'none';
+                }
+                timeBlockModal.show();
+            }
+
+            function closeModal() {
+                timeBlockModal.hide();
+                currentEditingBlock = null;
+                selectedDay = null; // Reset selectedDay after closing the modal
+            }
+
+            function checkConflict(day, start, end, excludeId = null) {
+                return schedule.some(block => {
+                    if (block.day !== day) return false;
+                    if (excludeId && block.id === excludeId) return false; // Fixed comparison
+                    return !(end <= block.start || start >= block.end);
+                });
+            }
+
+            function saveBlock() {
+                const day = currentEditingBlock ? currentEditingBlock.day : selectedDay;
+                const start = modalStartTime.value;
+                const end = modalEndTime.value;
+                const projectName = modalProjectName.value.trim();
+                const description = modalDescription.value.trim();
+                const colorName = modalColor.value; // Store color name
+
+                if (timeToMinutes(end) <= timeToMinutes(start)) {
+                    alert("End time must be after start time.");
+                    return;
+                }
+
+                if (checkConflict(day, start, end, currentEditingBlock ? currentEditingBlock.id : null)) {
+                    alert("Conflicting time. Please choose a different time slot.");
+                    return;
+                }
+
+                if (currentEditingBlock) {
+                    // Update existing block
+                    currentEditingBlock.start = start;
+                    currentEditingBlock.end = end;
+                    currentEditingBlock.projectName = projectName;
+                    currentEditingBlock.description = description;
+                    currentEditingBlock.colorName = colorName; // Update color name
+                } else {
+                    // Create new block
+                    const newBlock = {
+                        id: Date.now(),
+                        day,
+                        start,
+                        end,
+                        projectName,
+                        description,
+                        colorName // Store color name
+                    };
+                    schedule.push(newBlock);
+                }
+
+                saveSchedule();
+                renderSchedule();
+                closeModal();
+            }
+
+            function deleteBlock() {
+                if (currentEditingBlock) {
+                    if (confirm("Are you sure you want to delete this time block?")) {
+                        schedule = schedule.filter(block => block.id !== currentEditingBlock.id);
+                        saveSchedule();
+                        renderSchedule();
+                        closeModal();
+                    }
+                }
+            }
+
+            function copyCard() {
+                if (currentEditingBlock) {
+                    const { projectName, description, colorName } = currentEditingBlock;
+                    // Retrieve color hex based on current theme
+                    const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
+                    // Ensure proper CSV formatting
+                    const csvData = `"${projectName.replace(/"/g, '""')}","${description.replace(/"/g, '""')}","${colorHex}"`;
+                    navigator.clipboard.writeText(csvData).then(() => {
+                        // Optionally, you can add a temporary visual indicator here
+                        // alert("Card copied to clipboard!");
+                    }).catch(err => {
+                        alert("Failed to copy: " + err);
+                    });
+                }
+            }
+
+            function exportSchedule() {
+                const data = {
+                    schedule: schedule,
+                    startTime: startTimeInput.value,
+                    endTime: endTimeInput.value,
+                    theme: currentTheme, // Include theme in export
+                    exportDate: new Date().toISOString().split('T')[0] // Added current date
+                };
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `schedule_${data.exportDate}.json`; // Optional: Include date in filename
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function exportAsJpg() {
+                // Use html2canvas to capture the timetable container
+                html2canvas(timetableContainer, { scale: 2 }).then(canvas => {
+                    // Convert the canvas to a data URL in JPEG format
+                    canvas.toBlob(function (blob) {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `schedule_${new Date().toISOString().split('T')[0]}.jpg`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }, 'image/jpeg', 0.95);
+                }).catch(err => {
+                    console.error("Failed to export as JPG:", err);
+                    alert("Failed to export as JPG. Please try again.");
+                });
+            }
+
+            function importSchedule(file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (importedData && Array.isArray(importedData.schedule)) {
+                            schedule = importedData.schedule;
+                            startTimeInput.value = importedData.startTime || "08:00";
+                            endTimeInput.value = importedData.endTime || "18:00";
+                            currentTheme = importedData.theme || 'dark'; // Load imported theme
+                            saveSchedule();
+                            populateColorOptions(); // Update color options based on imported theme
+                            renderTable();
+                            switchTheme(currentTheme); // Apply imported theme
+                            alert("Schedule imported successfully.");
+                        } else {
+                            throw new Error("Invalid schedule format.");
+                        }
+                    } catch (err) {
+                        alert("Failed to import schedule: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function wipeSchedule() {
+                if (confirm("Are you sure you want to wipe the entire schedule?")) {
+                    schedule = [];
+                    saveSchedule();
+                    renderSchedule();
+                }
+            }
+
+            function switchTheme(mode) {
+                document.body.classList.remove('light-mode', 'demure-mode');
+                if (mode === 'light') {
+                    document.body.classList.add('light-mode');
+                } else if (mode === 'demure') {
+                    document.body.classList.add('demure-mode');
+                }
+                currentTheme = mode;
+
+                // Update active button
+                document.querySelectorAll('.mode-switcher').forEach(btn => btn.classList.remove('active-mode'));
+                if (mode === 'light') {
+                    lightModeButton.classList.add('active-mode');
+                } else if (mode === 'dark') {
+                    darkModeButton.classList.add('active-mode');
+                } else if (mode === 'demure') {
+                    demureModeButton.classList.add('active-mode');
+                }
+
+                // Repopulate color options with updated theme colors
+                populateColorOptions();
+
+                // Re-render the schedule to update time block colors
+                renderSchedule();
+
+                saveSchedule(); // Save updated theme
+            }
+
+            function handleThemeSwitch(event) {
+                const id = event.currentTarget.id;
+                if (id === 'lightModeButton') {
+                    switchTheme('light');
+                } else if (id === 'darkModeButton') {
+                    switchTheme('dark');
+                } else if (id === 'demureModeButton') {
+                    switchTheme('demure');
+                }
+            }
+
+            function updateCurrentTimeLine() {
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const scheduleStart = timeToMinutes(startTimeInput.value);
+                const scheduleEnd = timeToMinutes(endTimeInput.value);
+                if (currentMinutes < scheduleStart || currentMinutes > scheduleEnd) {
+                    currentTimeLine.style.display = 'none';
+                    return;
+                }
+                currentTimeLine.style.display = 'block';
+
+                // Retrieve cell height from CSS
+                const cellHeightStr = getComputedStyle(document.documentElement).getPropertyValue('--cell-height');
+                const cellHeight = parseInt(cellHeightStr);
+
+                // Retrieve hours column width from CSS
+                const rootStyles = getComputedStyle(document.documentElement);
+                const hoursColumnWidthStr = rootStyles.getPropertyValue('--hours-column-width').trim();
+                const hoursColumnWidth = parseFloat(hoursColumnWidthStr) || 10; // Default to 10% if parsing fails
+
+                // Calculate day column width based on CSS variable
+                const dayColumnWidthStr = rootStyles.getPropertyValue('--day-column-width').trim();
+                const dayColumnWidth = 17.98; // Approximate value as CSS uses calc()
+
+                const minutesSinceStart = currentMinutes - scheduleStart;
+                const topPixels = (minutesSinceStart / timeSlotInterval) * cellHeight + document.querySelector('.table thead').offsetHeight;
+
+                currentTimeLine.style.top = `${topPixels}px`;
+            }
+
+            function refreshCurrentTimeLine() {
+                updateCurrentTimeLine();
+            }
+
+            function openImportCardModal() {
+                importCardTextarea.value = '';
+                importCardModalInstance.show();
+            }
+
+            function handleImportCard() {
+                const csvText = importCardTextarea.value.trim();
+                if (!csvText) {
+                    alert("Please paste valid CSV data.");
+                    return;
+                }
+
+                // Simple CSV parsing
+                const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})"$/;
+                const match = csvText.match(regex);
+                if (match) {
+                    const [_, projectName, description, colorHex] = match;
+
+                    // Find the color name that matches the colorHex in the current theme
+                    let matchedColorName = null;
+                    for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
+                        if (hex.toLowerCase() === colorHex.toLowerCase()) {
+                            matchedColorName = name;
+                            break;
+                        }
+                    }
+
+                    if (!matchedColorName) {
+                        alert("Color hex does not match any available colors in the current theme.");
+                        return;
+                    }
+
+                    // Populate the form fields
+                    modalProjectName.value = projectName;
+                    modalDescription.value = description;
+                    modalColor.value = matchedColorName;
+
+                    importCardModalInstance.hide();
+                    modalProjectName.focus(); // Focus back to the Time Block Modal form
+                } else {
+                    alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\"");
+                }
+            }
+
+            // Function to handle Ctrl+Enter and Numpad Enter in the Time Block Modal
+            function handleModalKeyDown(e) {
+                if ((e.key === 'Enter' && e.code === 'NumpadEnter') || (e.ctrlKey && e.key === 'Enter')) {
+                    e.preventDefault();
+                    acceptButton.click();
+                }
+            }
+
+            // Function to handle Ctrl+Enter and Numpad Enter in the Import Card Modal
+            function handleImportCardModalKeyDown(e) {
+                if ((e.key === 'Enter' && e.code === 'NumpadEnter') || (e.ctrlKey && e.key === 'Enter')) {
+                    e.preventDefault();
+                    importCardConfirmButton.click();
+                }
+            }
+
+            // Function to populate color options in the modal
+            function populateColorOptions() {
+                const modalColorSelect = document.getElementById('modalColor');
+                modalColorSelect.innerHTML = ''; // Clear existing options
+
+                availableColors.forEach(colorName => {
+                    const option = document.createElement('option');
+                    option.value = colorName;
+                    option.textContent = colorName.charAt(0).toUpperCase() + colorName.slice(1); // Capitalize first letter
+
+                    // Since styling <option> with ::before is not widely supported, use a simple approach
+                    // Display color names, and rely on the color border in the time blocks for visual cues
+
+                    modalColorSelect.appendChild(option);
+                });
+            }
+
+            // Event Listeners
+            startTimeInput.addEventListener('change', () => {
+                const start = timeToMinutes(startTimeInput.value);
+                const end = timeToMinutes(endTimeInput.value);
+                if (start >= end) {
+                    alert("Start time must be before end time.");
+                    startTimeInput.value = minutesToTime(end - timeSlotInterval);
+                }
+                saveSchedule(); // Save updated start time
+                renderTable();
+            });
+
+            endTimeInput.addEventListener('change', () => {
+                const start = timeToMinutes(startTimeInput.value);
+                const end = timeToMinutes(endTimeInput.value);
+                if (end <= start) {
+                    alert("End time must be after start time.");
+                    endTimeInput.value = minutesToTime(start + timeSlotInterval);
+                }
+                saveSchedule(); // Save updated end time
+                renderTable();
+            });
+
+            exportButton.addEventListener('click', exportSchedule);
+            exportJpgButton.addEventListener('click', exportAsJpg); // Attach exportAsJpg to new button
+            importButton.addEventListener('click', () => importFileInput.click());
+            wipeButton.addEventListener('click', wipeSchedule);
+
+            lightModeButton.addEventListener('click', handleThemeSwitch);
+            darkModeButton.addEventListener('click', handleThemeSwitch);
+            demureModeButton.addEventListener('click', handleThemeSwitch);
+
+            acceptButton.addEventListener('click', saveBlock);
+            deleteButton.addEventListener('click', deleteBlock);
+            copyButton.addEventListener('click', copyCard);
+            importCardButton.addEventListener('click', openImportCardModal);
+
+            importCardConfirmButton.addEventListener('click', handleImportCard);
+
+            // Handle JSON file import
+            importFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    importSchedule(file);
+                }
+                // Reset the input
+                importFileInput.value = '';
+            });
+
+            // Automatically focus on the textarea when Import Card Modal is shown
+            importCardModalElement.addEventListener('shown.bs.modal', () => {
+                importCardTextarea.focus();
+            });
+
+            // Add event listeners for keydown in the Time Block Modal
+            timeBlockModalElement.addEventListener('shown.bs.modal', function () {
+                timeBlockModalElement.addEventListener('keydown', handleModalKeyDown);
+            });
+
+            timeBlockModalElement.addEventListener('hidden.bs.modal', function () {
+                timeBlockModalElement.removeEventListener('keydown', handleModalKeyDown);
+            });
+
+            // Add event listeners for keydown in the Import Card Modal
+            importCardModalElement.addEventListener('shown.bs.modal', function () {
+                importCardModalElement.addEventListener('keydown', handleImportCardModalKeyDown);
+            });
+
+            importCardModalElement.addEventListener('hidden.bs.modal', function () {
+                importCardModalElement.removeEventListener('keydown', handleImportCardModalKeyDown);
+            });
+
+            // Initialize
+            loadSchedule();
+            populateColorOptions(); // Populate color options based on loaded theme
+            renderTable();
+            switchTheme(currentTheme); // Apply the loaded or default theme
+
+            // Update current time line every minute
+            timerInterval = setInterval(refreshCurrentTimeLine, 60000);
+            refreshCurrentTimeLine();
+
+            // Handle window resize to re-render schedule for correct alignment
+            window.addEventListener('resize', () => {
+                renderSchedule();
+                updateCurrentTimeLine();
+            });
+
+        })();
+    </script>
+</body>
+
+</html>
