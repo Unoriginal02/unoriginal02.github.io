@@ -714,6 +714,15 @@
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
                         currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
+
+                        // Initialize showDescription to true for existing tasks if undefined
+                        schedule.forEach(block => {
+                            if (block.showDescription === undefined) {
+                                block.showDescription = true;
+                            }
+                        });
+
+                        saveSchedule(); // Save the updated schedule back to localStorage
                     } catch (err) {
                         console.error("Failed to parse schedule data:", err);
                         schedule = [];
@@ -830,7 +839,8 @@
                         blockDiv.appendChild(projectNameEl);
                     }
 
-                    if (block.showDescription && block.description) { // Conditionally display description
+                    // **Updated Rendering Condition**
+                    if ((block.showDescription !== false) && block.description) { 
                         const descriptionEl = document.createElement('div');
                         descriptionEl.textContent = block.description;
                         blockDiv.appendChild(descriptionEl);
@@ -1014,6 +1024,14 @@
                             startTimeInput.value = importedData.startTime || "08:00";
                             endTimeInput.value = importedData.endTime || "18:00";
                             currentTheme = importedData.theme || 'dark'; // Load imported theme
+
+                            // Initialize showDescription to true for imported tasks if undefined
+                            schedule.forEach(block => {
+                                if (block.showDescription === undefined) {
+                                    block.showDescription = true;
+                                }
+                            });
+
                             saveSchedule();
                             populateColorOptions(); // Update color options based on imported theme
                             renderTable();
