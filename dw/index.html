@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Work Shift Scheduler</title>
+    <title>Deep Work Schedule</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Fonts and CSS -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -20,7 +20,8 @@
             --main-color-hover: rgba(238, 238, 238, .1);
             --button-active-color: #FC5B5B;
             --button-selection-color: #5f92f0;
-            --background-color: #000000;
+            --background-color: #000000; /* For table and table cells */
+            --body-background-color: #1a1a1a; /* For body background */
             --main-color-rgb: 238, 238, 238;
             --main-color-opacity: rgba(var(--main-color-rgb), 0.12);
             --cell-height: 24px;
@@ -37,7 +38,7 @@
 
         body {
             margin: 0;
-            background-color: var(--background-color);
+            background-color: var(--body-background-color);
             color: var(--main-color);
             font-family: 'JetBrains Mono', monospace;
             display: flex;
@@ -50,6 +51,7 @@
             position: relative;
             z-index: 1;
             /* Ensure table is below time blocks */
+            background-color: var(--background-color);
         }
 
         .maxwidth {
@@ -123,6 +125,7 @@
             --button-active-color: #FC5B5B;
             --button-selection-color: #5f92f0;
             --background-color: #ffffff;
+            --body-background-color: #f5f5f5; /* Light mode body background */
             --main-color-rgb: 0, 0, 0;
             --main-color-opacity: rgba(var(--main-color-rgb), 0.04);
             color: var(--main-color);
@@ -139,6 +142,7 @@
             --button-active-color: #db96fc;
             --button-selection-color: #c9eed8;
             --background-color: #fef5f5;
+            --body-background-color: #f9f0f0; /* Demure mode body background */
             --main-color-rgb: 219, 121, 112;
             --main-color-opacity: rgba(var(--main-color-rgb), 0.09);
             color: var(--main-color);
@@ -154,7 +158,7 @@
             border-collapse: collapse;
             position: relative;
             z-index: 1;
-            background-color: var(--background-color);
+            /* background-color is already set above */
         }
 
         .table th,
@@ -172,6 +176,7 @@
             /* Set cell height */
             vertical-align: middle;
             /* Ensure vertical alignment */
+            background-color: var(--background-color);
         }
 
         /* Define the first column (Time) using CSS variable */
@@ -382,6 +387,9 @@
             flex-direction: column;
             align-items: flex-start;
             justify-content: center;
+
+            /* Preserve line breaks and spaces */
+            white-space: pre-wrap;
         }
 
         .time-block:hover {
@@ -805,7 +813,7 @@
                     blockDiv.style.left = `${leftPercentage}%`;
                     blockDiv.style.width = `${dayColumnWidth}%`;
                     blockDiv.style.height = `${heightPixels}px`;
-                    blockDiv.style.backgroundColor = 'var(--background-color)'; // Ensure background matches main background
+                    blockDiv.style.backgroundColor = 'var(--background-color)'; // Ensure background matches table background
                     blockDiv.style.borderLeft = `8px solid ${colorHex}`; // Set the left border color based on theme
 
                     // Create content elements
