@@ -526,6 +526,11 @@
                             <label for="modalDescription" class="form-label">Task Description</label>
                             <textarea id="modalDescription" class="form-control" rows="3"></textarea>
                         </div>
+                        <!-- Added Show Description Checkbox -->
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="modalShowDescription" checked>
+                            <label class="form-check-label" for="modalShowDescription">Show description</label>
+                        </div>
                         <div class="mb-3">
                             <label for="modalColor" class="form-label">Color</label>
                             <select id="modalColor" class="form-select" required>
@@ -655,6 +660,7 @@
             const modalProjectName = document.getElementById('modalProjectName');
             const modalDescription = document.getElementById('modalDescription');
             const modalColor = document.getElementById('modalColor');
+            const modalShowDescription = document.getElementById('modalShowDescription'); // New checkbox element
             const acceptButton = document.getElementById('acceptButton');
             const deleteButton = document.getElementById('deleteButton');
             const copyButton = document.getElementById('copyButton');
@@ -824,7 +830,7 @@
                         blockDiv.appendChild(projectNameEl);
                     }
 
-                    if (block.description) {
+                    if (block.showDescription && block.description) { // Conditionally display description
                         const descriptionEl = document.createElement('div');
                         descriptionEl.textContent = block.description;
                         blockDiv.appendChild(descriptionEl);
@@ -859,6 +865,7 @@
                     modalProjectName.value = block.projectName;
                     modalDescription.value = block.description;
                     modalColor.value = block.colorName;
+                    modalShowDescription.checked = block.showDescription !== false; // Default to true if undefined
                     deleteButton.style.display = 'inline-block';
                 } else {
                     // Creating new block
@@ -867,6 +874,7 @@
                     modalProjectName.value = '';
                     modalDescription.value = '';
                     modalColor.value = availableColors[0]; // Default to first color
+                    modalShowDescription.checked = true; // Default to checked
                     deleteButton.style.display = 'none';
                 }
                 timeBlockModal.show();
@@ -893,6 +901,7 @@
                 const projectName = modalProjectName.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value; // Store color name
+                const showDescription = modalShowDescription.checked; // New checkbox value
 
                 if (timeToMinutes(end) <= timeToMinutes(start)) {
                     alert("End time must be after start time.");
@@ -911,6 +920,7 @@
                     currentEditingBlock.projectName = projectName;
                     currentEditingBlock.description = description;
                     currentEditingBlock.colorName = colorName; // Update color name
+                    currentEditingBlock.showDescription = showDescription; // Update showDescription
                 } else {
                     // Create new block
                     const newBlock = {
@@ -920,7 +930,8 @@
                         end,
                         projectName,
                         description,
-                        colorName // Store color name
+                        colorName, // Store color name
+                        showDescription // Store showDescription
                     };
                     schedule.push(newBlock);
                 }
@@ -943,11 +954,11 @@
 
             function copyCard() {
                 if (currentEditingBlock) {
-                    const { projectName, description, colorName } = currentEditingBlock;
+                    const { projectName, description, colorName, showDescription } = currentEditingBlock;
                     // Retrieve color hex based on current theme
                     const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
                     // Ensure proper CSV formatting
-                    const csvData = `"${projectName.replace(/"/g, '""')}","${description.replace(/"/g, '""')}","${colorHex}"`;
+                    const csvData = `"${projectName.replace(/"/g, '""')}","${description.replace(/"/g, '""')}","${colorHex}","${showDescription}"`;
                     navigator.clipboard.writeText(csvData).then(() => {
                         // Optionally, you can add a temporary visual indicator here
                         // alert("Card copied to clipboard!");
@@ -1112,10 +1123,11 @@
                 }
 
                 // Simple CSV parsing
-                const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})"$/;
+                const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
                 const match = csvText.match(regex);
                 if (match) {
-                    const [_, projectName, description, colorHex] = match;
+                    const [_, projectName, description, colorHex, showDescriptionStr] = match;
+                    const showDescription = showDescriptionStr.toLowerCase() === 'true';
 
                     // Find the color name that matches the colorHex in the current theme
                     let matchedColorName = null;
@@ -1135,11 +1147,12 @@
                     modalProjectName.value = projectName;
                     modalDescription.value = description;
                     modalColor.value = matchedColorName;
+                    modalShowDescription.checked = showDescription;
 
                     importCardModalInstance.hide();
                     modalProjectName.focus(); // Focus back to the Time Block Modal form
                 } else {
-                    alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\"");
+                    alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\",\"true/false\"");
                 }
             }
 
