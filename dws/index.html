@@ -469,7 +469,56 @@
 
         /* Selected Range Styling */
         .selected-range {
-            background-color: rgba(95, 146, 240, 0.3) !important; /* Light blue highlight with higher specificity */
+            background-color: rgba(95, 146, 240, 0.3) !important;
+            /* Light blue highlight with higher specificity */
+        }
+
+        /* Custom Tooltip Styling */
+        .custom-tooltip {
+            position: absolute;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            padding: 8px;
+            border-radius: 0px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            z-index: 10;
+            white-space: normal;
+            width: 200px;
+            font-size: 0.75rem;
+            display: none;
+            /* Initially hidden */
+        }
+
+        .custom-tooltip::after {
+            content: '';
+            position: absolute;
+            border-width: 6px;
+            border-style: solid;
+            border-color: var(--background-color) transparent transparent transparent;
+            top: -12px;
+            left: 10px;
+        }
+
+        /* Added left border for matching color */
+        .custom-tooltip.with-border {
+            border-left: 8px solid transparent;
+        }
+
+        /* Transition for smooth appearance */
+        .custom-tooltip.fade-in {
+            animation: fadeIn 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -629,6 +678,9 @@
         </div>
     </div>
 
+    <!-- Custom Tooltip Element -->
+    <div id="customTooltip" class="custom-tooltip with-border"></div>
+
     <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Removed html2canvas JS -->
@@ -718,6 +770,10 @@
 
             const currentTimeLine = document.getElementById('currentTimeLine');
             const timetableContainer = document.getElementById('timetable-container');
+
+            const customTooltip = document.getElementById('customTooltip'); // Tooltip element
+
+            let tooltipTimeout = null; // To handle delay
 
             // Utility Functions
             function timeToMinutes(timeStr) {
@@ -921,12 +977,29 @@
                         blockDiv.appendChild(descriptionEl);
                     }
 
-                    blockDiv.title = `${block.start} - ${block.end}`;
+                    // Remove the default title to disable browser tooltip
+                    // blockDiv.title = `${block.start} - ${block.end}`;
 
                     // Event listener for editing
                     blockDiv.addEventListener('click', (e) => {
                         e.stopPropagation();
                         openModal(block);
+                    });
+
+                    // Event listeners for custom tooltip
+                    blockDiv.addEventListener('mouseenter', (e) => {
+                        tooltipTimeout = setTimeout(() => {
+                            showTooltip(e, block);
+                        }, 500);
+                    });
+
+                    blockDiv.addEventListener('mousemove', (e) => {
+                        moveTooltip(e);
+                    });
+
+                    blockDiv.addEventListener('mouseleave', () => {
+                        clearTimeout(tooltipTimeout);
+                        hideTooltip();
                     });
 
                     // Append to timetable container
@@ -935,6 +1008,80 @@
                     // Add event listeners for resizing
                     addResizeListeners(blockDiv, block);
                 });
+            }
+
+            function showTooltip(event, block) {
+                const tooltip = customTooltip;
+                const projectName = block.projectName || '';
+                const description = block.description || '';
+                const start = block.start;
+                const end = block.end;
+                const totalHours = ((timeToMinutes(end) - timeToMinutes(start)) / 60).toFixed(2);
+
+                // Build tooltip content conditionally
+                let lines = [];
+
+                if (projectName) {
+                    lines.push(`<strong>${projectName}</strong>`);
+                }
+
+                if (description) {
+                    // Replace newline characters with <br> to preserve line breaks
+                    const formattedDescription = description.replace(/\n/g, '<br>');
+                    lines.push(formattedDescription);
+                }
+
+                if (description) {
+                    lines.push(''); // Adds an extra <br> for spacing
+                }
+
+                lines.push(`${start} - ${end}`);
+                lines.push(`${totalHours} hours`);
+
+                tooltip.innerHTML = lines.join('<br>');
+
+                // Set left border color to match the block's color
+                const colorHex = colorThemes[currentTheme][block.colorName] || '#FFFFFF';
+                tooltip.style.borderLeftColor = colorHex;
+
+                // Position the tooltip
+                positionTooltip(event);
+
+                // Show the tooltip with fade-in effect
+                tooltip.classList.add('fade-in');
+                tooltip.style.display = 'block';
+            }
+
+            function moveTooltip(event) {
+                positionTooltip(event);
+            }
+
+            function hideTooltip() {
+                const tooltip = customTooltip;
+                tooltip.style.display = 'none';
+                tooltip.classList.remove('fade-in');
+            }
+
+            function positionTooltip(event) {
+                const tooltip = customTooltip;
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const offset = 10; // Offset from the cursor
+
+                let top = event.clientY + offset;
+                let left = event.clientX + offset;
+
+                // Prevent tooltip from going off the right edge
+                if (left + tooltipRect.width > window.innerWidth) {
+                    left = event.clientX - tooltipRect.width - offset;
+                }
+
+                // Prevent tooltip from going off the bottom edge
+                if (top + tooltipRect.height > window.innerHeight) {
+                    top = event.clientY - tooltipRect.height - offset;
+                }
+
+                tooltip.style.top = `${top}px`;
+                tooltip.style.left = `${left}px`;
             }
 
             function onCellClick(e) {
