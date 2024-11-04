@@ -1735,6 +1735,25 @@
 
             // Global mouseup listener to handle selection ending outside the table
             document.addEventListener('mouseup', onMouseUpDocument);
+
+            // === Modifications to Prevent Form Submission on Enter Key ===
+
+            // 1. Prevent form submission on Enter key press
+            timeBlockForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+            });
+
+            // 2. Prevent Enter key from submitting the form in Project Name field
+            modalProjectName.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // Optionally, move focus to the Description textarea for better UX
+                    modalDescription.focus();
+                }
+            });
+
+            // === End of Modifications ===
+
         })();
     </script>
 </body>
