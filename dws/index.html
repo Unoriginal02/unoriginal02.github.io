@@ -451,7 +451,9 @@
 
         /* Custom Tooltip Styling */
         .custom-tooltip {
-            position: absolute;
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
             background-color: var(--background-color);
             color: var(--main-color);
             border: 1px solid var(--main-color);
@@ -468,13 +470,7 @@
         }
 
         .custom-tooltip::after {
-            content: '';
-            position: absolute;
-            border-width: 6px;
-            border-style: solid;
-            border-color: var(--background-color) transparent transparent transparent;
-            top: -12px;
-            left: 10px;
+            display: none;
         }
 
         /* Added left border for matching color */
@@ -931,10 +927,6 @@
                         }
                     });
 
-                    blockDiv.addEventListener('mousemove', (e) => {
-                        moveTooltip(e);
-                    });
-
                     blockDiv.addEventListener('mouseout', (e) => {
                         if (!blockDiv.contains(e.relatedTarget)) {
                             clearTimeout(tooltipTimeout);
@@ -984,44 +976,19 @@
                 const colorHex = colorThemes[currentTheme][block.colorName] || '#FFFFFF';
                 tooltip.style.borderLeftColor = colorHex;
 
-                // Position the tooltip
-                positionTooltip(event);
+                // Set fixed position at top-left with margin
+                tooltip.style.bottom = '20px';
+                tooltip.style.left = '20px';
 
                 // Show the tooltip with fade-in effect
                 tooltip.classList.add('fade-in');
                 tooltip.style.display = 'block';
             }
 
-            function moveTooltip(event) {
-                positionTooltip(event);
-            }
-
             function hideTooltip() {
                 const tooltip = customTooltip;
                 tooltip.style.display = 'none';
                 tooltip.classList.remove('fade-in');
-            }
-
-            function positionTooltip(event) {
-                const tooltip = customTooltip;
-                const tooltipRect = tooltip.getBoundingClientRect();
-                const offset = 10; // Offset from the cursor
-
-                let top = event.clientY + offset;
-                let left = event.clientX + offset;
-
-                // Prevent tooltip from going off the right edge
-                if (left + tooltipRect.width > window.innerWidth) {
-                    left = event.clientX - tooltipRect.width - offset;
-                }
-
-                // Prevent tooltip from going off the bottom edge
-                if (top + tooltipRect.height > window.innerHeight) {
-                    top = event.clientY - tooltipRect.height - offset;
-                }
-
-                tooltip.style.top = `${top}px`;
-                tooltip.style.left = `${left}px`;
             }
 
             function onCellClick(e) {
