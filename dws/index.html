@@ -923,7 +923,7 @@
                         if (!blockDiv.contains(e.relatedTarget)) {
                             tooltipTimeout = setTimeout(() => {
                                 showTooltip(e, block);
-                            }, 500);
+                            }, 125); // Changed from 500ms to 125ms
                         }
                     });
 
@@ -948,7 +948,7 @@
                 const description = block.description || '';
                 const start = block.start;
                 const end = block.end;
-                const totalHours = ((timeToMinutes(end) - timeToMinutes(start)) / 60).toFixed(2);
+                const totalHours = parseFloat(((timeToMinutes(end) - timeToMinutes(start)) / 60).toFixed(2)); // Removed trailing zeros
 
                 // Build tooltip content conditionally
                 let lines = [];
@@ -1356,7 +1356,7 @@
                 const dayColumnWidth = parseFloat(dayColumnWidthStr) || 17.98; // Approximate value as CSS uses calc()
 
                 const minutesSinceStart = currentMinutes - scheduleStart;
-                const topPixels = (minutesSinceStart / timeSlotInterval) * cellHeight + document.querySelector('.table thead').offsetHeight;
+                const topPixels = ((minutesSinceStart / timeSlotInterval) * cellHeight) + document.querySelector('.table thead').offsetHeight;
 
                 currentTimeLine.style.top = `${topPixels}px`;
             }
