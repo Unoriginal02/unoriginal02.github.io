@@ -419,33 +419,9 @@
             bottom: 0;
         }
 
-        /* Import Card Modal */
-        #importCardModal .modal-content {
-            width: 400px;
-        }
-
-        #importCardModal textarea {
-            width: 100%;
-            height: 150px;
-            /* Increased height for better visibility */
-        }
-
         /* Hidden file input for JSON import */
         #importFileInput {
             display: none;
-        }
-
-        /* Style the select options to include color swatches */
-        /* Note: Limited support for styling option elements */
-        /* Alternative approach might be needed for full swatch display */
-        #modalColor option::before {
-            content: '';
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            background-color: attr(data-color color);
-            margin-right: 8px;
-            vertical-align: middle;
         }
 
         .modal-dialog {
@@ -648,36 +624,6 @@
         </div>
     </div>
 
-    <!-- Import Card Modal -->
-    <div class="modal fade" id="importCardModal" tabindex="-1" aria-labelledby="importCardModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 id="importCardModalLabel" class="modal-title">Import Card</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="importCardForm">
-                        <div class="mb-3">
-                            <label for="importCardTextarea" class="form-label">Paste CSV Data</label>
-                            <!-- Removed placeholder and format instructions, increased textarea height -->
-                            <textarea id="importCardTextarea" class="form-control" rows="6"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="brutalButton" data-bs-dismiss="modal">
-                        Cancel
-                    </button>
-                    <button id="importCardConfirmButton" type="button" class="brutalButton">
-                        Import
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Custom Tooltip Element -->
     <div id="customTooltip" class="custom-tooltip with-border"></div>
 
@@ -760,11 +706,6 @@
             const deleteButton = document.getElementById('deleteButton');
             const copyButton = document.getElementById('copyButton');
             const importCardButton = document.getElementById('importCardButton');
-
-            const importCardModalElement = document.getElementById('importCardModal');
-            const importCardModalInstance = new bootstrap.Modal(importCardModalElement);
-            const importCardTextarea = document.getElementById('importCardTextarea');
-            const importCardConfirmButton = document.getElementById('importCardConfirmButton');
 
             const importFileInput = document.getElementById('importFileInput');
 
@@ -1279,6 +1220,52 @@
                 }
             }
 
+            function importCardFromClipboard() {
+                navigator.clipboard.readText().then(text => {
+                    const csvText = text.trim();
+                    if (!csvText) {
+                        alert("Clipboard is empty or does not contain valid CSV data.");
+                        return;
+                    }
+
+                    // Simple CSV parsing
+                    const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+                    const match = csvText.match(regex);
+                    if (match) {
+                        const [_, projectName, description, colorHex, showDescriptionStr] = match;
+                        const showDescription = showDescriptionStr.toLowerCase() === 'true';
+
+                        // Find the color name that matches the colorHex in the current theme
+                        let matchedColorName = null;
+                        for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
+                            if (hex.toLowerCase() === colorHex.toLowerCase()) {
+                                matchedColorName = name;
+                                break;
+                            }
+                        }
+
+                        if (!matchedColorName) {
+                            alert("Color hex does not match any available colors in the current theme.");
+                            return;
+                        }
+
+                        // Populate the form fields
+                        modalProjectName.value = projectName;
+                        modalDescription.value = description;
+                        modalColor.value = matchedColorName;
+                        modalShowDescription.checked = showDescription;
+
+                        // Optionally, focus on the next field
+                        modalProjectName.focus();
+
+                    } else {
+                        alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\",\"true/false\"");
+                    }
+                }).catch(err => {
+                    alert("Failed to read from clipboard: " + err);
+                });
+            }
+
             function exportSchedule() {
                 const data = {
                     schedule: schedule,
@@ -1412,65 +1399,11 @@
                 updateCurrentTimeLine();
             }
 
-            function openImportCardModal() {
-                importCardTextarea.value = '';
-                importCardModalInstance.show();
-            }
-
-            function handleImportCard() {
-                const csvText = importCardTextarea.value.trim();
-                if (!csvText) {
-                    alert("Please paste valid CSV data.");
-                    return;
-                }
-
-                // Simple CSV parsing
-                const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-                const match = csvText.match(regex);
-                if (match) {
-                    const [_, projectName, description, colorHex, showDescriptionStr] = match;
-                    const showDescription = showDescriptionStr.toLowerCase() === 'true';
-
-                    // Find the color name that matches the colorHex in the current theme
-                    let matchedColorName = null;
-                    for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
-                        if (hex.toLowerCase() === colorHex.toLowerCase()) {
-                            matchedColorName = name;
-                            break;
-                        }
-                    }
-
-                    if (!matchedColorName) {
-                        alert("Color hex does not match any available colors in the current theme.");
-                        return;
-                    }
-
-                    // Populate the form fields
-                    modalProjectName.value = projectName;
-                    modalDescription.value = description;
-                    modalColor.value = matchedColorName;
-                    modalShowDescription.checked = showDescription;
-
-                    importCardModalInstance.hide();
-                    modalProjectName.focus(); // Focus back to the Time Block Modal form
-                } else {
-                    alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\",\"true/false\"");
-                }
-            }
-
             // Function to handle Ctrl+Enter and Numpad Enter in the Time Block Modal
             function handleModalKeyDown(e) {
                 if ((e.key === 'Enter' && e.code === 'NumpadEnter') || (e.ctrlKey && e.key === 'Enter')) {
                     e.preventDefault();
                     acceptButton.click();
-                }
-            }
-
-            // Function to handle Ctrl+Enter and Numpad Enter in the Import Card Modal
-            function handleImportCardModalKeyDown(e) {
-                if ((e.key === 'Enter' && e.code === 'NumpadEnter') || (e.ctrlKey && e.key === 'Enter')) {
-                    e.preventDefault();
-                    importCardConfirmButton.click();
                 }
             }
 
@@ -1679,9 +1612,7 @@
             acceptButton.addEventListener('click', saveBlock);
             deleteButton.addEventListener('click', deleteBlock);
             copyButton.addEventListener('click', copyCard);
-            importCardButton.addEventListener('click', openImportCardModal);
-
-            importCardConfirmButton.addEventListener('click', handleImportCard);
+            importCardButton.addEventListener('click', importCardFromClipboard);
 
             // Handle JSON file import
             importFileInput.addEventListener('change', (event) => {
@@ -1693,11 +1624,6 @@
                 importFileInput.value = '';
             });
 
-            // Automatically focus on the textarea when Import Card Modal is shown
-            importCardModalElement.addEventListener('shown.bs.modal', () => {
-                importCardTextarea.focus();
-            });
-
             // Add event listeners for keydown in the Time Block Modal
             timeBlockModalElement.addEventListener('shown.bs.modal', function () {
                 timeBlockModalElement.addEventListener('keydown', handleModalKeyDown);
@@ -1705,15 +1631,6 @@
 
             timeBlockModalElement.addEventListener('hidden.bs.modal', function () {
                 timeBlockModalElement.removeEventListener('keydown', handleModalKeyDown);
-            });
-
-            // Add event listeners for keydown in the Import Card Modal
-            importCardModalElement.addEventListener('shown.bs.modal', function () {
-                importCardModalElement.addEventListener('keydown', handleImportCardModalKeyDown);
-            });
-
-            importCardModalElement.addEventListener('hidden.bs.modal', function () {
-                importCardModalElement.removeEventListener('keydown', handleImportCardModalKeyDown);
             });
 
             // Initialize
