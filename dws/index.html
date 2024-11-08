@@ -492,10 +492,44 @@
                 opacity: 1;
             }
         }
+
+        /* === Heartbeat Message Styling === */
+        #duplicate-instance-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #ffffff;
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #duplicate-instance-message.visible {
+            display: flex;
+        }
+
+        #duplicate-instance-message p {
+            font-size: 1.5rem;
+            max-width: 600px;
+        }
+        /* === End of Heartbeat Message Styling === */
     </style>
 </head>
 
 <body>
+    <!-- === Duplicate Instance Message === -->
+    <div id="duplicate-instance-message">
+        <p>The application is already open in another tab or window. Please use the existing instance.</p>
+    </div>
+    <!-- === End of Duplicate Instance Message === -->
+
     <div class="maxwidth container text-center my-5">
         <!-- Time Selectors -->
         <div class="row mb-4">
@@ -627,6 +661,101 @@
 
     <script>
         (function () {
+            // === Heartbeat Mechanism ===
+            const HEARTBEAT_KEY = 'app-heartbeat';
+            const HEARTBEAT_INTERVAL = 1000; // 1 second
+            const HEARTBEAT_EXPIRATION = 5000; // 5 seconds
+
+            // Generate a unique identifier for this instance
+            const instanceId = Date.now() + '-' + Math.random();
+
+            // Function to set heartbeat
+            function setHeartbeat() {
+                const heartbeat = {
+                    id: instanceId,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(HEARTBEAT_KEY, JSON.stringify(heartbeat));
+            }
+
+            // Function to check if another instance is running
+            function isAnotherInstanceRunning() {
+                const heartbeatStr = localStorage.getItem(HEARTBEAT_KEY);
+                if (heartbeatStr) {
+                    try {
+                        const heartbeat = JSON.parse(heartbeatStr);
+                        if (heartbeat.id !== instanceId) {
+                            const age = Date.now() - heartbeat.timestamp;
+                            if (age < HEARTBEAT_EXPIRATION) {
+                                return true;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error parsing heartbeat:", e);
+                        // Treat as no heartbeat
+                    }
+                }
+                return false;
+            }
+
+            // Function to display duplicate instance message
+            function displayDuplicateMessage() {
+                const messageDiv = document.getElementById('duplicate-instance-message');
+                if (messageDiv) {
+                    messageDiv.classList.add('visible');
+                }
+            }
+
+            // Check if another instance is running
+            if (isAnotherInstanceRunning()) {
+                displayDuplicateMessage();
+                // Prevent further execution by exiting the IIFE
+                return;
+            }
+
+            // No other instance detected, set own heartbeat
+            setHeartbeat();
+            const heartbeatInterval = setInterval(setHeartbeat, HEARTBEAT_INTERVAL);
+
+            // Listen for storage events to detect new heartbeats
+            window.addEventListener('storage', function (e) {
+                if (e.key === HEARTBEAT_KEY) {
+                    if (e.newValue) {
+                        try {
+                            const heartbeat = JSON.parse(e.newValue);
+                            if (heartbeat.id !== instanceId) {
+                                const age = Date.now() - heartbeat.timestamp;
+                                if (age < HEARTBEAT_EXPIRATION) {
+                                    displayDuplicateMessage();
+                                    clearInterval(heartbeatInterval);
+                                    // Optionally, disable app functionality here
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error parsing heartbeat:", e);
+                        }
+                    }
+                }
+            });
+
+            // Remove heartbeat on unload
+            window.addEventListener('beforeunload', function () {
+                const heartbeatStr = localStorage.getItem(HEARTBEAT_KEY);
+                if (heartbeatStr) {
+                    try {
+                        const heartbeat = JSON.parse(heartbeatStr);
+                        if (heartbeat.id === instanceId) {
+                            localStorage.removeItem(HEARTBEAT_KEY);
+                        }
+                    } catch (e) {
+                        console.error("Error parsing heartbeat on unload:", e);
+                    }
+                }
+                clearInterval(heartbeatInterval);
+            });
+            // === End of Heartbeat Mechanism ===
+
+            // Existing Application Code Starts Here
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
             const timeSlotInterval = 15; // minutes
             let schedule = []; // Array to hold time blocks
