@@ -615,10 +615,6 @@
             <input class="form-check-input" type="checkbox" id="notifyToggle">
             <label class="form-check-label" for="notifyToggle">Notify</label>
         </div>
-        <!-- Test Notification Button -->
-        <button id="testNotificationButton" class="mode-switcher" style="display: none;">
-            <i class="bi bi-bell"></i> Test Notification
-        </button>
     </div>
 
     <!-- Time Block Modal -->
@@ -1959,9 +1955,6 @@
 
             // Event listener for notify toggle
             notifyToggle.addEventListener('change', handleNotificationToggle);
-
-            // Event listener for test notification button
-            testNotificationButton.addEventListener('click', testNotification);
 
             // Initialize
             loadSchedule();
