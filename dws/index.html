@@ -502,7 +502,8 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.85);
             color: #ffffff;
-            display: none; /* Hidden by default */
+            display: none;
+            /* Hidden by default */
             align-items: center;
             justify-content: center;
             text-align: center;
@@ -519,7 +520,25 @@
             font-size: 1.5rem;
             max-width: 600px;
         }
+
         /* === End of Heartbeat Message Styling === */
+
+        /* Styles for Notify Checkbox */
+        .mode-buttons .form-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mode-buttons .form-check-label {
+            margin-bottom: 0;
+            color: var(--main-color);
+        }
+
+        .mode-buttons .form-check-input {
+            background-color: var(--background-color);
+            border: 1px solid var(--main-color);
+        }
     </style>
 </head>
 
@@ -590,6 +609,15 @@
         </button>
         <button id="demureModeButton" class="mode-switcher">
             <i class="bi bi-stars"></i> Demure Mode
+        </button>
+        <!-- Notify Checkbox -->
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="notifyToggle">
+            <label class="form-check-label" for="notifyToggle">Notify</label>
+        </div>
+        <!-- Test Notification Button -->
+        <button id="testNotificationButton" class="mode-switcher" style="display: none;">
+            <i class="bi bi-bell"></i> Test Notification
         </button>
     </div>
 
@@ -837,7 +865,12 @@
 
             const customTooltip = document.getElementById('customTooltip'); // Tooltip element
 
+            const notifyToggle = document.getElementById('notifyToggle'); // Notify toggle checkbox
+            const testNotificationButton = document.getElementById('testNotificationButton'); // Test notification button
+
             let tooltipTimeout = null; // To handle delay
+            let notificationsEnabled = false; // Notifications are disabled by default
+            let notificationTimeout = null; // Holds the timeout ID for scheduled notification
 
             // Utility Functions
             function timeToMinutes(timeStr) {
@@ -877,6 +910,7 @@
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
                         currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
+                        notificationsEnabled = data.notificationsEnabled || false; // Load notifications setting
 
                         // Initialize showDescription to true for existing tasks if undefined
                         schedule.forEach(block => {
@@ -890,9 +924,38 @@
                         console.error("Failed to parse schedule data:", err);
                         schedule = [];
                         currentTheme = 'dark'; // Default theme in case of error
+                        notificationsEnabled = false; // Notifications disabled in case of error
                     }
                 } else {
                     currentTheme = 'dark'; // Default theme if no data is stored
+                    notificationsEnabled = false; // Notifications disabled by default
+                }
+
+                // Set the initial state of the notifyToggle checkbox
+                notifyToggle.checked = notificationsEnabled;
+                // Show or hide the test notification button
+                testNotificationButton.style.display = notificationsEnabled ? 'block' : 'none';
+
+                // If notifications are enabled, check permission and schedule notifications
+                if (notificationsEnabled) {
+                    if (Notification.permission === 'granted') {
+                        scheduleNextNotification();
+                    } else if (Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                scheduleNextNotification();
+                            } else {
+                                notificationsEnabled = false;
+                                notifyToggle.checked = false;
+                                saveSchedule();
+                            }
+                        });
+                    } else {
+                        // Permission denied
+                        notificationsEnabled = false;
+                        notifyToggle.checked = false;
+                        saveSchedule();
+                    }
                 }
             }
 
@@ -901,9 +964,14 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-                    theme: currentTheme // Save the current theme
+                    theme: currentTheme, // Save the current theme
+                    notificationsEnabled: notificationsEnabled // Save the notifications setting
                 };
                 localStorage.setItem('scheduleData', JSON.stringify(data));
+                // If notifications are enabled, reschedule notifications
+                if (notificationsEnabled) {
+                    scheduleNextNotification();
+                }
             }
 
             function clearTable() {
@@ -1285,6 +1353,10 @@
                 renderTable();
                 renderSchedule();
                 closeModal();
+
+                if (notificationsEnabled) {
+                    scheduleNextNotification();
+                }
             }
 
             function deleteBlock() {
@@ -1295,6 +1367,10 @@
                         renderTable();
                         renderSchedule();
                         closeModal();
+
+                        if (notificationsEnabled) {
+                            scheduleNextNotification();
+                        }
                     }
                 }
             }
@@ -1367,6 +1443,7 @@
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
                     theme: currentTheme, // Include theme in export
+                    notificationsEnabled: notificationsEnabled, // Include notifications setting
                     exportDate: new Date().toISOString().split('T')[0] // Added current date
                 };
                 const dataStr = JSON.stringify(data, null, 2);
@@ -1389,6 +1466,7 @@
                             startTimeInput.value = importedData.startTime || "08:00";
                             endTimeInput.value = importedData.endTime || "18:00";
                             currentTheme = importedData.theme || 'dark'; // Load imported theme
+                            notificationsEnabled = importedData.notificationsEnabled || false; // Load notifications setting
 
                             // Initialize showDescription to true for imported tasks if undefined
                             schedule.forEach(block => {
@@ -1401,6 +1479,33 @@
                             populateColorOptions(); // Update color options based on imported theme
                             renderTable();
                             switchTheme(currentTheme); // Apply imported theme
+
+                            // Set the notifyToggle checkbox state
+                            notifyToggle.checked = notificationsEnabled;
+                            // Show or hide the test notification button
+                            testNotificationButton.style.display = notificationsEnabled ? 'block' : 'none';
+
+                            // If notifications are enabled, request permission and schedule notifications
+                            if (notificationsEnabled) {
+                                if (Notification.permission === 'granted') {
+                                    scheduleNextNotification();
+                                } else if (Notification.permission !== 'denied') {
+                                    Notification.requestPermission().then(permission => {
+                                        if (permission === 'granted') {
+                                            scheduleNextNotification();
+                                        } else {
+                                            notificationsEnabled = false;
+                                            notifyToggle.checked = false;
+                                            saveSchedule();
+                                        }
+                                    });
+                                } else {
+                                    notificationsEnabled = false;
+                                    notifyToggle.checked = false;
+                                    saveSchedule();
+                                }
+                            }
+
                             alert("Schedule imported successfully.");
                         } else {
                             throw new Error("Invalid schedule format.");
@@ -1418,6 +1523,10 @@
                     saveSchedule();
                     renderTable();
                     renderSchedule();
+
+                    if (notificationsEnabled) {
+                        scheduleNextNotification();
+                    }
                 }
             }
 
@@ -1667,6 +1776,119 @@
                     saveSchedule();
                     renderTable();
                     renderSchedule();
+
+                    if (notificationsEnabled) {
+                        scheduleNextNotification();
+                    }
+                }
+            }
+
+            // Function to handle notification toggle
+            function handleNotificationToggle(event) {
+                notificationsEnabled = notifyToggle.checked;
+                if (notificationsEnabled) {
+                    // Request notification permission
+                    if (Notification.permission === 'default' || Notification.permission === 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission !== 'granted') {
+                                alert('Permission for notifications was denied.');
+                                notificationsEnabled = false;
+                                notifyToggle.checked = false;
+                            } else {
+                                scheduleNextNotification();
+                            }
+                        });
+                    } else {
+                        scheduleNextNotification();
+                    }
+                } else {
+                    // Cancel any scheduled notifications
+                    if (notificationTimeout) {
+                        clearTimeout(notificationTimeout);
+                    }
+                }
+                saveSchedule();
+                // Show or hide test notification button based on notificationsEnabled
+                testNotificationButton.style.display = notificationsEnabled ? 'block' : 'none';
+            }
+
+            // Function to schedule the next notification
+            function scheduleNextNotification() {
+                // Cancel any existing notification timeout
+                if (notificationTimeout) {
+                    clearTimeout(notificationTimeout);
+                }
+
+                // Find the next task
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                // Get today's day
+                const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+                // Get the tasks for today
+                const todayTasks = schedule.filter(block => block.day === today);
+
+                // Find the next task that hasn't started yet
+                let nextTask = null;
+                let minTimeDiff = Infinity;
+
+                todayTasks.forEach(block => {
+                    const taskStart = timeToMinutes(block.start);
+                    const timeDiff = taskStart - currentMinutes;
+                    if (timeDiff > 1 && timeDiff < minTimeDiff) {
+                        minTimeDiff = timeDiff;
+                        nextTask = block;
+                    }
+                });
+
+                if (nextTask) {
+                    // Schedule a notification 1 minute before the task starts
+                    const notificationTime = (timeToMinutes(nextTask.start) - 1) * 60 * 1000; // in milliseconds since midnight
+
+                    const nowTime = currentMinutes * 60 * 1000 + now.getSeconds() * 1000 + now.getMilliseconds();
+
+                    let delay = notificationTime - nowTime;
+
+                    // If delay is negative, adjust for next day
+                    if (delay < 0) {
+                        delay += 24 * 60 * 60 * 1000;
+                    }
+
+                    notificationTimeout = setTimeout(() => {
+                        showNotification(nextTask);
+                        // After notification is shown, schedule the next one
+                        scheduleNextNotification();
+                    }, delay);
+                } else {
+                    // No more tasks today
+                    notificationTimeout = null;
+                }
+            }
+
+            // Function to show a notification
+            function showNotification(task) {
+                if (Notification.permission === 'granted') {
+                    const notification = new Notification('Upcoming Task', {
+                        body: `Your task "${task.projectName}" starts in 1 minute.`,
+                        // Optionally, you can add an icon
+                        // icon: 'path/to/icon.png'
+                    });
+                }
+            }
+
+            // Function to test notification
+            function testNotification() {
+                if (Notification.permission === 'granted') {
+                    const testTask = {
+                        projectName: 'Test Task',
+                        description: 'This is a test notification.',
+                        start: '00:00',
+                        end: '00:00'
+                    };
+                    showNotification(testTask);
+                } else {
+                    alert('Notifications are not enabled.');
                 }
             }
 
@@ -1681,6 +1903,10 @@
                 saveSchedule(); // Save updated start time
                 renderTable();
                 renderSchedule();
+
+                if (notificationsEnabled) {
+                    scheduleNextNotification();
+                }
             });
 
             endTimeInput.addEventListener('change', () => {
@@ -1693,6 +1919,10 @@
                 saveSchedule(); // Save updated end time
                 renderTable();
                 renderSchedule();
+
+                if (notificationsEnabled) {
+                    scheduleNextNotification();
+                }
             });
 
             exportButton.addEventListener('click', exportSchedule);
@@ -1726,6 +1956,12 @@
             timeBlockModalElement.addEventListener('hidden.bs.modal', function () {
                 timeBlockModalElement.removeEventListener('keydown', handleModalKeyDown);
             });
+
+            // Event listener for notify toggle
+            notifyToggle.addEventListener('change', handleNotificationToggle);
+
+            // Event listener for test notification button
+            testNotificationButton.addEventListener('click', testNotification);
 
             // Initialize
             loadSchedule();
