@@ -1861,25 +1861,10 @@
             function showNotification(task) {
                 if (Notification.permission === 'granted') {
                     const notification = new Notification('Upcoming Task', {
-                        body: `Your task "${task.projectName}" starts in 1 minute.`,
+                        body: `"${task.projectName}" starts in 1 minute.`,
                         // Optionally, you can add an icon
                         // icon: 'path/to/icon.png'
                     });
-                }
-            }
-
-            // Function to test notification
-            function testNotification() {
-                if (Notification.permission === 'granted') {
-                    const testTask = {
-                        projectName: 'Test Task',
-                        description: 'This is a test notification.',
-                        start: '00:00',
-                        end: '00:00'
-                    };
-                    showNotification(testTask);
-                } else {
-                    alert('Notifications are not enabled.');
                 }
             }
 
