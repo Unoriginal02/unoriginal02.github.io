@@ -614,12 +614,14 @@
                 let showTotals = false;
 
                 function copyTextToClipboard(element) {
-                    navigator.clipboard.writeText(element.value || element.textContent).then(() => {
-                        element.classList.add('copy-effect');
-                        setTimeout(() => {
-                            element.classList.remove('copy-effect');
-                        }, 500); // Match this duration to the CSS animation duration
-                    });
+                    return navigator.clipboard.writeText(element.value || element.textContent);
+                }
+
+                function copyTextToClipboardEffect(element) {
+                    element.classList.add('copy-effect');
+                    setTimeout(() => {
+                        element.classList.remove('copy-effect');
+                    }, 500); // Match this duration to the CSS animation duration
                 }
 
                 function updateLocalStorage() {
@@ -712,7 +714,7 @@
                     projectIdField.readOnly = true;
                     projectIdField.addEventListener('click', () => {
                         if (showTotals) {
-                            copyTextToClipboard(projectIdField, task.projectId);
+                            copyTextToClipboard(projectIdField, task.projectId).then(() => copyTextToClipboardEffect(projectIdField));
                         }
                     });
 
@@ -753,7 +755,25 @@
                     copyButton.className = 'copy-button ' + (showTotals ? '' : 'hidden'); // Make it hidden unless showTotals is active
                     copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
                     copyButton.addEventListener('click', () => {
-                        copyTextToClipboard(taskInput, copyButton); // Pass copyButton to apply flashing effect
+                        const row = copyButton.closest('.task-row');
+                        copyTextToClipboard(row.querySelector('.decimal-time'))
+                            .then(() => {
+                                // console.log('copi 1');
+
+                                // Pass copyButton to apply flashing effect
+                                setTimeout(() => {
+                                    copyTextToClipboard(taskInput, copyButton).then(() => {
+                                        // console.log('copi 2');
+                                        setTimeout(() => {
+                                            copyTextToClipboard(row.querySelector('.project-id-field'))
+                                                .then(() => {
+                                                    // console.log('copi 3');
+                                                    copyTextToClipboardEffect(copyButton)
+                                                });
+                                        }, 250)
+                                    })
+                                }, 250)
+                            });
                     });
 
                     const percentageOfTotal = totalTaskTime > 0 ? (task.time / totalTaskTime) * 150 : 0;
@@ -839,7 +859,7 @@
                     const decimalValue = roundToQuarterHour(task.time / 60);
                     decimalTime.textContent = parseFloat(decimalValue.toFixed(2));
                     decimalTime.addEventListener('click', () => {
-                        copyTextToClipboard(decimalTime, decimalTime.textContent);
+                        copyTextToClipboard(decimalTime, decimalTime.textContent).then(() => copyTextToClipboardEffect(decimalTime));
                     });
 
                     // Append elements to taskRow
@@ -847,12 +867,12 @@
                     taskRow.appendChild(projectIdField);
                     taskRow.appendChild(linkButton); // Add this line
                     taskRow.appendChild(taskInput);
-                    taskRow.appendChild(copyButton); // Add this line
                     taskRow.appendChild(timerDisplay);
                     taskRow.appendChild(startStopButton);
                     taskRow.appendChild(deleteButton);
                     taskRow.appendChild(adjustButtons);
                     taskRow.appendChild(decimalTime);
+                    taskRow.appendChild(copyButton); // Add this line
 
                     return taskRow;
                 }
