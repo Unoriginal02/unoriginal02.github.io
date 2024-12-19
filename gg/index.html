@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gamify</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Fonts and CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        /* Reusing existing CSS from Work Shift Scheduler */
+
+        :root {
+            --main-color: #eeeeee;
+            --main-color-hover: rgba(238, 238, 238, .1);
+            --button-active-color: #FC5B5B;
+            --button-selection-color: #5f92f0;
+            --background-color: #000000;
+            --main-color-rgb: 238, 238, 238;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.12);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .brutalButton {
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0;
+            white-space: nowrap;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .brutalButton:hover {
+            background-color: var(--main-color-hover);
+            color: var(--main-color);
+        }
+
+        /* Light Mode */
+        .light-mode {
+            --main-color: #333333;
+            --main-color-hover: rgba(0, 0, 0, 0.02);
+            --button-active-color: #FC5B5B;
+            --button-selection-color: #5f92f0;
+            --background-color: #ffffff;
+            --main-color-rgb: 0, 0, 0;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.04);
+            color: var(--main-color);
+        }
+
+        /* Demure Mode (Pastel Palette) */
+        .demure-mode {
+            font-family: "Nunito", sans-serif;
+            --main-color: #db7970;
+            --main-color-hover: rgba(219, 121, 112, 0.1);
+            --button-active-color: #db96fc;
+            --button-selection-color: #c9eed8;
+            --background-color: #fef5f5;
+            --main-color-rgb: 219, 121, 112;
+            --main-color-opacity: rgba(var(--main-color-rgb), 0.09);
+            color: var(--main-color);
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--main-color);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--main-color);
+        }
+
+        /* Timer Display */
+        .timer-display {
+            font-size: 3rem;
+            margin: 2rem 0;
+        }
+
+        /* Emoji Feedback */
+        .emoji-feedback {
+            font-size: 4rem;
+            margin-top: 1rem;
+        }
+
+        /* Stats Display */
+        .stats {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap; /* Added for better responsiveness */
+        }
+
+        .stat {
+            font-size: 1.25rem;
+        }
+
+        /* Theme switcher buttons */
+        .mode-buttons {
+            position: fixed;
+            font-size: 0.75rem;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mode-switcher {
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+        }
+
+        .mode-switcher.active-mode {
+            background-color: var(--main-color-opacity);
+            border: 1px solid var(--main-color);
+            color: var(--main-color);
+        }
+
+        .mode-switcher:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .mode-buttons {
+                font-size: 0.65rem;
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .brutalButton {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+
+            .stat {
+                font-size: 1rem;
+            }
+
+            /* Additional responsive styles from Work Shift Scheduler */
+            .modal-body .form-control {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+
+            .modal-body .form-label {
+                font-size: 0.9rem;
+            }
+
+            #startGameButton {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .brutalButton {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.85rem;
+            }
+
+            .stat {
+                font-size: 0.9rem;
+            }
+
+            /* Additional responsive styles from Work Shift Scheduler */
+            .modal-body .form-control {
+                padding: 0.4rem;
+                font-size: 0.85rem;
+            }
+
+            .modal-body .form-label {
+                font-size: 0.85rem;
+            }
+
+            #startGameButton {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Negative Timer Styling */
+        .negative-timer {
+            color: red;
+        }
+
+        /* Center the Start Button */
+        #startGameButton {
+            display: block;
+            margin: 2rem auto;
+        }
+
+        /* Additional Styles from Work Shift Scheduler for Forms */
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-control {
+            border: 1px solid var(--main-color);
+            background-color: var(--background-color);
+            color: var(--main-color);
+        }
+
+        .form-control:focus {
+            border-color: var(--button-selection-color);
+            box-shadow: 0 0 0 0.2rem rgba(var(--main-color-rgb), 0.25);
+        }
+
+        .form-label {
+            color: var(--main-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Task Input Modal -->
+    <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="taskModalLabel" class="modal-title">Start a New Task</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <div class="mb-3">
+                            <label for="taskName" class="form-label">Task Name</label>
+                            <input type="text" class="form-control" id="taskName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="taskDuration" class="form-label">Duration (minutes)</label>
+                            <input type="number" class="form-control" id="taskDuration" min="1" required>
+                        </div>
+                        <button type="submit" class="brutalButton w-100">Start Task</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="maxwidth container text-center my-5">
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen">
+            <h1>Welcome adventurer!</h1>
+            <div class="stats">
+                <div class="stat">Health: <span id="healthDisplay">100</span></div>
+                <div class="stat">Level: <span id="levelDisplay">1</span></div>
+                <div class="stat">XP: <span id="xpDisplay">0</span> / <span id="xpRequiredDisplay">20</span></div>
+                <div class="stat">Score: <span id="scoreDisplay">0</span></div>
+            </div>
+            <button id="startGameButton" class="brutalButton">Start Game</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" style="display: none;">
+            <h2 id="taskTitle">Task: None</h2>
+            <div id="timerDisplay" class="timer-display">00:00</div>
+            <button id="doneButton" class="brutalButton" style="display: none;">
+                <i class="bi bi-check-circle"></i> Done!
+            </button>
+            <div id="emojiFeedback" class="emoji-feedback"></div>
+        </div>
+    </div>
+
+    <!-- Theme switcher buttons -->
+    <div class="mode-buttons">
+        <button id="lightModeButton" class="mode-switcher">
+            <i class="bi bi-sun"></i> Light Mode
+        </button>
+        <button id="darkModeButton" class="mode-switcher">
+            <i class="bi bi-moon"></i> Dark Mode
+        </button>
+        <button id="demureModeButton" class="mode-switcher">
+            <i class="bi bi-stars"></i> Demure Mode
+        </button>
+        <!-- Added Reset Button -->
+        <button id="resetAppButton" class="mode-switcher">
+            <i class="bi bi-trash"></i> Reset Data
+        </button>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        (function () {
+            'use strict';
+
+            // Prevent multiple instances
+            if (localStorage.getItem('appOpened')) {
+                alert('The app is already open in another window.');
+                window.close();
+            } else {
+                localStorage.setItem('appOpened', 'true');
+            }
+
+            window.addEventListener('beforeunload', () => {
+                localStorage.removeItem('appOpened');
+            });
+
+            // Theme switching logic (reusing from existing code)
+            function updateActiveModeButton(activeButtonId) {
+                const modeButtons = document.querySelectorAll('.mode-switcher');
+                modeButtons.forEach(button => {
+                    if (button.id === activeButtonId) {
+                        button.classList.add('active-mode');
+                    } else {
+                        button.classList.remove('active-mode');
+                    }
+                });
+            }
+
+            // Load stored theme mode from localStorage
+            function loadTheme() {
+                const storedThemeMode = localStorage.getItem('themeMode');
+                if (storedThemeMode) {
+                    if (storedThemeMode === 'light-mode') {
+                        document.body.classList.add('light-mode');
+                        updateActiveModeButton('lightModeButton');
+                    } else if (storedThemeMode === 'demure-mode') {
+                        document.body.classList.add('demure-mode');
+                        updateActiveModeButton('demureModeButton');
+                    } else {
+                        // Default to dark mode if 'dark-mode' or unknown value
+                        updateActiveModeButton('darkModeButton');
+                    }
+                } else {
+                    // Default to dark mode
+                    updateActiveModeButton('darkModeButton');
+                }
+            }
+
+            // Event listeners for theme switcher buttons
+            document.getElementById('darkModeButton').addEventListener('click', () => {
+                document.body.classList.remove('light-mode', 'demure-mode');
+                localStorage.setItem('themeMode', 'dark-mode');
+                updateActiveModeButton('darkModeButton');
+            });
+
+            document.getElementById('lightModeButton').addEventListener('click', () => {
+                document.body.classList.remove('demure-mode');
+                document.body.classList.add('light-mode');
+                localStorage.setItem('themeMode', 'light-mode');
+                updateActiveModeButton('lightModeButton');
+            });
+
+            document.getElementById('demureModeButton').addEventListener('click', () => {
+                document.body.classList.remove('light-mode');
+                document.body.classList.add('demure-mode');
+                localStorage.setItem('themeMode', 'demure-mode');
+                updateActiveModeButton('demureModeButton');
+            });
+
+            // Load the theme on initial load
+            loadTheme();
+
+            // Game Logic
+            let health = 100;
+            let level = 1;
+            let xp = 0;
+            let xpRequired = 20;
+            let score = 0;
+            let timerInterval = null;
+            let remainingTime = 0;
+            let taskStartedAt = null;
+            let overdueMinutes = 0;
+
+            const startGameButton = document.getElementById('startGameButton');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const gameScreen = document.getElementById('gameScreen');
+
+            const healthDisplay = document.getElementById('healthDisplay');
+            const levelDisplay = document.getElementById('levelDisplay');
+            const xpDisplay = document.getElementById('xpDisplay');
+            const xpRequiredDisplay = document.getElementById('xpRequiredDisplay');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+
+            const taskModal = new bootstrap.Modal(document.getElementById('taskModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+
+            const taskForm = document.getElementById('taskForm');
+            const taskTitle = document.getElementById('taskTitle');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const doneButton = document.getElementById('doneButton');
+            const emojiFeedback = document.getElementById('emojiFeedback');
+
+            // Initialize game state from localStorage
+            function loadGameState() {
+                const storedState = JSON.parse(localStorage.getItem('gameState'));
+                if (storedState) {
+                    health = storedState.health;
+                    level = storedState.level;
+                    xp = storedState.xp;
+                    xpRequired = storedState.xpRequired;
+                    score = storedState.score;
+                } else {
+                    saveGameState();
+                }
+                updateStatsDisplay();
+            }
+
+            // Save game state to localStorage
+            function saveGameState() {
+                const state = {
+                    health: health,
+                    level: level,
+                    xp: xp,
+                    xpRequired: xpRequired,
+                    score: score
+                };
+                localStorage.setItem('gameState', JSON.stringify(state));
+            }
+
+            // Update the stats display
+            function updateStatsDisplay() {
+                healthDisplay.textContent = health;
+                levelDisplay.textContent = level;
+                xpDisplay.textContent = xp;
+                xpRequiredDisplay.textContent = xpRequired;
+                scoreDisplay.textContent = score;
+            }
+
+            // Start Game Button Click
+            startGameButton.addEventListener('click', () => {
+                welcomeScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                taskModal.show();
+            });
+
+            // Handle task form submission
+            taskForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const taskName = document.getElementById('taskName').value.trim();
+                const taskDuration = parseInt(document.getElementById('taskDuration').value.trim());
+
+                if (taskName && taskDuration > 0) {
+                    startTask(taskName, taskDuration);
+                    taskModal.hide();
+                }
+            });
+
+            // Start the task timer
+            function startTask(name, duration) {
+                taskTitle.textContent = `Task: ${name}`;
+                remainingTime = duration * 60; // Convert minutes to seconds
+                updateTimerDisplay();
+                emojiFeedback.textContent = '';
+                doneButton.style.display = 'inline-flex';
+
+                doneButton.onclick = () => {
+                    completeTask(true);
+                };
+
+                taskStartedAt = new Date();
+
+                timerInterval = setInterval(() => {
+                    remainingTime--;
+                    updateTimerDisplay();
+
+                    if (remainingTime <= 0 && !timerDisplay.classList.contains('negative-timer')) {
+                        // Start negative timer styling
+                        timerDisplay.classList.add('negative-timer');
+                    }
+
+                    if (remainingTime <= -duration * 60) { // Optional: Limit how far negative it can go
+                        clearInterval(timerInterval);
+                    }
+                }, 1000);
+            }
+
+            // Update the timer display
+            function updateTimerDisplay() {
+                const absTime = Math.abs(remainingTime);
+                const minutes = Math.floor(absTime / 60).toString().padStart(2, '0');
+                const seconds = (absTime % 60).toString().padStart(2, '0');
+                timerDisplay.textContent = `${minutes}:${seconds}`;
+
+                if (remainingTime < 0) {
+                    timerDisplay.classList.add('negative-timer');
+                } else {
+                    timerDisplay.classList.remove('negative-timer');
+                }
+            }
+
+            // Complete the task
+            function completeTask(completedOnTime) {
+                clearInterval(timerInterval);
+                doneButton.style.display = 'none';
+
+                let earnedScore = 0;
+
+                if (completedOnTime && remainingTime >= 0) {
+                    // Calculate score based on time left
+                    const baseScore = 1000;
+                    const timeLeft = remainingTime; // in seconds
+                    const totalTime = parseInt(document.getElementById('taskDuration').value.trim()) * 60;
+                    const percentageLeft = timeLeft / totalTime;
+                    earnedScore = Math.floor(baseScore * percentageLeft * getScoreMultiplier());
+                    score += earnedScore;
+
+                    xp += 10;
+                    emojiFeedback.textContent = `😊 Task Completed! +${earnedScore} Score`;
+                } else {
+                    // Calculate overdue minutes
+                    overdueMinutes = Math.ceil(Math.abs(remainingTime) / 60);
+                    health -= overdueMinutes;
+                    if (health < 0) health = 0;
+                    emojiFeedback.textContent = `😞 Task Failed! -${overdueMinutes} Health`;
+                }
+
+                // Check for level up
+                checkLevelUp();
+
+                updateStatsDisplay();
+                saveGameState();
+
+                // Reset for next task after a delay
+                setTimeout(() => {
+                    resetGameScreen();
+                    if (health > 0) {
+                        // Return to welcome screen instead of showing task modal again
+                        gameScreen.style.display = 'none';
+                        welcomeScreen.style.display = 'block';
+                    } else {
+                        alert('Game Over! You have no health left.');
+                        resetGame();
+                    }
+                }, 3000);
+            }
+
+            // Check if player levels up
+            function checkLevelUp() {
+                while (xp >= xpRequired) {
+                    xp -= xpRequired;
+                    level++;
+                    xpRequired = Math.ceil(xpRequired * 1.50);
+                    alert(`Congratulations! You've reached Level ${level}!`);
+                }
+            }
+
+            // Get current score multiplier based on level
+            function getScoreMultiplier() {
+                return 1 + (level * 0.25);
+            }
+
+            // Reset the game screen for the next task
+            function resetGameScreen() {
+                taskTitle.textContent = 'Task: None';
+                timerDisplay.textContent = '00:00';
+                timerDisplay.classList.remove('negative-timer');
+                emojiFeedback.textContent = '';
+            }
+
+            // Reset the entire game
+            function resetGame() {
+                health = 100;
+                level = 1;
+                xp = 0;
+                xpRequired = 20;
+                score = 0;
+                updateStatsDisplay();
+                saveGameState();
+                resetGameScreen();
+                welcomeScreen.style.display = 'block';
+                gameScreen.style.display = 'none';
+            }
+
+            // Initialize the game on load
+            window.onload = () => {
+                loadGameState();
+            };
+
+            // Handle visibility change to prevent multiple instances
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // Optionally handle when the tab is hidden
+                }
+            });
+
+            // Added Reset Functionality
+            document.getElementById('resetAppButton').addEventListener('click', () => {
+                const confirmation = confirm('Are you sure you want to reset all app data? This cannot be undone.');
+                if (confirmation) {
+                    // Remove app-specific localStorage keys
+                    localStorage.removeItem('appOpened');
+                    localStorage.removeItem('themeMode');
+                    localStorage.removeItem('gameState');
+
+                    // Reset game variables
+                    health = 100;
+                    level = 1;
+                    xp = 0;
+                    xpRequired = 20;
+                    score = 0;
+
+                    // Update the UI
+                    updateStatsDisplay();
+                    resetGameScreen();
+                    document.body.classList.remove('light-mode', 'demure-mode');
+                    updateActiveModeButton('darkModeButton'); // Default to dark mode
+                    alert('All app data has been reset.');
+
+                    // Optionally, reload the page to ensure a clean state
+                    // location.reload();
+                }
+            });
+
+        })();
+    </script>
+</body>
+
+</html>
