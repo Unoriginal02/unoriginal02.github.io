@@ -34,9 +34,15 @@
             font-family: 'JetBrains Mono', monospace;
             display: flex;
             align-items: center;
+            justify-content: center; /* Added to center vertically */
             flex-direction: column;
             min-height: 100vh;
-            padding: 2rem;
+            padding: 0; /* Removed padding to prevent spacing issues */
+        }
+
+        .maxwidth {
+            max-width: 600px; /* Adjust as needed for responsiveness */
+            width: 100%;
         }
 
         .brutalButton {
@@ -104,9 +110,9 @@
             margin: 2rem 0;
         }
 
-        /* Emoji Feedback */
+        /* Emoji Feedback - Updated for smaller text */
         .emoji-feedback {
-            font-size: 4rem;
+            font-size: 1.5rem; /* Reduced from 4rem to 1.5rem */
             margin-top: 1rem;
         }
 
@@ -243,6 +249,13 @@
             color: var(--main-color);
             font-weight: 600;
         }
+
+        /* Level Image Styling */
+        #levelImage {
+            width: 400px; /* Adjust as needed */
+            height: auto;
+            margin: 1rem 0;
+        }
     </style>
 </head>
 
@@ -275,7 +288,8 @@
     <div class="maxwidth container text-center my-5">
         <!-- Welcome Screen -->
         <div id="welcomeScreen">
-            <h1>Welcome adventurer!</h1>
+            <!-- Level Image -->
+            <img id="levelImage" src="img/lvl1.jpg" alt="Level Image">
             <div class="stats">
                 <div class="stat">Health: <span id="healthDisplay">100</span></div>
                 <div class="stat">Level: <span id="levelDisplay">1</span></div>
@@ -390,7 +404,7 @@
             loadTheme();
 
             // Game Logic
-            let health = 100;
+            let health = 100; // Corrected initial health value
             let level = 1;
             let xp = 0;
             let xpRequired = 20;
@@ -420,6 +434,7 @@
             const timerDisplay = document.getElementById('timerDisplay');
             const doneButton = document.getElementById('doneButton');
             const emojiFeedback = document.getElementById('emojiFeedback');
+            const levelImage = document.getElementById('levelImage'); // Added reference to the level image
 
             // Initialize game state from localStorage
             function loadGameState() {
@@ -434,6 +449,7 @@
                     saveGameState();
                 }
                 updateStatsDisplay();
+                updateLevelImage(); // Update image based on loaded level
             }
 
             // Save game state to localStorage
@@ -499,9 +515,7 @@
                         timerDisplay.classList.add('negative-timer');
                     }
 
-                    if (remainingTime <= -duration * 60) { // Optional: Limit how far negative it can go
-                        clearInterval(timerInterval);
-                    }
+                    // Timer continues into negative time
                 }, 1000);
             }
 
@@ -510,7 +524,9 @@
                 const absTime = Math.abs(remainingTime);
                 const minutes = Math.floor(absTime / 60).toString().padStart(2, '0');
                 const seconds = (absTime % 60).toString().padStart(2, '0');
-                timerDisplay.textContent = `${minutes}:${seconds}`;
+                const timeString = `${minutes}:${seconds}`;
+                const displayTime = remainingTime < 0 ? `-${timeString}` : timeString;
+                timerDisplay.textContent = displayTime;
 
                 if (remainingTime < 0) {
                     timerDisplay.classList.add('negative-timer');
@@ -525,28 +541,37 @@
                 doneButton.style.display = 'none';
 
                 let earnedScore = 0;
+                let levelsGained = 0; // To track if any level up occurs
 
                 if (completedOnTime && remainingTime >= 0) {
                     // Calculate score based on time left
-                    const baseScore = 1000;
-                    const timeLeft = remainingTime; // in seconds
                     const totalTime = parseInt(document.getElementById('taskDuration').value.trim()) * 60;
+                    const baseScore = totalTime * 2; // Changed from 1000 to (task seconds * 2)
+                    const timeLeft = remainingTime; // in seconds
                     const percentageLeft = timeLeft / totalTime;
                     earnedScore = Math.floor(baseScore * percentageLeft * getScoreMultiplier());
                     score += earnedScore;
 
                     xp += 10;
-                    emojiFeedback.textContent = `😊 Task Completed! +${earnedScore} Score`;
+
+                    // Check for level up and get levels gained
+                    levelsGained = checkLevelUp();
+
+                    // Build feedback message
+                    let feedbackMessage = `😊 +${earnedScore} Score`;
+                    if (levelsGained > 0) {
+                        feedbackMessage += `, Level ${level}!`;
+                        updateLevelImage(); // Update image after leveling up
+                    }
+                    emojiFeedback.textContent = feedbackMessage;
                 } else {
                     // Calculate overdue minutes
                     overdueMinutes = Math.ceil(Math.abs(remainingTime) / 60);
-                    health -= overdueMinutes;
+                    const healthLoss = Math.floor((overdueMinutes * 2) + (level * 0.50)); // Updated Health Loss Formula
+                    health -= healthLoss;
                     if (health < 0) health = 0;
-                    emojiFeedback.textContent = `😞 Task Failed! -${overdueMinutes} Health`;
+                    emojiFeedback.textContent = `😞 -${healthLoss} Health`;
                 }
-
-                // Check for level up
-                checkLevelUp();
 
                 updateStatsDisplay();
                 saveGameState();
@@ -565,14 +590,16 @@
                 }, 3000);
             }
 
-            // Check if player levels up
+            // Check if player levels up and return levels gained
             function checkLevelUp() {
-                while (xp >= xpRequired) {
+                let levelsGained = 0;
+                while (xp >= xpRequired && level < 4) { // Ensure level does not exceed 4
                     xp -= xpRequired;
                     level++;
                     xpRequired = Math.ceil(xpRequired * 1.50);
-                    alert(`Congratulations! You've reached Level ${level}!`);
+                    levelsGained++;
                 }
+                return levelsGained;
             }
 
             // Get current score multiplier based on level
@@ -590,16 +617,29 @@
 
             // Reset the entire game
             function resetGame() {
-                health = 100;
+                health = 100; // Reset health to initial value
                 level = 1;
                 xp = 0;
                 xpRequired = 20;
                 score = 0;
                 updateStatsDisplay();
+                updateLevelImage(); // Reset to initial image
                 saveGameState();
                 resetGameScreen();
                 welcomeScreen.style.display = 'block';
                 gameScreen.style.display = 'none';
+            }
+
+            // Function to update the level image based on current level
+            function updateLevelImage() {
+                if (level >= 1 && level <= 4) {
+                    levelImage.src = `img/lvl${level}.jpg`;
+                    levelImage.alt = `Level ${level} Image`;
+                } else {
+                    // If level exceeds 4, use the image for level 4 or a default image
+                    levelImage.src = `img/lvl4.jpg`;
+                    levelImage.alt = `Level 4 Image`;
+                }
             }
 
             // Initialize the game on load
@@ -624,7 +664,7 @@
                     localStorage.removeItem('gameState');
 
                     // Reset game variables
-                    health = 100;
+                    health = 100; // Corrected to reset to initial health
                     level = 1;
                     xp = 0;
                     xpRequired = 20;
@@ -632,6 +672,7 @@
 
                     // Update the UI
                     updateStatsDisplay();
+                    updateLevelImage(); // Reset to initial image
                     resetGameScreen();
                     document.body.classList.remove('light-mode', 'demure-mode');
                     updateActiveModeButton('darkModeButton'); // Default to dark mode
