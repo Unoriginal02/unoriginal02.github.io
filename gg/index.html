@@ -41,7 +41,7 @@
         }
 
         .maxwidth {
-            max-width: 600px;
+            max-width: 800px; /* Increased width for better layout */
             width: 100%;
         }
 
@@ -119,10 +119,10 @@
         /* Stats Display */
         .stats {
             display: flex;
-            gap: 2rem;
-            justify-content: center;
+            flex-direction: column; /* Changed to column for vertical alignment */
+            gap: 1rem; /* Reduced gap for better spacing */
+            justify-content: flex-start; /* Align items to the start */
             margin-bottom: 2rem;
-            flex-wrap: wrap;
         }
 
         .stat {
@@ -223,10 +223,10 @@
             color: red;
         }
 
-        /* Center the Start Button */
+        /* Start Game Button Styling */
         #startGameButton {
-            display: block;
-            margin: 2rem auto;
+            width: 100%;
+            margin-top: 1rem;
         }
 
         /* Additional Styles from Work Shift Scheduler for Forms */
@@ -252,9 +252,32 @@
 
         /* Level Image Styling */
         #levelImage {
-            width: 400px;
+            width: 100%;
             height: auto;
             margin: 1rem 0;
+        }
+
+        /* Cancel Button Styling */
+        #cancelButton {
+            margin-top: 1rem;
+        }
+
+        /* Game Screen Centering */
+        #gameScreen {
+            display: none;
+            min-height: 60vh; /* Ensure sufficient height for centering */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Ensure image and stats take full height on larger screens */
+        @media (min-width: 768px) {
+            #levelImage {
+                max-height: 400px;
+                object-fit: cover;
+            }
         }
     </style>
 </head>
@@ -285,26 +308,37 @@
     </div>
 
     <!-- Main Content -->
-    <div class="maxwidth container text-center my-5">
+    <div class="maxwidth container my-5">
         <!-- Welcome Screen -->
         <div id="welcomeScreen">
-            <!-- Level Image -->
-            <img id="levelImage" src="img/lvl1.jpg" alt="Level Image">
-            <div class="stats">
-                <div class="stat">Health: <span id="healthDisplay">50</span></div>
-                <div class="stat">Level: <span id="levelDisplay">1</span></div>
-                <div class="stat">XP: <span id="xpDisplay">0</span> / <span id="xpRequiredDisplay">20</span></div>
-                <div class="stat">Score: <span id="scoreDisplay">0</span></div>
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <!-- Level Image -->
+                    <img id="levelImage" src="img/lvl1.jpg" alt="Level Image" class="img-fluid">
+                </div>
+                <div class="col-md-6 d-flex flex-column align-items-start">
+                    <div class="stats">
+                        <div class="stat">Health: <span id="healthDisplay">50</span></div>
+                        <div class="stat">Level: <span id="levelDisplay">1</span></div>
+                        <div class="stat">XP: <span id="xpDisplay">0</span> / <span
+                                id="xpRequiredDisplay">20</span></div>
+                        <div class="stat">Score: <span id="scoreDisplay">0</span></div>
+                    </div>
+                    <button id="startGameButton" class="brutalButton">Start Game</button>
+                </div>
             </div>
-            <button id="startGameButton" class="brutalButton">Start Game</button>
         </div>
 
         <!-- Game Screen -->
-        <div id="gameScreen" style="display: none;">
+        <div id="gameScreen">
             <h2 id="taskTitle">Task: None</h2>
             <div id="timerDisplay" class="timer-display">00:00</div>
             <button id="doneButton" class="brutalButton" style="display: none;">
-                <i class="bi bi-check-circle"></i> Done!
+                <i class="bi bi-check-circle"></i> Task Done!
+            </button>
+            <!-- Cancel Task Button Added Below -->
+            <button id="cancelButton" class="brutalButton" style="display: none;">
+                <i class="bi bi-x-circle"></i> Cancel
             </button>
             <div id="emojiFeedback" class="emoji-feedback"></div>
         </div>
@@ -433,6 +467,7 @@
             const taskTitle = document.getElementById('taskTitle');
             const timerDisplay = document.getElementById('timerDisplay');
             const doneButton = document.getElementById('doneButton');
+            const cancelButton = document.getElementById('cancelButton'); // Reference to Cancel Button
             const emojiFeedback = document.getElementById('emojiFeedback');
             const levelImage = document.getElementById('levelImage'); // Added reference to the level image
 
@@ -507,7 +542,7 @@
             // Start Game Button Click
             startGameButton.addEventListener('click', () => {
                 welcomeScreen.style.display = 'none';
-                gameScreen.style.display = 'block';
+                gameScreen.style.display = 'flex'; // Ensure flex for centering
                 saveCurrentScreen('game');
                 taskModal.show();
             });
@@ -533,9 +568,14 @@
                 updateTimerDisplay();
                 emojiFeedback.textContent = '';
                 doneButton.style.display = 'inline-flex';
+                cancelButton.style.display = 'inline-flex'; // Show Cancel Button
 
                 doneButton.onclick = () => {
                     completeTask(true);
+                };
+
+                cancelButton.onclick = () => {
+                    completeTask(false); // Treat cancellation as task failure
                 };
 
                 taskStartedAt = startTime;
@@ -577,6 +617,7 @@
             function completeTask(completedOnTime) {
                 clearInterval(timerInterval);
                 doneButton.style.display = 'none';
+                cancelButton.style.display = 'none'; // Hide Cancel Button
 
                 let earnedScore = 0;
                 let levelsGained = 0; // To track if any level up occurs
@@ -695,7 +736,7 @@
                     gameScreen.style.display = 'none';
                 } else if (currentScreen === 'game') {
                     welcomeScreen.style.display = 'none';
-                    gameScreen.style.display = 'block';
+                    gameScreen.style.display = 'flex';
                     const taskDetails = loadTaskDetails();
                     if (taskDetails) {
                         const { taskName, taskDuration, taskStartTime } = taskDetails;
@@ -718,9 +759,14 @@
                 updateTimerDisplay();
                 emojiFeedback.textContent = '';
                 doneButton.style.display = 'inline-flex';
+                cancelButton.style.display = 'inline-flex'; // Show Cancel Button
 
                 doneButton.onclick = () => {
                     completeTask(true);
+                };
+
+                cancelButton.onclick = () => {
+                    completeTask(false); // Treat cancellation as task failure
                 };
 
                 taskStartedAt = startTime;
