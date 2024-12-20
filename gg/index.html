@@ -34,14 +34,14 @@
             font-family: 'JetBrains Mono', monospace;
             display: flex;
             align-items: center;
-            justify-content: center; /* Added to center vertically */
+            justify-content: center;
             flex-direction: column;
             min-height: 100vh;
-            padding: 0; /* Removed padding to prevent spacing issues */
+            padding: 0;
         }
 
         .maxwidth {
-            max-width: 600px; /* Adjust as needed for responsiveness */
+            max-width: 600px;
             width: 100%;
         }
 
@@ -112,7 +112,7 @@
 
         /* Emoji Feedback - Updated for smaller text */
         .emoji-feedback {
-            font-size: 1.5rem; /* Reduced from 4rem to 1.5rem */
+            font-size: 1.5rem;
             margin-top: 1rem;
         }
 
@@ -122,7 +122,7 @@
             gap: 2rem;
             justify-content: center;
             margin-bottom: 2rem;
-            flex-wrap: wrap; /* Added for better responsiveness */
+            flex-wrap: wrap;
         }
 
         .stat {
@@ -252,7 +252,7 @@
 
         /* Level Image Styling */
         #levelImage {
-            width: 400px; /* Adjust as needed */
+            width: 400px;
             height: auto;
             margin: 1rem 0;
         }
@@ -473,10 +473,42 @@
                 scoreDisplay.textContent = score;
             }
 
+            // Save current screen to localStorage
+            function saveCurrentScreen(screen) {
+                localStorage.setItem('currentScreen', screen);
+            }
+
+            // Load current screen from localStorage
+            function loadCurrentScreen() {
+                return localStorage.getItem('currentScreen') || 'welcome';
+            }
+
+            // Save task details to localStorage
+            function saveTaskDetails(taskName, taskDuration, taskStartTime) {
+                const taskDetails = {
+                    taskName: taskName,
+                    taskDuration: taskDuration, // in seconds
+                    taskStartTime: taskStartTime // timestamp in milliseconds
+                };
+                localStorage.setItem('taskDetails', JSON.stringify(taskDetails));
+            }
+
+            // Load task details from localStorage
+            function loadTaskDetails() {
+                const taskDetails = JSON.parse(localStorage.getItem('taskDetails'));
+                return taskDetails;
+            }
+
+            // Clear task details from localStorage
+            function clearTaskDetails() {
+                localStorage.removeItem('taskDetails');
+            }
+
             // Start Game Button Click
             startGameButton.addEventListener('click', () => {
                 welcomeScreen.style.display = 'none';
                 gameScreen.style.display = 'block';
+                saveCurrentScreen('game');
                 taskModal.show();
             });
 
@@ -484,18 +516,20 @@
             taskForm.addEventListener('submit', function (event) {
                 event.preventDefault();
                 const taskName = document.getElementById('taskName').value.trim();
-                const taskDuration = parseInt(document.getElementById('taskDuration').value.trim());
+                const taskDurationMinutes = parseInt(document.getElementById('taskDuration').value.trim());
 
-                if (taskName && taskDuration > 0) {
-                    startTask(taskName, taskDuration);
+                if (taskName && taskDurationMinutes > 0) {
+                    const taskDurationSeconds = taskDurationMinutes * 60;
+                    const taskStartTime = Date.now();
+                    startTask(taskName, taskDurationSeconds, taskStartTime);
                     taskModal.hide();
                 }
             });
 
             // Start the task timer
-            function startTask(name, duration) {
+            function startTask(name, duration, startTime) {
                 taskTitle.textContent = `Task: ${name}`;
-                remainingTime = duration * 60; // Convert minutes to seconds
+                remainingTime = duration; // in seconds
                 updateTimerDisplay();
                 emojiFeedback.textContent = '';
                 doneButton.style.display = 'inline-flex';
@@ -504,10 +538,14 @@
                     completeTask(true);
                 };
 
-                taskStartedAt = new Date();
+                taskStartedAt = startTime;
+
+                // Save task details
+                saveTaskDetails(name, duration, startTime);
 
                 timerInterval = setInterval(() => {
-                    remainingTime--;
+                    const elapsedTime = Math.floor((Date.now() - taskStartedAt) / 1000);
+                    remainingTime = duration - elapsedTime;
                     updateTimerDisplay();
 
                     if (remainingTime <= 0 && !timerDisplay.classList.contains('negative-timer')) {
@@ -545,7 +583,7 @@
 
                 if (completedOnTime && remainingTime >= 0) {
                     // Calculate score based on time left
-                    const totalTime = parseInt(document.getElementById('taskDuration').value.trim()) * 60;
+                    const totalTime = remainingTime + Math.floor((Date.now() - taskStartedAt) / 1000);
                     const baseScore = totalTime * 2; // Changed from 1000 to (task seconds * 2)
                     const timeLeft = remainingTime; // in seconds
                     const percentageLeft = timeLeft / totalTime;
@@ -583,11 +621,15 @@
                         // Return to welcome screen instead of showing task modal again
                         gameScreen.style.display = 'none';
                         welcomeScreen.style.display = 'block';
+                        saveCurrentScreen('welcome');
                     } else {
                         alert('Game Over! You have no health left.');
                         resetGame();
                     }
                 }, 3000);
+
+                // Clear task details from localStorage
+                clearTaskDetails();
             }
 
             // Check if player levels up and return levels gained
@@ -628,6 +670,7 @@
                 resetGameScreen();
                 welcomeScreen.style.display = 'block';
                 gameScreen.style.display = 'none';
+                saveCurrentScreen('welcome');
             }
 
             // Function to update the level image based on current level
@@ -645,7 +688,56 @@
             // Initialize the game on load
             window.onload = () => {
                 loadGameState();
+
+                const currentScreen = loadCurrentScreen();
+                if (currentScreen === 'welcome') {
+                    welcomeScreen.style.display = 'block';
+                    gameScreen.style.display = 'none';
+                } else if (currentScreen === 'game') {
+                    welcomeScreen.style.display = 'none';
+                    gameScreen.style.display = 'block';
+                    const taskDetails = loadTaskDetails();
+                    if (taskDetails) {
+                        const { taskName, taskDuration, taskStartTime } = taskDetails;
+                        const elapsedTime = Math.floor((Date.now() - taskStartTime) / 1000);
+                        const adjustedRemainingTime = taskDuration - elapsedTime;
+                        startTaskAfterLoad(taskName, taskDuration, taskStartTime, adjustedRemainingTime);
+                    } else {
+                        // If no task details found, default to welcome screen
+                        welcomeScreen.style.display = 'block';
+                        gameScreen.style.display = 'none';
+                        saveCurrentScreen('welcome');
+                    }
+                }
             };
+
+            // Function to start task after loading from localStorage
+            function startTaskAfterLoad(name, duration, startTime, adjustedRemainingTime) {
+                taskTitle.textContent = `Task: ${name}`;
+                remainingTime = adjustedRemainingTime;
+                updateTimerDisplay();
+                emojiFeedback.textContent = '';
+                doneButton.style.display = 'inline-flex';
+
+                doneButton.onclick = () => {
+                    completeTask(true);
+                };
+
+                taskStartedAt = startTime;
+
+                timerInterval = setInterval(() => {
+                    const elapsedTime = Math.floor((Date.now() - taskStartedAt) / 1000);
+                    remainingTime = duration - elapsedTime;
+                    updateTimerDisplay();
+
+                    if (remainingTime <= 0 && !timerDisplay.classList.contains('negative-timer')) {
+                        // Start negative timer styling
+                        timerDisplay.classList.add('negative-timer');
+                    }
+
+                    // Timer continues into negative time
+                }, 1000);
+            }
 
             // Handle visibility change to prevent multiple instances
             document.addEventListener('visibilitychange', () => {
@@ -662,6 +754,8 @@
                     localStorage.removeItem('appOpened');
                     localStorage.removeItem('themeMode');
                     localStorage.removeItem('gameState');
+                    localStorage.removeItem('currentScreen');
+                    localStorage.removeItem('taskDetails');
 
                     // Reset game variables
                     health = 50; // Corrected to reset to initial health
