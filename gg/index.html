@@ -291,7 +291,7 @@
             <!-- Level Image -->
             <img id="levelImage" src="img/lvl1.jpg" alt="Level Image">
             <div class="stats">
-                <div class="stat">Health: <span id="healthDisplay">100</span></div>
+                <div class="stat">Health: <span id="healthDisplay">50</span></div>
                 <div class="stat">Level: <span id="levelDisplay">1</span></div>
                 <div class="stat">XP: <span id="xpDisplay">0</span> / <span id="xpRequiredDisplay">20</span></div>
                 <div class="stat">Score: <span id="scoreDisplay">0</span></div>
@@ -404,7 +404,7 @@
             loadTheme();
 
             // Game Logic
-            let health = 100; // Corrected initial health value
+            let health = 50; // Corrected initial health value
             let level = 1;
             let xp = 0;
             let xpRequired = 20;
@@ -617,7 +617,7 @@
 
             // Reset the entire game
             function resetGame() {
-                health = 100; // Reset health to initial value
+                health = 50; // Reset health to initial value
                 level = 1;
                 xp = 0;
                 xpRequired = 20;
@@ -664,7 +664,7 @@
                     localStorage.removeItem('gameState');
 
                     // Reset game variables
-                    health = 100; // Corrected to reset to initial health
+                    health = 50; // Corrected to reset to initial health
                     level = 1;
                     xp = 0;
                     xpRequired = 20;
