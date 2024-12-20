@@ -644,8 +644,14 @@
                     }
                     emojiFeedback.textContent = feedbackMessage;
                 } else {
-                    // Calculate overdue minutes
-                    overdueMinutes = Math.ceil(Math.abs(remainingTime) / 60);
+                    if (remainingTime >= 0) {
+                        // User canceled before deadline, treat as if canceled 1 minute before deadline
+                        overdueMinutes = 1;
+                    } else {
+                        // User canceled after deadline, calculate overdue minutes based on actual remaining time
+                        overdueMinutes = Math.ceil(Math.abs(remainingTime) / 60);
+                    }
+
                     const healthLoss = Math.floor((overdueMinutes * 2) + (level * 0.50)); // Updated Health Loss Formula
                     health -= healthLoss;
                     if (health < 0) health = 0;
