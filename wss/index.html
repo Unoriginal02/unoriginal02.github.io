@@ -170,7 +170,8 @@
         }
 
         .time-slot.selected {
-            background-color: var(--button-selection-color);
+            /* Remove the fixed background color to allow dynamic colors */
+            /* background-color: var(--button-selection-color); */
         }
 
         .list-unstyled li {
@@ -263,13 +264,90 @@
                 font-size: 0.85rem;
             }
         }
+
+        /* Styles for Color Selection Legend */
+        .color-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+
+        .color-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--main-color);
+            cursor: pointer;
+        }
+
+        .color-label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .color-label.editing {
+            border-bottom: 1px dashed var(--main-color);
+        }
+
+        .color-radio {
+            margin-right: 0.3rem;
+            cursor: pointer;
+        }
+
+        /* Editable input for labels */
+        .color-label-input {
+            border: none;
+            border-bottom: 1px dashed var(--main-color);
+            background: transparent;
+            color: var(--main-color);
+            font-family: inherit;
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 0;
+            outline: none;
+            width: 80px;
+        }
+
+        /* Plus Icon Styling */
+        .add-color-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border: 1px dashed var(--main-color);
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--main-color);
+            font-size: 1rem;
+        }
+
+        .add-color-button:hover {
+            background-color: var(--main-color-hover);
+        }
     </style>
 </head>
 
 <body>
     <div class="maxwidth container text-center my-5">
+        <!-- Color Selection Legend -->
+        <div id="colorSelectionContainer" class="color-selection">
+            <!-- Color options will be generated here -->
+            <!-- Plus button to add new color options -->
+            <div id="addColorButton" class="add-color-button" title="Add New Color">
+                <i class="bi bi-plus"></i>
+            </div>
+        </div>
+        <!-- The timetable grid will be generated here -->
         <div id="timetable-container" class="table-responsive">
-            <!-- The timetable grid will be generated here -->
             <!-- Current Time Line -->
             <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
         </div>
@@ -314,13 +392,6 @@
             // Define days and times
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-            function formatHours(totalHoursFloat) {
-                const totalMinutes = Math.round(totalHoursFloat * 60);
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = totalMinutes % 60;
-                return `${hours}:${minutes.toString().padStart(2, '0')}`;
-            }
-
             // Generate times from 06:00 to 19:00 in 15-minute intervals (24-hour format)
             function generateTimes() {
                 let times = [];
@@ -340,7 +411,170 @@
 
             const times = generateTimes();
 
-            // Now generate the timetable grid
+            // Default color options with one initial color
+            const defaultColorOptions = [
+                { id: 'color1', color: '#3357FF', label: 'Shift A' }
+            ];
+
+            let colorOptions = [];
+
+            // Load color options from localStorage or use defaults
+            function loadColorOptions() {
+                const storedColors = JSON.parse(localStorage.getItem('colorOptions'));
+                if (storedColors && Array.isArray(storedColors) && storedColors.length >= 1) {
+                    colorOptions = storedColors;
+                } else {
+                    colorOptions = defaultColorOptions;
+                    saveColorOptions();
+                }
+            }
+
+            // Save color options to localStorage
+            function saveColorOptions() {
+                localStorage.setItem('colorOptions', JSON.stringify(colorOptions));
+            }
+
+            // Generate a unique ID for new color options
+            function generateUniqueId() {
+                let maxId = 0;
+                colorOptions.forEach(option => {
+                    if (option.id.startsWith('color')) {
+                        const num = parseInt(option.id.replace('color', ''));
+                        if (num > maxId) {
+                            maxId = num;
+                        }
+                    }
+                });
+                return `color${maxId + 1}`;
+            }
+
+            // Render color selection legend
+            function renderColorSelection() {
+                const container = document.getElementById('colorSelectionContainer');
+                // Clear existing color options except the add button
+                const existingOptions = container.querySelectorAll('.color-option');
+                existingOptions.forEach(option => option.remove());
+
+                colorOptions.forEach(option => {
+                    const colorOptionDiv = document.createElement('div');
+                    colorOptionDiv.className = 'color-option';
+
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = 'colorOption';
+                    radio.id = option.id;
+                    radio.value = option.color ? option.color : 'empty';
+                    radio.className = 'color-radio';
+
+                    // Check the radio based on stored selection
+                    if (localStorage.getItem('selectedColor') === option.id) {
+                        radio.checked = true;
+                    }
+
+                    // If no selection is stored, check the first color by default
+                    if (!localStorage.getItem('selectedColor') && option.id === 'color1') {
+                        radio.checked = true;
+                        localStorage.setItem('selectedColor', option.id);
+                    }
+
+                    radio.addEventListener('change', () => {
+                        localStorage.setItem('selectedColor', option.id);
+                    });
+
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = option.color ? option.color : 'transparent';
+                    swatch.title = option.label;
+
+                    // Clicking the swatch opens a color picker to change the color
+                    swatch.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent triggering radio button
+                        const colorPicker = document.createElement('input');
+                        colorPicker.type = 'color';
+                        colorPicker.value = option.color ? option.color : '#ffffff';
+                        colorPicker.style.display = 'none';
+                        document.body.appendChild(colorPicker);
+                        colorPicker.click();
+
+                        colorPicker.addEventListener('input', function (event) {
+                            const newColor = event.target.value;
+                            swatch.style.backgroundColor = newColor;
+                            // Update the color in colorOptions
+                            const index = colorOptions.findIndex(co => co.id === option.id);
+                            if (index !== -1) {
+                                colorOptions[index].color = newColor;
+                                saveColorOptions();
+                                // Update selected cells with this color
+                                updateCellsWithColor(option.id, newColor);
+                            }
+                        });
+
+                        colorPicker.addEventListener('change', function () {
+                            document.body.removeChild(colorPicker);
+                        }, { once: true });
+                    });
+
+                    const label = document.createElement('label');
+                    label.htmlFor = option.id;
+                    label.className = 'color-label';
+                    label.textContent = option.label;
+
+                    // Make labels editable on double-click
+                    label.addEventListener('dblclick', (e) => {
+                        e.preventDefault();
+                        const currentLabel = label.textContent;
+                        const newLabel = prompt('Enter new label:', currentLabel);
+                        if (newLabel !== null && newLabel.trim() !== '') {
+                            label.textContent = newLabel.trim();
+                            // Update the colorOptions array
+                            const index = colorOptions.findIndex(co => co.id === option.id);
+                            if (index !== -1) {
+                                colorOptions[index].label = newLabel.trim();
+                                saveColorOptions();
+                            }
+                        }
+                    });
+
+                    colorOptionDiv.appendChild(radio);
+                    colorOptionDiv.appendChild(swatch);
+                    colorOptionDiv.appendChild(label);
+
+                    container.insertBefore(colorOptionDiv, document.getElementById('addColorButton'));
+                });
+            }
+
+            // Add new color option
+            function addNewColorOption() {
+                const newId = generateUniqueId();
+                const newColor = '#FFFFFF'; // Default color
+                const newLabel = `Shift ${String.fromCharCode(65 + colorOptions.length)}`; // Shift B, Shift C, etc.
+
+                // Add to colorOptions array
+                colorOptions.push({
+                    id: newId,
+                    color: newColor,
+                    label: newLabel
+                });
+
+                saveColorOptions();
+                renderColorSelection();
+            }
+
+            // Handle adding new color option
+            function initializeAddColorButton() {
+                const addButton = document.getElementById('addColorButton');
+                addButton.addEventListener('click', addNewColorOption);
+            }
+
+            // Update cells that have a specific color ID
+            function updateCellsWithColor(colorId, newColor) {
+                const cells = document.querySelectorAll(`.time-slot[data-color="${colorId}"]`);
+                cells.forEach(cell => {
+                    cell.style.backgroundColor = newColor;
+                });
+            }
+
+            // Generate the timetable grid
             function generateTimetable() {
                 const timetableContainer = document.getElementById('timetable-container');
                 const table = document.createElement('table');
@@ -393,6 +627,9 @@
                         cell.className = 'time-slot';
                         cell.dataset.day = day;
                         cell.dataset.time = time;
+                        cell.dataset.color = ''; // To store the color ID
+                        cell.style.backgroundColor = 'transparent';
+
                         cell.addEventListener('click', onTimeSlotClick);
 
                         // Add the mouseenter event listener for hover functionality
@@ -410,12 +647,28 @@
             // Handle click on time slot
             function onTimeSlotClick(event) {
                 const cell = event.target;
-                cell.classList.toggle('selected');
+                const selectedColorId = localStorage.getItem('selectedColor');
+                const colorOption = colorOptions.find(co => co.id === selectedColorId);
+
+                if (colorOption && colorOption.color) {
+                    if (cell.classList.contains('selected') && cell.dataset.color === selectedColorId) {
+                        // If already selected with the same color, deselect
+                        cell.classList.remove('selected');
+                        cell.style.backgroundColor = 'transparent';
+                        cell.dataset.color = '';
+                    } else {
+                        // Select with the chosen color
+                        cell.classList.add('selected');
+                        cell.style.backgroundColor = colorOption.color;
+                        cell.dataset.color = selectedColorId;
+                    }
+                }
+
                 updateTotals();
                 saveData(); // Automatically save data on each selection/unselection
             }
 
-            // Handle hover on time slot to show estimated hours at the previous time slot
+            // Handle hover on time slot to show estimated hours
             function onTimeSlotHover(event) {
                 const cell = event.target;
                 const day = cell.dataset.day;
@@ -524,7 +777,8 @@
                 selectedSlots.forEach(slot => {
                     data.push({
                         day: slot.dataset.day,
-                        time: slot.dataset.time
+                        time: slot.dataset.time,
+                        color: slot.dataset.color
                     });
                 });
                 localStorage.setItem('workShiftData', JSON.stringify(data));
@@ -533,12 +787,17 @@
             // Load data from local storage
             function loadData() {
                 const data = JSON.parse(localStorage.getItem('workShiftData'));
-                if (data) {
+                if (data && Array.isArray(data)) {
                     data.forEach(item => {
                         const selector = `.time-slot[data-day="${item.day}"][data-time="${item.time}"]`;
                         const slot = document.querySelector(selector);
                         if (slot) {
                             slot.classList.add('selected');
+                            slot.dataset.color = item.color;
+                            const colorOption = colorOptions.find(co => co.id === item.color);
+                            if (colorOption && colorOption.color) {
+                                slot.style.backgroundColor = colorOption.color;
+                            }
                         }
                     });
                     updateTotals();
@@ -547,8 +806,13 @@
 
             // Export data to file
             function exportData() {
-                const data = JSON.parse(localStorage.getItem('workShiftData')) || [];
-                const dataStr = JSON.stringify(data, null, 2);
+                const workShiftData = JSON.parse(localStorage.getItem('workShiftData')) || [];
+                const colorOptionsExport = JSON.parse(localStorage.getItem('colorOptions')) || [];
+                const exportData = {
+                    workShiftData: workShiftData,
+                    colorOptions: colorOptionsExport
+                };
+                const dataStr = JSON.stringify(exportData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
 
@@ -577,10 +841,19 @@
                         reader.onload = function (e) {
                             try {
                                 const importedData = JSON.parse(e.target.result);
-                                localStorage.setItem('workShiftData', JSON.stringify(importedData));
-                                clearTimetable();
-                                loadData();
-                                alert('Data imported successfully.');
+                                // Validate imported data
+                                if (importedData.workShiftData && Array.isArray(importedData.workShiftData) &&
+                                    importedData.colorOptions && Array.isArray(importedData.colorOptions)) {
+                                    localStorage.setItem('workShiftData', JSON.stringify(importedData.workShiftData));
+                                    localStorage.setItem('colorOptions', JSON.stringify(importedData.colorOptions));
+                                    clearTimetable();
+                                    loadColorOptions();
+                                    renderColorSelection();
+                                    loadData();
+                                    alert('Data imported successfully.');
+                                } else {
+                                    throw new Error('Invalid data format.');
+                                }
                             } catch (error) {
                                 alert('Error parsing JSON file.');
                             }
@@ -594,10 +867,30 @@
 
             // Wipe all data and clear selections
             function wipeData() {
-                if (confirm('Are you sure you want to wipe all your work shift data? This action cannot be undone.')) {
+                if (confirm('Are you sure you want to wipe all your work shift data and color selections? This action cannot be undone.')) {
+                    // Remove both work shift data and color options from localStorage
                     localStorage.removeItem('workShiftData');
+                    localStorage.removeItem('colorOptions');
+
+                    // Reset colorOptions to default
+                    colorOptions = [
+                        { id: 'color1', color: '#3357FF', label: 'Shift A' }
+                    ];
+                    saveColorOptions();
+
+                    // Clear timetable selections
                     clearTimetable();
+
+                    // Re-render color selection
+                    renderColorSelection();
+
+                    // Reset selected color to default (color1)
+                    localStorage.setItem('selectedColor', 'color1');
+
+                    // Update the UI accordingly
                     updateTotals();
+
+                    alert('All work shift data and color selections have been wiped and reset to default.');
                 }
             }
 
@@ -606,6 +899,8 @@
                 const selectedSlots = document.querySelectorAll('.time-slot.selected');
                 selectedSlots.forEach(slot => {
                     slot.classList.remove('selected');
+                    slot.style.backgroundColor = 'transparent';
+                    slot.dataset.color = '';
                 });
             }
 
@@ -645,6 +940,7 @@
                 const line = document.getElementById('currentTimeLine');
                 const timetableContainer = document.getElementById('timetable-container');
                 const table = timetableContainer.querySelector('table');
+                if (!table) return;
                 const tbody = table.querySelector('tbody');
 
                 const now = new Date();
@@ -695,37 +991,53 @@
             }
 
             // Event listeners for theme switcher buttons
-            document.getElementById('darkModeButton').addEventListener('click', () => {
-                document.body.classList.remove('light-mode', 'demure-mode');
-                localStorage.setItem('themeMode', 'dark-mode');
-                updateActiveModeButton('darkModeButton');
-            });
+            function initializeThemeButtons() {
+                document.getElementById('darkModeButton').addEventListener('click', () => {
+                    document.body.classList.remove('light-mode', 'demure-mode');
+                    localStorage.setItem('themeMode', 'dark-mode');
+                    updateActiveModeButton('darkModeButton');
+                });
 
-            document.getElementById('lightModeButton').addEventListener('click', () => {
-                document.body.classList.remove('demure-mode');
-                document.body.classList.add('light-mode');
-                localStorage.setItem('themeMode', 'light-mode');
-                updateActiveModeButton('lightModeButton');
-            });
+                document.getElementById('lightModeButton').addEventListener('click', () => {
+                    document.body.classList.remove('demure-mode');
+                    document.body.classList.add('light-mode');
+                    localStorage.setItem('themeMode', 'light-mode');
+                    updateActiveModeButton('lightModeButton');
+                });
 
-            document.getElementById('demureModeButton').addEventListener('click', () => {
-                document.body.classList.remove('light-mode');
-                document.body.classList.add('demure-mode');
-                localStorage.setItem('themeMode', 'demure-mode');
-                updateActiveModeButton('demureModeButton');
-            });
+                document.getElementById('demureModeButton').addEventListener('click', () => {
+                    document.body.classList.remove('light-mode');
+                    document.body.classList.add('demure-mode');
+                    localStorage.setItem('themeMode', 'demure-mode');
+                    updateActiveModeButton('demureModeButton');
+                });
+            }
 
             // Initialize the timetable, theme, and data
-            generateTimetable();
-            loadTheme();
-            loadData();
-            initializeCurrentTimeLine(); // Initialize the current time line
+            function initializeApp() {
+                loadColorOptions();
+                renderColorSelection();
+                initializeAddColorButton();
+                generateTimetable();
+                loadTheme();
+                loadData();
+                initializeCurrentTimeLine(); // Initialize the current time line
+                initializeThemeButtons();
+                updateTotals();
+            }
 
             // Event listeners for buttons
-            document.getElementById('exportButton').addEventListener('click', exportData);
-            document.getElementById('importButton').addEventListener('click', importData);
-            document.getElementById('wipeButton').addEventListener('click', wipeData);
+            function initializeButtons() {
+                document.getElementById('exportButton').addEventListener('click', exportData);
+                document.getElementById('importButton').addEventListener('click', importData);
+                document.getElementById('wipeButton').addEventListener('click', wipeData);
+            }
 
+            // Initialize the application
+            document.addEventListener('DOMContentLoaded', () => {
+                initializeApp();
+                initializeButtons();
+            });
         })();
     </script>
 </body>
