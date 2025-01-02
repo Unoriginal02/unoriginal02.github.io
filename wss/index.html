@@ -364,6 +364,25 @@
             padding: 0.3rem 0.6rem;
             font-size: 0.9rem;
         }
+
+        /* Trash Icon Styling */
+        .delete-shift-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            color: var(--main-color);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+        }
+
+        .delete-shift-button:hover {
+            color: #ff4d4d;
+        }
     </style>
 </head>
 
@@ -582,6 +601,21 @@
                     colorOptionDiv.appendChild(swatch);
                     colorOptionDiv.appendChild(label);
 
+                    // Add trash icon for deletable shifts (exclude default shift)
+                    if (option.id !== 'color1') {
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'delete-shift-button';
+                        deleteButton.title = 'Delete Shift';
+                        deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+
+                        deleteButton.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent triggering radio button
+                            deleteShift(option.id);
+                        });
+
+                        colorOptionDiv.appendChild(deleteButton);
+                    }
+
                     container.insertBefore(colorOptionDiv, document.getElementById('addColorButton'));
                 });
             }
@@ -615,6 +649,43 @@
                 cells.forEach(cell => {
                     cell.style.backgroundColor = newColor;
                 });
+            }
+
+            // Function to delete a shift
+            function deleteShift(shiftId) {
+                if (confirm('Are you sure you want to delete this shift? This will remove all associated painted cells.')) {
+                    // Remove the shift from colorOptions
+                    colorOptions = colorOptions.filter(co => co.id !== shiftId);
+                    saveColorOptions();
+
+                    // Remove all cells painted with this shift's color
+                    const cellsToRemove = document.querySelectorAll(`.time-slot[data-color="${shiftId}"]`);
+                    cellsToRemove.forEach(cell => {
+                        cell.classList.remove('selected');
+                        cell.style.backgroundColor = 'transparent';
+                        cell.dataset.color = '';
+                    });
+
+                    // If the deleted shift was selected, select the default shift
+                    if (localStorage.getItem('selectedColor') === shiftId) {
+                        localStorage.setItem('selectedColor', 'color1');
+                        const defaultRadio = document.getElementById('color1');
+                        if (defaultRadio) {
+                            defaultRadio.checked = true;
+                        }
+                    }
+
+                    // Re-render the color selection legend
+                    renderColorSelection();
+
+                    // Update totals
+                    updateTotals();
+
+                    // Save the cleared data
+                    saveData();
+
+                    alert('Shift deleted successfully.');
+                }
             }
 
             // Variables for start and end times
@@ -976,6 +1047,7 @@
                                     loadStartEndTimes();
                                     initializeTimeSelectors();
                                     generateTimetable();
+                                    loadTheme();
                                     loadData();
                                     updateTotals();
                                     updateCurrentTimeLine();
