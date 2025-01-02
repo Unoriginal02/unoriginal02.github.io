@@ -169,10 +169,6 @@
             background-color: var(--main-color-hover);
         }
 
-        .time-slot.selected {
-            /* Remove the fixed background color to allow dynamic colors */
-            /* background-color: var(--button-selection-color); */
-        }
 
         .list-unstyled li {
             text-align: left;
@@ -390,7 +386,7 @@
             'use strict';
 
             // Define days and times
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
             // Generate times from 06:00 to 19:00 in 15-minute intervals (24-hour format)
             function generateTimes() {
@@ -946,11 +942,8 @@
                 const now = new Date();
                 const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
 
-                // Check if current day is Monday to Friday
-                if (currentDay < 1 || currentDay > 5) {
-                    line.style.display = 'none';
-                    return;
-                }
+                // Remove the condition to hide the time line on weekends
+                // Previously: if (currentDay < 1 || currentDay > 5) { line.style.display = 'none'; return; }
 
                 // Get current time in decimal hours
                 const currentTime = now.getHours() + now.getMinutes() / 60;
