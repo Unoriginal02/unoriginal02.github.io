@@ -329,6 +329,41 @@
         .add-color-button:hover {
             background-color: var(--main-color-hover);
         }
+
+        /* Time Selectors Styling */
+        #timeSelectors {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        #timeSelectors label {
+            margin-right: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        #timeSelectors input[type="time"] {
+            padding: 0.3rem;
+            border: 1px solid var(--main-color);
+            border-radius: 4px;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        #timeSelectors input[type="time"]::-webkit-inner-spin-button,
+        #timeSelectors input[type="time"]::-webkit-calendar-picker-indicator {
+            display: none;
+            -webkit-appearance: none;
+        }
+
+        #timeSelectors button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -341,6 +376,13 @@
             <div id="addColorButton" class="add-color-button" title="Add New Color">
                 <i class="bi bi-plus"></i>
             </div>
+        </div>
+        <!-- Time Selectors -->
+        <div id="timeSelectors" class="mb-4">
+            <label for="startTime" class="me-2">Start Time:</label>
+            <input type="time" id="startTime" name="startTime" required>
+            <label for="endTime" class="ms-3 me-2">End Time:</label>
+            <input type="time" id="endTime" name="endTime" required>
         </div>
         <!-- The timetable grid will be generated here -->
         <div id="timetable-container" class="table-responsive">
@@ -385,27 +427,32 @@
         (function () {
             'use strict';
 
-            // Define days and times
+            // Define days
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-            // Generate times from 06:00 to 19:00 in 15-minute intervals (24-hour format)
-            function generateTimes() {
+            // Function to generate times based on start and end times
+            function generateTimes(startTime, endTime) {
                 let times = [];
-                let startTime = new Date();
-                startTime.setHours(6, 0, 0, 0); // 06:00
-                let endTime = new Date();
-                endTime.setHours(19, 0, 0, 0); // 19:00
-                while (startTime < endTime) {
-                    let hours = startTime.getHours();
-                    let minutes = startTime.getMinutes().toString().padStart(2, '0');
+                let [startHour, startMinute] = startTime.split(':').map(Number);
+                let [endHour, endMinute] = endTime.split(':').map(Number);
+
+                let start = new Date();
+                start.setHours(startHour, startMinute, 0, 0);
+
+                let end = new Date();
+                end.setHours(endHour, endMinute, 0, 0);
+
+                while (start < end) {
+                    let hours = start.getHours();
+                    let minutes = start.getMinutes().toString().padStart(2, '0');
                     let timeString = `${hours.toString().padStart(2, '0')}:${minutes}`;
                     times.push(timeString);
-                    startTime.setMinutes(startTime.getMinutes() + 15);
+                    start.setMinutes(start.getMinutes() + 15);
                 }
                 return times;
             }
 
-            const times = generateTimes();
+            let times = [];
 
             // Default color options with one initial color
             const defaultColorOptions = [
@@ -570,9 +617,76 @@
                 });
             }
 
+            // Variables for start and end times
+            let startTime = '06:00';
+            let endTime = '19:00';
+
+            // Load start and end times from localStorage or use defaults
+            function loadStartEndTimes() {
+                const storedStartTime = localStorage.getItem('startTime');
+                const storedEndTime = localStorage.getItem('endTime');
+                if (storedStartTime && storedEndTime) {
+                    startTime = storedStartTime;
+                    endTime = storedEndTime;
+                } else {
+                    // Defaults are already set
+                    saveStartEndTimes();
+                }
+            }
+
+            // Save start and end times to localStorage
+            function saveStartEndTimes() {
+                localStorage.setItem('startTime', startTime);
+                localStorage.setItem('endTime', endTime);
+            }
+
+            // Initialize time selectors with loaded times
+            function initializeTimeSelectors() {
+                const startTimeInput = document.getElementById('startTime');
+                const endTimeInput = document.getElementById('endTime');
+
+                startTimeInput.value = startTime;
+                endTimeInput.value = endTime;
+
+                // Add event listeners to handle changes
+                startTimeInput.addEventListener('change', onTimeChange);
+                endTimeInput.addEventListener('change', onTimeChange);
+            }
+
+            // Handle time changes
+            function onTimeChange() {
+                const startTimeInput = document.getElementById('startTime').value;
+                const endTimeInput = document.getElementById('endTime').value;
+
+                if (startTimeInput && endTimeInput) {
+                    if (startTimeInput >= endTimeInput) {
+                        alert('Start time must be earlier than end time.');
+                        // Reset to previous valid times
+                        document.getElementById('startTime').value = startTime;
+                        document.getElementById('endTime').value = endTime;
+                        return;
+                    }
+                    startTime = startTimeInput;
+                    endTime = endTimeInput;
+                    saveStartEndTimes();
+
+                    // Clear existing timetable and regenerate
+                    clearTimetable();
+                    generateTimetable();
+                    loadData();
+                    updateTotals();
+                    updateCurrentTimeLine();
+                }
+            }
+
             // Generate the timetable grid
             function generateTimetable() {
                 const timetableContainer = document.getElementById('timetable-container');
+                timetableContainer.innerHTML = ''; // Clear existing timetable
+
+                // Generate times based on current start and end times
+                times = generateTimes(startTime, endTime);
+
                 const table = document.createElement('table');
                 table.className = 'table table-bordered';
                 table.style.width = '100%';
@@ -638,6 +752,13 @@
                 table.appendChild(tbody);
 
                 timetableContainer.appendChild(table);
+
+                // Re-append the currentTimeLine after the table
+                const currentTimeLine = document.createElement('div');
+                currentTimeLine.id = 'currentTimeLine';
+                currentTimeLine.className = 'current-time-line';
+                currentTimeLine.style.display = 'none';
+                timetableContainer.appendChild(currentTimeLine);
             }
 
             // Handle click on time slot
@@ -804,11 +925,15 @@
             function exportData() {
                 const workShiftData = JSON.parse(localStorage.getItem('workShiftData')) || [];
                 const colorOptionsExport = JSON.parse(localStorage.getItem('colorOptions')) || [];
-                const exportData = {
+                const startTimeExport = localStorage.getItem('startTime') || '06:00';
+                const endTimeExport = localStorage.getItem('endTime') || '19:00';
+                const exportDataObj = {
                     workShiftData: workShiftData,
-                    colorOptions: colorOptionsExport
+                    colorOptions: colorOptionsExport,
+                    startTime: startTimeExport,
+                    endTime: endTimeExport
                 };
-                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataStr = JSON.stringify(exportDataObj, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
 
@@ -839,26 +964,36 @@
                                 const importedData = JSON.parse(e.target.result);
                                 // Validate imported data
                                 if (importedData.workShiftData && Array.isArray(importedData.workShiftData) &&
-                                    importedData.colorOptions && Array.isArray(importedData.colorOptions)) {
+                                    importedData.colorOptions && Array.isArray(importedData.colorOptions) &&
+                                    importedData.startTime && importedData.endTime) {
                                     localStorage.setItem('workShiftData', JSON.stringify(importedData.workShiftData));
                                     localStorage.setItem('colorOptions', JSON.stringify(importedData.colorOptions));
+                                    localStorage.setItem('startTime', importedData.startTime);
+                                    localStorage.setItem('endTime', importedData.endTime);
                                     clearTimetable();
                                     loadColorOptions();
                                     renderColorSelection();
+                                    loadStartEndTimes();
+                                    initializeTimeSelectors();
+                                    generateTimetable();
                                     loadData();
+                                    updateTotals();
+                                    updateCurrentTimeLine();
                                     alert('Data imported successfully.');
                                 } else {
                                     throw new Error('Invalid data format.');
                                 }
                             } catch (error) {
-                                alert('Error parsing JSON file.');
+                                alert('Error parsing JSON file. Please ensure it is correctly formatted.');
                             }
                         };
                         reader.readAsText(file);
                     } else {
                         alert('Please select a valid JSON file.');
                     }
-                }, { once: true }); // Ensure the event listener runs only once
+                    // Reset the input value to allow re-importing the same file
+                    event.target.value = '';
+                });
             }
 
             // Wipe all data and clear selections
@@ -867,6 +1002,8 @@
                     // Remove both work shift data and color options from localStorage
                     localStorage.removeItem('workShiftData');
                     localStorage.removeItem('colorOptions');
+                    localStorage.removeItem('startTime');
+                    localStorage.removeItem('endTime');
 
                     // Reset colorOptions to default
                     colorOptions = [
@@ -874,19 +1011,30 @@
                     ];
                     saveColorOptions();
 
+                    // Reset start and end times to default
+                    startTime = '06:00';
+                    endTime = '19:00';
+                    saveStartEndTimes();
+
                     // Clear timetable selections
                     clearTimetable();
 
                     // Re-render color selection
                     renderColorSelection();
 
+                    // Initialize time selectors with default times
+                    initializeTimeSelectors();
+
                     // Reset selected color to default (color1)
                     localStorage.setItem('selectedColor', 'color1');
 
                     // Update the UI accordingly
+                    generateTimetable();
+                    loadData();
                     updateTotals();
+                    updateCurrentTimeLine();
 
-                    alert('All work shift data and color selections have been wiped and reset to default.');
+                    alert('All work shift data, color selections, and time settings have been wiped and reset to default.');
                 }
             }
 
@@ -932,36 +1080,48 @@
                 }
             }
 
+            // Function to update the current time line based on new timetable
             function updateCurrentTimeLine() {
                 const line = document.getElementById('currentTimeLine');
                 const timetableContainer = document.getElementById('timetable-container');
                 const table = timetableContainer.querySelector('table');
-                if (!table) return;
+                if (!table) {
+                    line.style.display = 'none';
+                    return;
+                }
                 const tbody = table.querySelector('tbody');
 
                 const now = new Date();
                 const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+                const currentDayName = days[currentDay === 0 ? 6 : currentDay - 1]; // Adjust for array index
 
-                // Remove the condition to hide the time line on weekends
-                // Previously: if (currentDay < 1 || currentDay > 5) { line.style.display = 'none'; return; }
+                // Only show current time line for the current day
+                const isToday = days.includes(currentDayName) && days.indexOf(currentDayName) === (currentDay === 0 ? 6 : currentDay - 1);
 
-                // Get current time in decimal hours
-                const currentTime = now.getHours() + now.getMinutes() / 60;
+                if (!isToday) {
+                    line.style.display = 'none';
+                    return;
+                }
 
-                // Timetable starts at 6:00 and ends at 19:00
-                const startTime = 6;
-                const endTime = 19;
+                // Get start and end times in minutes
+                const [startHour, startMinute] = startTime.split(':').map(Number);
+                const [endHour, endMinute] = endTime.split(':').map(Number);
+                const startTotalMinutes = startHour * 60 + startMinute;
+                const endTotalMinutes = endHour * 60 + endMinute;
 
-                if (currentTime < startTime || currentTime > endTime) {
+                // Current time in minutes
+                const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+
+                if (currentTotalMinutes < startTotalMinutes || currentTotalMinutes > endTotalMinutes) {
                     line.style.display = 'none';
                     return;
                 }
 
                 // Calculate elapsed minutes since start time
-                const elapsedMinutes = (currentTime - startTime) * 60;
+                const elapsedMinutes = currentTotalMinutes - startTotalMinutes;
 
                 // Total minutes in the timetable
-                const totalMinutes = (endTime - startTime) * 60;
+                const totalMinutes = endTotalMinutes - startTotalMinutes;
 
                 // Get the height of tbody and thead
                 const tbodyHeight = tbody.offsetHeight;
@@ -1011,6 +1171,8 @@
                 loadColorOptions();
                 renderColorSelection();
                 initializeAddColorButton();
+                loadStartEndTimes();
+                initializeTimeSelectors();
                 generateTimetable();
                 loadTheme();
                 loadData();
