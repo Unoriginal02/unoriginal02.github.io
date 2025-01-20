@@ -859,7 +859,7 @@
                 saveData(); // Automatically save data on each selection/unselection
             }
 
-            // Handle hover on time slot to show estimated hours
+            // Handle hover on time slot to show estimated hours for the first shift only
             function onTimeSlotHover(event) {
                 const cell = event.target;
                 const day = cell.dataset.day;
@@ -881,18 +881,21 @@
 
                 const estimationTime = estimationIndex < times.length ? times[estimationIndex] : "End of Day";
 
-                // Calculate the number of selected cells up to and including the current cell for the same day
+                // Calculate the number of selected cells (only for the first shift) up to and including the current cell for the same day
                 let countSelected = 0;
+                // Determine first shift id (the first element in colorOptions)
+                const firstShiftId = colorOptions.length > 0 ? colorOptions[0].id : 'color1';
+
                 for (let i = 0; i <= timeIndex; i++) {
                     const currentTime = times[i];
                     const selector = `.time-slot[data-day="${day}"][data-time="${currentTime}"]`;
                     const currentCell = document.querySelector(selector);
-                    if (currentCell && currentCell.classList.contains('selected')) {
+                    if (currentCell && currentCell.classList.contains('selected') && currentCell.dataset.color === firstShiftId) {
                         countSelected++;
                     }
                 }
 
-                // Calculate estimated hours and format to two decimal places
+                // Calculate estimated hours based solely on the first shift and format to two decimal places
                 const estimatedHoursValue = countSelected * 0.25;
                 const estimatedHours = parseFloat(estimatedHoursValue.toFixed(2));
 
