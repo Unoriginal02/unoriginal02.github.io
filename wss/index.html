@@ -899,7 +899,7 @@
                 cell.title = `Estimated at ${estimationTime}: ${estimatedHours}h`;
             }
 
-            // Update totals with a breakdown per day per shift
+            // Update totals with a breakdown per day per shift and add a row for overall totals for each shift
             function updateTotals() {
                 const totalsContainer = document.getElementById('totals-container');
                 totalsContainer.innerHTML = '';
@@ -954,6 +954,42 @@
                 totalsTable.appendChild(tbody);
 
                 totalsContainer.appendChild(totalsTable);
+
+                // Create a second table row for the overall totals for each shift across the week
+                const totalsByShiftTable = document.createElement('table');
+                totalsByShiftTable.className = 'totals-table';
+
+                // Header row for shifts
+                const shiftHeaderRow = document.createElement('tr');
+                colorOptions.forEach(shift => {
+                    const th = document.createElement('th');
+                    // Create a small square with shift color and label
+                    const square = document.createElement('span');
+                    square.style.display = 'inline-block';
+                    square.style.width = '12px';
+                    square.style.height = '12px';
+                    square.style.backgroundColor = shift.color;
+                    square.style.marginRight = '4px';
+                    square.style.border = '1px solid var(--main-color)';
+                    th.appendChild(square);
+                    th.appendChild(document.createTextNode(shift.label));
+                    shiftHeaderRow.appendChild(th);
+                });
+                totalsByShiftTable.appendChild(shiftHeaderRow);
+
+                // Data row with total hours per shift
+                const shiftDataRow = document.createElement('tr');
+                colorOptions.forEach(shift => {
+                    const td = document.createElement('td');
+                    // Count all selected cells across all days for this shift
+                    const count = document.querySelectorAll(`.time-slot.selected[data-color="${shift.id}"]`).length;
+                    const hours = (count * 0.25).toFixed(2);
+                    td.textContent = `${hours}h`;
+                    shiftDataRow.appendChild(td);
+                });
+                totalsByShiftTable.appendChild(shiftDataRow);
+
+                totalsContainer.appendChild(totalsByShiftTable);
             }
 
             // Save data to local storage
