@@ -16,7 +16,6 @@
 
     <style>
         /* Reusing existing CSS */
-
         :root {
             --main-color: #eeeeee;
             --main-color-hover: rgba(238, 238, 238, .1);
@@ -169,7 +168,6 @@
             background-color: var(--main-color-hover);
         }
 
-
         .list-unstyled li {
             text-align: left;
         }
@@ -199,7 +197,6 @@
             /* Removed border */
             padding: 1rem;
             width: 100%;
-            max-width: 600px;
             margin: 0 auto;
             background-color: var(--background-color);
             text-align: center;
@@ -217,6 +214,11 @@
             border: 1px solid var(--main-color);
             padding: 0.5rem;
             text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .totals-table tr {
+            vertical-align: top;
         }
 
         .total-week-hours {
@@ -388,6 +390,14 @@
 
 <body>
     <div class="maxwidth container text-center my-5">
+
+        <!-- Time Selectors -->
+        <div id="timeSelectors" class="mb-4">
+            <label for="startTime" class="me-2">Start Time:</label>
+            <input type="time" id="startTime" name="startTime" required>
+            <label for="endTime" class="ms-3 me-2">End Time:</label>
+            <input type="time" id="endTime" name="endTime" required>
+        </div>
         <!-- Color Selection Legend -->
         <div id="colorSelectionContainer" class="color-selection">
             <!-- Color options will be generated here -->
@@ -395,13 +405,6 @@
             <div id="addColorButton" class="add-color-button" title="Add New Color">
                 <i class="bi bi-plus"></i>
             </div>
-        </div>
-        <!-- Time Selectors -->
-        <div id="timeSelectors" class="mb-4">
-            <label for="startTime" class="me-2">Start Time:</label>
-            <input type="time" id="startTime" name="startTime" required>
-            <label for="endTime" class="ms-3 me-2">End Time:</label>
-            <input type="time" id="endTime" name="endTime" required>
         </div>
         <!-- The timetable grid will be generated here -->
         <div id="timetable-container" class="table-responsive">
@@ -896,66 +899,61 @@
                 cell.title = `Estimated at ${estimationTime}: ${estimatedHours}h`;
             }
 
-            // Update totals
+            // Update totals with a breakdown per day per shift
             function updateTotals() {
                 const totalsContainer = document.getElementById('totals-container');
                 totalsContainer.innerHTML = '';
 
-                // Calculate total hours per day
-                const dayTotals = {};
-                days.forEach(day => {
-                    dayTotals[day] = 0;
-                });
-
-                const selectedSlots = document.querySelectorAll('.time-slot.selected');
-                selectedSlots.forEach(slot => {
-                    const day = slot.dataset.day;
-                    dayTotals[day] += 0.25; // Each slot is 0.25 hour
-                });
-
-                // Calculate total hours for the week
-                let totalWeekHours = 0;
-
-                // Create a table to display totals
+                // Create a table to display totals per day with shift breakdowns.
                 const totalsTable = document.createElement('table');
                 totalsTable.className = 'totals-table';
 
-                // Create header row
+                // Create header row with day names
                 const thead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
-
                 days.forEach(day => {
-                    const dayHeader = document.createElement('th');
-                    dayHeader.textContent = day;
-                    headerRow.appendChild(dayHeader);
+                    const th = document.createElement('th');
+                    th.textContent = day;
+                    headerRow.appendChild(th);
                 });
-
                 thead.appendChild(headerRow);
                 totalsTable.appendChild(thead);
 
-                // Create body row with totals
+                // Create body row with shift breakdowns for each day
                 const tbody = document.createElement('tbody');
-                const totalsRow = document.createElement('tr');
-
+                const dataRow = document.createElement('tr');
                 days.forEach(day => {
-                    const dayTotal = dayTotals[day];
-                    totalWeekHours += dayTotal;
-                    const totalCell = document.createElement('td');
-                    totalCell.textContent = `${dayTotal} hours`;
-                    totalsRow.appendChild(totalCell);
+                    const td = document.createElement('td');
+                    // For each shift (in the order they appear at the top), calculate the hours
+                    colorOptions.forEach(shift => {
+                        // Count the number of selected cells in that day with this shift's color
+                        const count = document.querySelectorAll(`.time-slot[data-day="${day}"].selected[data-color="${shift.id}"]`).length;
+                        const hours = (count * 0.25).toFixed(2);
+                        // Only add the shift line if hours are greater than 0
+                        if (parseFloat(hours) > 0) {
+                            // Create a small square with the shift color
+                            const square = document.createElement('span');
+                            square.style.display = 'inline-block';
+                            square.style.width = '12px';
+                            square.style.height = '12px';
+                            square.style.backgroundColor = shift.color;
+                            square.style.marginRight = '4px';
+                            square.style.border = '1px solid var(--main-color)';
+                            // Create a text node for the hours
+                            const text = document.createTextNode(`: ${hours}h`);
+                            // Combine into a line
+                            const lineDiv = document.createElement('div');
+                            lineDiv.appendChild(square);
+                            lineDiv.appendChild(text);
+                            td.appendChild(lineDiv);
+                        }
+                    });
+                    dataRow.appendChild(td);
                 });
-
-                tbody.appendChild(totalsRow);
-
+                tbody.appendChild(dataRow);
                 totalsTable.appendChild(tbody);
+
                 totalsContainer.appendChild(totalsTable);
-
-                // Create total week hours display
-                const totalWeekDiv = document.createElement('div');
-                totalWeekDiv.className = 'total-week-hours';
-                totalWeekDiv.textContent = `Total Week Hours: ${totalWeekHours}/40 hours`;
-
-                totalsContainer.appendChild(totalWeekDiv);
             }
 
             // Save data to local storage
