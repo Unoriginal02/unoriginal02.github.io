@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Basic Mockup Builder (Static) with Desktop/Mobile Toggle + Export/Import/Get List</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Bootstrap Icons (for the delete/swap/clone icons) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+
+    <style>
+        /* Container with no top/bottom margin */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .canvas {
+            width: 100%;
+            max-width: 1500px;
+            /* scales down below 1500px */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        /* Each block container is position: relative to house the overlay */
+        .block-container {
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* The overlay that shows on hover */
+        .module-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            /* <-- Added to ensure the overlay is on top */
+        }
+
+        /* Show the overlay when hovering on the block container */
+        .block-container:hover .module-overlay {
+            display: flex;
+        }
+
+        /* Icons inside the overlay */
+        .overlay-icons {
+            color: #fff;
+            font-size: 1.5rem;
+            position: relative;
+            z-index: 1;
+            /* So overlay icons are above the overlay background */
+        }
+
+        /* Spacing between overlay icons */
+        .overlay-icons>.icon-btn {
+            margin: 0 0.5rem;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+        }
+
+        /* The name label in the overlay's top-left corner */
+        .module-name-label {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.75rem;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal {
+            --bs-modal-width: 50%;
+        }
+
+        /* Modal changes for the modules list */
+        /* Category titles: Bold text and borders on the accordion tabs */
+        .accordion-button {
+            font-weight: bold;
+        }
+
+        /* Module thumbnails with a gentle box shadow */
+        .module-item-thumb {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Module items: remove borders (the border class has been removed in JS) */
+        .module-item {
+            padding: 0.5rem;
+        }
+
+        .block-container.spacer-block {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <!-- A wrapper with no top/bottom margin -->
+    <div class="main-container">
+        <!-- Toggle for Desktop/Mobile -->
+        <div class="toggle-view text-center mt-3">
+            <button id="desktopModeBtn" class="btn btn-primary me-2">Desktop</button>
+            <button id="mobileModeBtn" class="btn btn-secondary me-4">Mobile</button>
+            <button id="exportBtn" class="btn btn-success me-2">Export</button>
+            <button id="importBtn" class="btn btn-warning me-2">Import</button>
+            <button id="getListBtn" class="btn btn-info">Get List</button>
+            <!-- Hidden file input for Import -->
+            <input type="file" id="importFileInput" accept=".json" style="display: none;" />
+        </div>
+
+        <!-- Canvas / Stack Area (no border, no padding) -->
+        <div id="canvas" class="canvas mt-3">
+            <!-- Blocks will be inserted here with no extra spacing. -->
+        </div>
+
+        <!-- Plus Sign to add a new block at the bottom -->
+        <div class="text-center mt-4 mb-4">
+            <button id="addBlockBtn" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal"
+                data-bs-target="#modulesModal">
+                +
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal to pick modules -->
+    <div class="modal fade" id="modulesModal" tabindex="-1" aria-labelledby="modulesModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modulesModalLabel">Choose a Module</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Accordion for categories -->
+                    <div class="accordion" id="modulesAccordion">
+                        <!-- Modules accordion items will be populated here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal to display the plain module list -->
+    <div class="modal fade" id="listModal" tabindex="-1" aria-labelledby="listModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="listModalLabel">Module List</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="moduleListPre"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS + Popper (required for Bootstrap's JavaScript plugins) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        /*
+          Data structure now has each module defined with a desktop and mobile version.
+          In case of spacers, instead of an image asset, the desktop/mobile values represent the
+          spacer height (in pixels). You can easily add additional spacer options by adding new objects.
+        */
+        const categories = [
+            {
+                category: "Headers",
+                files: [
+                    {
+                        desktop: "Header1001-D.svg",
+                        mobile: "Header1001-M.svg"
+                    },
+                    {
+                        desktop: "Header1002-D.svg",
+                        mobile: "Header1002-M.svg"
+                    },
+                    {
+                        desktop: "Header2001-D.svg",
+                        mobile: "Header1002-M.svg"
+                    }
+                ]
+            },
+            {
+                category: "Sliders",
+                files: [
+                    {
+                        desktop: "pageSlider01.svg",
+                        mobile: "m-pageSlider01.svg"
+                    }
+                ]
+            },
+            {
+                category: "Page Banners",
+                files: [
+                    {
+                        desktop: "pageBanner04.svg",
+                        mobile: "m-pageBanner04.svg"
+                    },
+                    {
+                        desktop: "pageBanner05.svg",
+                        mobile: "m-pageBanner05.svg"
+                    }
+                ]
+            },
+            {
+                category: "Product Grid",
+                files: [
+                    {
+                        desktop: "productGrid02-D.svg",
+                        mobile: "productGrid02-M 2u.svg"
+                    }
+                ]
+            },
+            {
+                category: "Footers",
+                files: [
+                    {
+                        desktop: "footer01-D.svg",
+                        mobile: "footer01-M.svg"
+                    },
+                    {
+                        desktop: "footer02-D.svg",
+                        mobile: "footer02-M.svg"
+                    }
+                ]
+            },
+            {
+                category: "Spacers",
+                files: [
+                    {
+                        desktop: "16",
+                        mobile: "16"
+                    },
+                    {
+                        desktop: "32",
+                        mobile: "32"
+                    },
+                    {
+                        desktop: "64",
+                        mobile: "64"
+                    }
+                ]
+            }
+        ];
+
+        // Global variables to control swapping and inserting blocks
+        let currentlySwappingBlock = null; // For swapping an existing block
+        let currentlyInsertingBlockAfter = null; // For inserting a new block after a hovered block
+
+        // Global view mode state - "desktop" or "mobile"
+        let viewMode = "desktop";
+
+        // When the DOM is ready, populate modules and setup the view toggle, export/import, and modal event handlers.
+        document.addEventListener('DOMContentLoaded', () => {
+            populateModulesModal(categories);
+            setupViewToggle();
+
+            // Export/Import/Get List button event listeners
+            document.getElementById('exportBtn').addEventListener('click', exportMockup);
+            document.getElementById('importBtn').addEventListener('click', () => {
+                document.getElementById('importFileInput').click();
+            });
+            document.getElementById('importFileInput').addEventListener('change', importMockup);
+            document.getElementById('getListBtn').addEventListener('click', getModuleList);
+
+            // Add block at bottom button
+            document.getElementById('addBlockBtn').addEventListener('click', () => {
+                currentlySwappingBlock = null;
+                currentlyInsertingBlockAfter = null;
+            });
+
+            // When the modal is about to be shown, re-populate it based on current view mode.
+            const modulesModalEl = document.getElementById('modulesModal');
+            modulesModalEl.addEventListener('show.bs.modal', () => {
+                populateModulesModal(categories);
+            });
+        });
+
+        // Setup Desktop/Mobile toggle buttons
+        function setupViewToggle() {
+            document.getElementById('desktopModeBtn').addEventListener('click', () => {
+                viewMode = "desktop";
+                // Update button appearance
+                document.getElementById('desktopModeBtn').classList.add('btn-primary');
+                document.getElementById('desktopModeBtn').classList.remove('btn-secondary');
+                document.getElementById('mobileModeBtn').classList.add('btn-secondary');
+                document.getElementById('mobileModeBtn').classList.remove('btn-primary');
+                // Reset canvas max width for desktop mode
+                document.getElementById('canvas').style.maxWidth = "1500px";
+                updateAllModules();
+            });
+
+            document.getElementById('mobileModeBtn').addEventListener('click', () => {
+                viewMode = "mobile";
+                // Update button appearance
+                document.getElementById('mobileModeBtn').classList.add('btn-primary');
+                document.getElementById('mobileModeBtn').classList.remove('btn-secondary');
+                document.getElementById('desktopModeBtn').classList.add('btn-secondary');
+                document.getElementById('desktopModeBtn').classList.remove('btn-primary');
+                // Set canvas max width for mobile mode
+                document.getElementById('canvas').style.maxWidth = "360px";
+                updateAllModules();
+            });
+        }
+
+        // Update every module on the canvas to use the correct version
+        function updateAllModules() {
+            // We assume the first child of each .block-container holds the content (img or div for spacer)
+            const allModuleElements = document.querySelectorAll('#canvas .block-container > :first-child');
+            allModuleElements.forEach(el => {
+                const category = el.dataset.category;
+                if (category === "Spacers") {
+                    const newHeight = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
+                    el.style.height = newHeight + "px";
+                } else {
+                    const newFile = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
+                    el.src = `Modules/${category}/${newFile}`;
+                }
+            });
+        }
+
+        // Populate the modules modal with accordions
+        function populateModulesModal(categories) {
+            const accordionContainer = document.getElementById('modulesAccordion');
+            accordionContainer.innerHTML = ''; // clear if needed
+
+            categories.forEach((catObj, index) => {
+                const { category, files } = catObj;
+
+                // Create accordion item
+                const accordionItem = document.createElement('div');
+                accordionItem.classList.add('accordion-item');
+
+                // Accordion header
+                const headerId = `heading-${index}`;
+                const collapseId = `collapse-${index}`;
+                const accordionHeader = document.createElement('h2');
+                accordionHeader.classList.add('accordion-header');
+                accordionHeader.id = headerId;
+
+                const accordionButton = document.createElement('button');
+                // Add bold font-weight for category title
+                accordionButton.classList.add('accordion-button', 'collapsed', 'fw-bold');
+                accordionButton.type = 'button';
+                accordionButton.setAttribute('data-bs-toggle', 'collapse');
+                accordionButton.setAttribute('data-bs-target', `#${collapseId}`);
+                accordionButton.setAttribute('aria-expanded', 'false');
+                accordionButton.setAttribute('aria-controls', collapseId);
+                accordionButton.innerText = category;
+                accordionHeader.appendChild(accordionButton);
+
+                // Accordion collapse div
+                const accordionCollapse = document.createElement('div');
+                accordionCollapse.id = collapseId;
+                accordionCollapse.classList.add('accordion-collapse', 'collapse');
+                accordionCollapse.setAttribute('aria-labelledby', headerId);
+                accordionCollapse.setAttribute('data-bs-parent', '#modulesAccordion');
+
+                const accordionBody = document.createElement('div');
+                accordionBody.classList.add('accordion-body');
+
+                // Create a list container for module files (each file as a clickable item)
+                const listContainer = document.createElement('ul');
+                listContainer.classList.add('list-unstyled');
+
+                files.forEach(fileObj => {
+                    const listItem = document.createElement('li');
+                    listItem.classList.add('mb-3'); // add spacing below each item
+
+                    // Create a clickable container that shows the image (or spacer preview) and name
+                    const moduleItem = document.createElement('div');
+                    moduleItem.classList.add('p-2', 'rounded', 'module-item');
+                    moduleItem.style.cursor = 'pointer';
+
+                    let fileContent, displayName;
+                    if (category === "Spacers") {
+                        // For spacers, fileObj.desktop is the height (in px)
+                        const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                        fileContent = document.createElement('div');
+                        fileContent.style.height = height + "px";
+                        // Keep modal spacer preview with gray background
+                        fileContent.style.background = "#f0f0f0";
+                        fileContent.style.width = "100%";
+                        displayName = `${height}px Spacer`;
+                    } else {
+                        // Choose the appropriate file for the current view mode
+                        const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                        fileContent = document.createElement('img');
+                        fileContent.src = `Modules/${category}/${fileName}`;
+                        fileContent.alt = fileName;
+                        fileContent.classList.add('img-fluid', 'module-item-thumb');
+                        displayName = fileName.replace('.svg', '');
+                    }
+                    moduleItem.appendChild(fileContent);
+
+                    // The text name below the preview
+                    const nameSpan = document.createElement('div');
+                    nameSpan.classList.add('mt-2');
+                    nameSpan.innerText = displayName;
+                    moduleItem.appendChild(nameSpan);
+
+                    // Click logic for the module item
+                    moduleItem.onclick = () => {
+                        if (currentlySwappingBlock) {
+                            // If swapping, update the existing block's content
+                            updateBlockSrc(currentlySwappingBlock, category, fileObj);
+                        } else if (currentlyInsertingBlockAfter) {
+                            // If inserting after a specific block
+                            addModuleAfter(currentlyInsertingBlockAfter, category, fileObj);
+                        } else {
+                            // Otherwise, add the new block at the bottom of the canvas
+                            addModuleToCanvas(category, fileObj);
+                        }
+                    };
+
+                    listItem.appendChild(moduleItem);
+                    listContainer.appendChild(listItem);
+                });
+
+                accordionBody.appendChild(listContainer);
+                accordionCollapse.appendChild(accordionBody);
+
+                // Assemble the accordion item
+                accordionItem.appendChild(accordionHeader);
+                accordionItem.appendChild(accordionCollapse);
+
+                // Append to the main accordion container
+                accordionContainer.appendChild(accordionItem);
+            });
+        }
+
+        //===============================
+        //  Add a new module block to the canvas
+        //===============================
+        function addModuleToCanvas(category, fileObj) {
+            const canvas = document.getElementById('canvas');
+            const newBlock = createModuleBlock(category, fileObj);
+            canvas.appendChild(newBlock);
+            closeModal();
+        }
+
+        // Add a new module block AFTER a specific existing block
+        function addModuleAfter(referenceBlock, category, fileObj) {
+            const newBlock = createModuleBlock(category, fileObj);
+            referenceBlock.insertAdjacentElement('afterend', newBlock);
+            closeModal();
+            currentlyInsertingBlockAfter = null; // reset
+        }
+
+        // Common function to create a new block container with the appropriate content, overlay, etc.
+        function createModuleBlock(category, fileObj) {
+            const blockDiv = document.createElement('div');
+            blockDiv.classList.add('block-container');
+            // Mark spacer blocks so we can style their overlay differently
+            if (category === "Spacers") {
+                blockDiv.classList.add('spacer-block');
+            }
+            // Make block draggable
+            blockDiv.setAttribute('draggable', 'true');
+
+            let contentElement;
+            let moduleName;
+
+            if (category === "Spacers") {
+                // For spacers, the fileObj value is a height (as a string)
+                const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                moduleName = height + "px Spacer";
+                contentElement = document.createElement('div');
+                contentElement.style.height = height + "px";
+                // Set canvas spacer background to transparent
+                contentElement.style.background = "transparent";
+                contentElement.style.width = "100%";
+            } else {
+                // For modules that use images
+                const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                moduleName = fileName.replace('.svg', '');
+                contentElement = document.createElement('img');
+                contentElement.src = `Modules/${category}/${fileName}`;
+                contentElement.alt = fileName;
+                contentElement.style.display = 'block';
+                contentElement.style.margin = '0';
+                contentElement.style.maxWidth = '100%';
+                contentElement.style.height = 'auto';
+            }
+
+            // Save extra info for toggling later
+            contentElement.dataset.category = category;
+            contentElement.dataset.desktop = fileObj.desktop;
+            contentElement.dataset.mobile = fileObj.mobile;
+
+            // Append the content element to the block container
+            blockDiv.appendChild(contentElement);
+
+            // The overlay div
+            const overlayDiv = document.createElement('div');
+            overlayDiv.classList.add('module-overlay');
+
+            // Module name label in the overlay's top-left
+            const moduleNameLabel = document.createElement('div');
+            moduleNameLabel.classList.add('module-name-label');
+            moduleNameLabel.innerText = moduleName;
+            overlayDiv.appendChild(moduleNameLabel);
+
+            // Overlay icons container
+            const overlayIcons = document.createElement('div');
+            overlayIcons.classList.add('overlay-icons');
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.classList.add('icon-btn');
+            deleteBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+            deleteBtn.onclick = () => {
+                blockDiv.remove();
+            };
+
+            // Swap button
+            const swapBtn = document.createElement('button');
+            swapBtn.classList.add('icon-btn');
+            swapBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+            swapBtn.onclick = () => {
+                currentlySwappingBlock = contentElement;
+                const modulesModalEl = document.getElementById('modulesModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            // Clone button
+            const cloneBtn = document.createElement('button');
+            cloneBtn.classList.add('icon-btn');
+            cloneBtn.innerHTML = '<i class="bi bi-files"></i>';
+            cloneBtn.onclick = () => {
+                cloneBlock(blockDiv);
+            };
+
+            // Add-after (plus) button
+            const addAfterBtn = document.createElement('button');
+            addAfterBtn.classList.add('icon-btn');
+            addAfterBtn.innerHTML = '<i class="bi bi-plus-circle"></i>';
+            addAfterBtn.onclick = () => {
+                currentlyInsertingBlockAfter = blockDiv;
+                const modulesModalEl = document.getElementById('modulesModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            // Assemble overlay icons
+            overlayIcons.appendChild(deleteBtn);
+            overlayIcons.appendChild(swapBtn);
+            overlayIcons.appendChild(cloneBtn);
+            overlayIcons.appendChild(addAfterBtn);
+            overlayDiv.appendChild(overlayIcons);
+
+            // Append overlay to the block container
+            blockDiv.appendChild(overlayDiv);
+
+            // Add drag & drop event listeners
+            addDragAndDropHandlers(blockDiv);
+
+            return blockDiv;
+        }
+
+        //===============================
+        //  Update an existing block’s content (for swapping)
+        //===============================
+        function updateBlockSrc(contentElement, category, fileObj) {
+            if (category === "Spacers") {
+                // For spacers, update the height of the div
+                const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                contentElement.style.height = height + "px";
+                contentElement.dataset.desktop = fileObj.desktop;
+                contentElement.dataset.mobile = fileObj.mobile;
+                const overlayDiv = contentElement.parentElement.querySelector('.module-overlay');
+                if (overlayDiv) {
+                    const moduleNameLabel = overlayDiv.querySelector('.module-name-label');
+                    moduleNameLabel.innerText = height + "px Spacer";
+                }
+            } else {
+                // For images, update the source
+                const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                contentElement.src = `Modules/${category}/${fileName}`;
+                contentElement.dataset.desktop = fileObj.desktop;
+                contentElement.dataset.mobile = fileObj.mobile;
+                const overlayDiv = contentElement.parentElement.querySelector('.module-overlay');
+                if (overlayDiv) {
+                    const moduleNameLabel = overlayDiv.querySelector('.module-name-label');
+                    moduleNameLabel.innerText = fileName.replace('.svg', '');
+                }
+            }
+            closeModal();
+            currentlySwappingBlock = null; // reset
+        }
+
+        //===============================
+        //  Close the Modal
+        //===============================
+        function closeModal() {
+            const modulesModalEl = document.getElementById('modulesModal');
+            const modal = bootstrap.Modal.getInstance(modulesModalEl);
+            if (modal) {
+                modal.hide();
+            }
+        }
+
+        //===============================
+        //  Clone a block
+        //===============================
+        function cloneBlock(blockDiv) {
+            const newBlockDiv = blockDiv.cloneNode(true);
+            newBlockDiv.style.opacity = '1';
+            addDragAndDropHandlers(newBlockDiv);
+
+            // Re-hook the button event handlers in the cloned overlay
+            const overlayButtons = newBlockDiv.querySelectorAll('.icon-btn');
+            const newDeleteBtn = overlayButtons[0],
+                newSwapBtn = overlayButtons[1],
+                newCloneBtn = overlayButtons[2],
+                newAddAfterBtn = overlayButtons[3];
+
+            const newContentElement = newBlockDiv.querySelector(':first-child');
+
+            newDeleteBtn.onclick = () => {
+                newBlockDiv.remove();
+            };
+
+            newSwapBtn.onclick = () => {
+                currentlySwappingBlock = newContentElement;
+                const modulesModalEl = document.getElementById('modulesModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            newCloneBtn.onclick = () => {
+                cloneBlock(newBlockDiv);
+            };
+
+            newAddAfterBtn.onclick = () => {
+                currentlyInsertingBlockAfter = newBlockDiv;
+                const modulesModalEl = document.getElementById('modulesModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            // Restore overlay display style
+            const newOverlay = newBlockDiv.querySelector('.module-overlay');
+            newOverlay.style.display = '';
+
+            blockDiv.insertAdjacentElement('afterend', newBlockDiv);
+        }
+
+        //===============================
+        //  Drag & Drop Logic
+        //===============================
+        let draggedBlock = null;
+
+        function addDragAndDropHandlers(blockDiv) {
+            blockDiv.addEventListener('dragstart', handleDragStart);
+            blockDiv.addEventListener('dragover', handleDragOver);
+            blockDiv.addEventListener('dragenter', handleDragEnter);
+            blockDiv.addEventListener('dragleave', handleDragLeave);
+            blockDiv.addEventListener('drop', handleDrop);
+            blockDiv.addEventListener('dragend', handleDragEnd);
+        }
+
+        function handleDragStart(e) {
+            draggedBlock = this;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+            this.style.opacity = '0.4';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // allow dropping
+        }
+
+        function handleDragEnter(e) {
+            this.classList.add('bg-info', 'bg-opacity-25');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('bg-info', 'bg-opacity-25');
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            if (draggedBlock !== this) {
+                const canvas = document.getElementById('canvas');
+                canvas.insertBefore(draggedBlock, this);
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+            document.querySelectorAll('.block-container').forEach(block => {
+                block.classList.remove('bg-info', 'bg-opacity-25');
+            });
+        }
+
+        //===============================
+        //  Export / Import / Get List Functions
+        //===============================
+        function exportMockup() {
+            const modules = Array.from(document.querySelectorAll('#canvas .block-container > :first-child')).map(el => ({
+                category: el.dataset.category,
+                desktop: el.dataset.desktop,
+                mobile: el.dataset.mobile
+            }));
+            const jsonStr = JSON.stringify(modules, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "mockup.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importMockup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const modules = JSON.parse(e.target.result);
+                    const canvas = document.getElementById('canvas');
+                    canvas.innerHTML = '';
+                    modules.forEach(moduleData => {
+                        const block = createModuleBlock(moduleData.category, {
+                            desktop: moduleData.desktop,
+                            mobile: moduleData.mobile
+                        });
+                        canvas.appendChild(block);
+                    });
+                } catch (error) {
+                    alert("Error loading mockup: " + error);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = "";
+        }
+
+        function getModuleList() {
+            const modules = Array.from(document.querySelectorAll('#canvas .block-container > :first-child')).map(el => {
+                let displayVal = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
+                if (el.dataset.category === "Spacers") {
+                    displayVal = displayVal + "px Spacer";
+                } else {
+                    displayVal = displayVal.replace('.svg', '');
+                }
+                return displayVal;
+            });
+            const listStr = modules.join("\n");
+            const moduleListPre = document.getElementById('moduleListPre');
+            moduleListPre.innerText = listStr;
+            const listModalEl = document.getElementById('listModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(listModalEl);
+            modal.show();
+        }
+    </script>
+</body>
+
+</html>
