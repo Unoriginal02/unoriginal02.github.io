@@ -213,10 +213,9 @@
             color: #ffffff;
         }
 
-        /* Module thumbnails with a gentle box shadow */
+        /* Module thumbnails with a gentle box shadow
         .module-item-thumb {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
+        } */
 
         /* Module items: remove borders (the border class has been removed in JS) */
         .module-item {
@@ -371,7 +370,31 @@
 
         /* Optional: Add some padding to the modal body to accommodate smaller module widths */
         .modal-body {
-            padding: 1rem;
+            padding: 2rem;
+        }
+
+        /* Custom styles for the toggle switch */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-switch label {
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+            user-select: none;
+        }
+
+        .button-group {
+            display: flex;
+        }
+
+        .modal-title {
+            font-weight: bold;
+        }
+
+        .modal-content {
+            background-color: #eaeaee;
         }
     </style>
 </head>
@@ -383,11 +406,17 @@
             Trilogi's Mockup Builder
         </div>
         <div class="button-group">
-            <button id="desktopModeBtn" class="btn btn-primary">Desktop</button>
-            <button id="mobileModeBtn" class="btn btn-secondary">Mobile</button>
-            <button id="exportBtn" class="btn btn-light-gray">Export</button>
-            <button id="importBtn" class="btn btn-light-gray">Import</button>
-            <button id="getListBtn" class="btn btn-light-gray">Get List</button>
+            <!-- Mode Toggle Switch -->
+            <div class="toggle-switch">
+                <label for="modeToggle">Desktop</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="modeToggle">
+                </div>
+                <label for="modeToggle">Mobile</label>
+            </div>
+            <button id="exportBtn" class="btn btn-secondary">Export</button>
+            <button id="importBtn" class="btn btn-secondary">Import</button>
+            <button id="getListBtn" class="btn btn-secondary">Get List</button>
             <!-- Hidden file input for Import -->
             <input type="file" id="importFileInput" accept=".json" style="display: none;" />
         </div>
@@ -613,29 +642,39 @@
             initializeSortable();
         });
 
-        // Setup Desktop/Mobile toggle buttons
+        // Setup Desktop/Mobile toggle switch
         function setupViewToggle() {
-            document.getElementById('desktopModeBtn').addEventListener('click', () => {
-                viewMode = "desktop";
-                // Update button appearance
-                document.getElementById('desktopModeBtn').classList.add('btn-primary');
-                document.getElementById('desktopModeBtn').classList.remove('btn-secondary');
-                document.getElementById('mobileModeBtn').classList.add('btn-secondary');
-                document.getElementById('mobileModeBtn').classList.remove('btn-primary');
-                // Reset canvas max width for desktop mode
-                document.getElementById('canvas').style.maxWidth = "1500px";
-                updateAllModules();
-            });
+            const modeToggle = document.getElementById('modeToggle');
+            const desktopLabel = document.querySelector('label[for="modeToggle"]:first-child');
+            const mobileLabel = document.querySelector('label[for="modeToggle"]:last-child');
 
-            document.getElementById('mobileModeBtn').addEventListener('click', () => {
-                viewMode = "mobile";
-                // Update button appearance
-                document.getElementById('mobileModeBtn').classList.add('btn-primary');
-                document.getElementById('mobileModeBtn').classList.remove('btn-secondary');
-                document.getElementById('desktopModeBtn').classList.add('btn-secondary');
-                document.getElementById('desktopModeBtn').classList.remove('btn-primary');
-                // Set canvas max width for mobile mode
-                document.getElementById('canvas').style.maxWidth = "360px";
+            // Initialize labels based on default viewMode
+            if (viewMode === "desktop") {
+                modeToggle.checked = false;
+                desktopLabel.style.fontWeight = 'bold';
+                mobileLabel.style.fontWeight = 'normal';
+            } else {
+                modeToggle.checked = true;
+                desktopLabel.style.fontWeight = 'normal';
+                mobileLabel.style.fontWeight = 'bold';
+            }
+
+            modeToggle.addEventListener('change', () => {
+                if (modeToggle.checked) {
+                    viewMode = "mobile";
+                    desktopLabel.style.fontWeight = 'normal';
+                    mobileLabel.style.fontWeight = 'bold';
+                } else {
+                    viewMode = "desktop";
+                    desktopLabel.style.fontWeight = 'bold';
+                    mobileLabel.style.fontWeight = 'normal';
+                }
+                // Update canvas max width based on mode
+                if (viewMode === "desktop") {
+                    document.getElementById('canvas').style.maxWidth = "1500px";
+                } else {
+                    document.getElementById('canvas').style.maxWidth = "360px";
+                }
                 updateAllModules();
             });
         }
@@ -699,7 +738,6 @@
 
                 const navLink = document.createElement('button');
                 navLink.classList.add('nav-link');
-                // Removed active class to keep modal clean
                 // if (index === 0) navLink.classList.add('active');
                 navLink.id = `tab-${index}`;
                 navLink.setAttribute('data-bs-toggle', 'pill');
@@ -707,7 +745,7 @@
                 navLink.setAttribute('type', 'button');
                 navLink.setAttribute('role', 'tab');
                 navLink.setAttribute('aria-controls', `pill-${index}`);
-                navLink.setAttribute('aria-selected', 'false'); // Set to false for all
+                navLink.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
                 navLink.innerText = category;
 
                 navItem.appendChild(navLink);
@@ -716,7 +754,6 @@
                 // Create tab pane
                 const tabPane = document.createElement('div');
                 tabPane.classList.add('tab-pane', 'fade');
-                // Removed show and active classes to keep modal clean
                 // if (index === 0) tabPane.classList.add('show', 'active');
                 tabPane.id = `pill-${index}`;
                 tabPane.setAttribute('role', 'tabpanel');
