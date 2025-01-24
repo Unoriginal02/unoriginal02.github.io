@@ -3,15 +3,122 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Basic Mockup Builder (Static) with Desktop/Mobile Toggle + Export/Import/Get List</title>
+    <title>Trilogi's Mockup Builder</title>
 
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-    <!-- Bootstrap Icons (for the delete/swap/clone icons) -->
+    <!-- Bootstrap Icons (for the delete/swap/clone/comment icons) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
 
+    <!-- Sortable.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <style>
+        /* Global Styles */
+        body {
+            background-color: #eaeaee;
+            color: #000000;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Remove rounded corners globally */
+        .btn,
+        .modal-content,
+        .block-container,
+        .module-overlay,
+        .module-item-container,
+        .note-editor {
+            border-radius: 0 !important;
+        }
+
+        /* Top Bar Styles */
+        .top-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 2px solid #000000;
+            background-color: #ffffff;
+        }
+
+        .top-bar .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .top-bar .button-group .btn {
+            margin-left: 0.5rem;
+        }
+
+        /* Button Styles */
+        .btn-primary,
+        .btn-secondary,
+        .btn-success,
+        .btn-warning,
+        .btn-info,
+        .btn-outline-primary {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+        }
+
+        .btn-success {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        .btn-warning {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        .btn-info {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        .btn-outline-primary {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+        }
+
+        /* New Button Style for Light Gray Buttons */
+        .btn-light-gray {
+            background-color: #d3d3d3;
+            color: #000000;
+            border: 1px solid #d3d3d3;
+        }
+
+        .btn-light-gray:hover {
+            background-color: #a9a9a9;
+            color: #ffffff;
+            border: 1px solid #a9a9a9;
+        }
+
+        /* Hover Effects for Buttons */
+        .btn-primary:hover,
+        .btn-secondary:hover,
+        .btn-success:hover,
+        .btn-warning:hover,
+        .btn-info:hover,
+        .btn-outline-primary:hover {
+            background-color: #333333;
+            color: #ffffff;
+            border: 1px solid #333333;
+        }
+
         /* Container with no top/bottom margin */
         .main-container {
             display: flex;
@@ -30,7 +137,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #fff;
+            background-color: #ffffff;
         }
 
         /* Each block container is position: relative to house the overlay */
@@ -51,7 +158,8 @@
             display: none;
             justify-content: center;
             align-items: center;
-            /* <-- Added to ensure the overlay is on top */
+            /* Ensure the overlay is on top */
+            z-index: 1;
         }
 
         /* Show the overlay when hovering on the block container */
@@ -61,11 +169,10 @@
 
         /* Icons inside the overlay */
         .overlay-icons {
-            color: #fff;
+            color: #ffffff;
             font-size: 1.5rem;
-            position: relative;
-            z-index: 1;
-            /* So overlay icons are above the overlay background */
+            display: flex;
+            gap: 0.5rem;
         }
 
         /* Spacing between overlay icons */
@@ -74,6 +181,7 @@
             cursor: pointer;
             background: transparent;
             border: none;
+            color: #ffffff;
         }
 
         /* The name label in the overlay's top-left corner */
@@ -81,7 +189,7 @@
             position: absolute;
             top: 0.5rem;
             left: 0.75rem;
-            color: #fff;
+            color: #ffffff;
             font-weight: 600;
             font-size: 0.9rem;
             text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
@@ -95,6 +203,14 @@
         /* Category titles: Bold text and borders on the accordion tabs */
         .accordion-button {
             font-weight: bold;
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #000000;
+            color: #ffffff;
         }
 
         /* Module thumbnails with a gentle box shadow */
@@ -110,23 +226,175 @@
         .block-container.spacer-block {
             width: 100%;
         }
+
+        /* Note indicator */
+        .note-indicator {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 12px;
+            height: 12px;
+            background-color: red;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        /* Styling for the rich text editor in the note modal */
+        .note-editor {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #000000;
+            padding: 0.5rem;
+            overflow-y: auto;
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        /* Styling for the Get List modal */
+        #moduleListContainer {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .module-entry {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #d3d3d3;
+            /* Changed from #000000 to light gray */
+            padding-bottom: 0.5rem;
+        }
+
+        .module-entry .module-name {
+            font-weight: bold;
+        }
+
+        .module-entry .module-note {
+            margin-left: 0;
+            /* Removed indentation */
+            margin-top: 0.25rem;
+            /* Removed font-style: italic; */
+            font-style: normal;
+            /* Ensures regular font */
+            color: #555555;
+        }
+
+        /* New Styles for Tags */
+        .module-tags {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .module-tag {
+            font-size: 0.75rem;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 0.1rem 0.3rem;
+            display: inline-block;
+            background-color: #ffffff;
+        }
+
+        /* Styles for the tabbed navigation */
+        .nav-pills .nav-link.active {
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 0;
+        }
+
+        .nav-pills .nav-link {
+            background-color: transparent;
+            color: #000000;
+            border: none;
+            border-radius: 0;
+        }
+
+        /* Module Item Container */
+        .module-item-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+            /* Increased margin between modules */
+            width: 100%;
+        }
+
+        .module-title {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            /* Space between title and image */
+            text-align: left;
+            width: 100%;
+        }
+
+        .module-tags {
+            margin-top: 0.5rem;
+            justify-content: flex-start;
+            /* Align tags to the left */
+        }
+
+        /* Additional styling for module images */
+        .module-image {
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+        }
+
+        /* Modal Header and Footer Styles */
+        .modal-header,
+        .modal-footer {
+            border: none;
+        }
+
+        /* Remove outline from focus */
+        .btn:focus {
+            box-shadow: none;
+        }
+
+        /* Adjust the note indicator for spacers */
+        .block-container.spacer-block .note-indicator {
+            background-color: #000000;
+        }
+
+        /* New CSS Class for Mobile Mode in Modal */
+        .module-item-container.mobile-mode {
+            max-width: 360px;
+            margin: 0 auto 2rem auto;
+            /* Center the module within the modal and maintain bottom margin */
+        }
+
+        /* Ensure images do not exceed their container's width */
+        .module-item-container.mobile-mode .module-image {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Optional: Add some padding to the modal body to accommodate smaller module widths */
+        .modal-body {
+            padding: 1rem;
+        }
     </style>
 </head>
 
-<body class="bg-light">
-    <!-- A wrapper with no top/bottom margin -->
-    <div class="main-container">
-        <!-- Toggle for Desktop/Mobile -->
-        <div class="toggle-view text-center mt-3">
-            <button id="desktopModeBtn" class="btn btn-primary me-2">Desktop</button>
-            <button id="mobileModeBtn" class="btn btn-secondary me-4">Mobile</button>
-            <button id="exportBtn" class="btn btn-success me-2">Export</button>
-            <button id="importBtn" class="btn btn-warning me-2">Import</button>
-            <button id="getListBtn" class="btn btn-info">Get List</button>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="title">
+            Trilogi's Mockup Builder
+        </div>
+        <div class="button-group">
+            <button id="desktopModeBtn" class="btn btn-primary">Desktop</button>
+            <button id="mobileModeBtn" class="btn btn-secondary">Mobile</button>
+            <button id="exportBtn" class="btn btn-light-gray">Export</button>
+            <button id="importBtn" class="btn btn-light-gray">Import</button>
+            <button id="getListBtn" class="btn btn-light-gray">Get List</button>
             <!-- Hidden file input for Import -->
             <input type="file" id="importFileInput" accept=".json" style="display: none;" />
         </div>
+    </div>
 
+    <!-- A wrapper with no top/bottom margin -->
+    <div class="main-container">
         <!-- Canvas / Stack Area (no border, no padding) -->
         <div id="canvas" class="canvas mt-3">
             <!-- Blocks will be inserted here with no extra spacing. -->
@@ -143,16 +411,20 @@
 
     <!-- Modal to pick modules -->
     <div class="modal fade" id="modulesModal" tabindex="-1" aria-labelledby="modulesModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="modulesModalLabel">Choose a Module</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Accordion for categories -->
-                    <div class="accordion" id="modulesAccordion">
-                        <!-- Modules accordion items will be populated here dynamically -->
+                    <!-- Nav pills for categories -->
+                    <ul class="nav nav-pills mb-3" id="modulesTab" role="tablist">
+                        <!-- Nav items will be populated dynamically -->
+                    </ul>
+                    <!-- Tab content -->
+                    <div class="tab-content" id="modulesTabContent">
+                        <!-- Tab panes will be populated dynamically -->
                     </div>
                 </div>
             </div>
@@ -168,7 +440,26 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <pre id="moduleListPre"></pre>
+                    <div id="moduleListContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing notes -->
+    <div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="noteModalLabel">Add/Edit Note</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="noteEditor" class="note-editor" contenteditable="true"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="saveNoteBtn" class="btn btn-primary">Save Note</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>
@@ -182,6 +473,7 @@
           Data structure now has each module defined with a desktop and mobile version.
           In case of spacers, instead of an image asset, the desktop/mobile values represent the
           spacer height (in pixels). You can easily add additional spacer options by adding new objects.
+          Now includes 'tags' for each module.
         */
         const categories = [
             {
@@ -189,15 +481,18 @@
                 files: [
                     {
                         desktop: "Header1001-D.svg",
-                        mobile: "Header1001-M.svg"
+                        mobile: "Header1001-M.svg",
+                        tags: ["navigation", "top"]
                     },
                     {
                         desktop: "Header1002-D.svg",
-                        mobile: "Header1002-M.svg"
+                        mobile: "Header1002-M.svg",
+                        tags: ["navigation", "fixed"]
                     },
                     {
                         desktop: "Header2001-D.svg",
-                        mobile: "Header1002-M.svg"
+                        mobile: "Header2001-M.svg",
+                        tags: ["navigation", "transparent"]
                     }
                 ]
             },
@@ -206,7 +501,8 @@
                 files: [
                     {
                         desktop: "pageSlider01.svg",
-                        mobile: "m-pageSlider01.svg"
+                        mobile: "m-pageSlider01.svg",
+                        tags: ["carousel", "image"]
                     }
                 ]
             },
@@ -215,11 +511,13 @@
                 files: [
                     {
                         desktop: "pageBanner04.svg",
-                        mobile: "m-pageBanner04.svg"
+                        mobile: "m-pageBanner04.svg",
+                        tags: ["banner", "promo"]
                     },
                     {
                         desktop: "pageBanner05.svg",
-                        mobile: "m-pageBanner05.svg"
+                        mobile: "m-pageBanner05.svg",
+                        tags: ["banner", "sale"]
                     }
                 ]
             },
@@ -228,7 +526,8 @@
                 files: [
                     {
                         desktop: "productGrid02-D.svg",
-                        mobile: "productGrid02-M 2u.svg"
+                        mobile: "productGrid02-M.svg",
+                        tags: ["products", "grid"]
                     }
                 ]
             },
@@ -237,11 +536,13 @@
                 files: [
                     {
                         desktop: "footer01-D.svg",
-                        mobile: "footer01-M.svg"
+                        mobile: "footer01-M.svg",
+                        tags: ["footer", "bottom"]
                     },
                     {
                         desktop: "footer02-D.svg",
-                        mobile: "footer02-M.svg"
+                        mobile: "footer02-M.svg",
+                        tags: ["footer", "links"]
                     }
                 ]
             },
@@ -250,15 +551,18 @@
                 files: [
                     {
                         desktop: "16",
-                        mobile: "16"
+                        mobile: "16",
+                        tags: ["spacer", "small"]
                     },
                     {
                         desktop: "32",
-                        mobile: "32"
+                        mobile: "32",
+                        tags: ["spacer", "medium"]
                     },
                     {
                         desktop: "64",
-                        mobile: "64"
+                        mobile: "64",
+                        tags: ["spacer", "large"]
                     }
                 ]
             }
@@ -271,9 +575,11 @@
         // Global view mode state - "desktop" or "mobile"
         let viewMode = "desktop";
 
+        // Variable to hold the block currently being edited for notes
+        let currentlyEditingNoteBlock = null;
+
         // When the DOM is ready, populate modules and setup the view toggle, export/import, and modal event handlers.
         document.addEventListener('DOMContentLoaded', () => {
-            populateModulesModal(categories);
             setupViewToggle();
 
             // Export/Import/Get List button event listeners
@@ -290,11 +596,21 @@
                 currentlyInsertingBlockAfter = null;
             });
 
-            // When the modal is about to be shown, re-populate it based on current view mode.
+            // When the modules modal is about to be shown, re-populate it based on current view mode.
             const modulesModalEl = document.getElementById('modulesModal');
             modulesModalEl.addEventListener('show.bs.modal', () => {
                 populateModulesModal(categories);
             });
+
+            // Setup Note Modal event listeners
+            document.getElementById('saveNoteBtn').addEventListener('click', saveNote);
+            const noteModalEl = document.getElementById('noteModal');
+            noteModalEl.addEventListener('hide.bs.modal', () => {
+                currentlyEditingNoteBlock = null;
+            });
+
+            // Initialize Sortable.js on the canvas
+            initializeSortable();
         });
 
         // Setup Desktop/Mobile toggle buttons
@@ -333,95 +649,135 @@
                 if (category === "Spacers") {
                     const newHeight = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
                     el.style.height = newHeight + "px";
+                    // Update background color for spacers on the canvas to white
+                    el.style.backgroundColor = "#ffffff";
                 } else {
                     const newFile = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
                     el.src = `Modules/${category}/${newFile}`;
                 }
+
+                // Update module name label
+                const blockDiv = el.parentElement;
+                const overlayDiv = blockDiv.querySelector('.module-overlay');
+                if (overlayDiv) {
+                    const moduleNameLabel = overlayDiv.querySelector('.module-name-label');
+                    if (category === "Spacers") {
+                        moduleNameLabel.innerText = `${viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop}px Spacer`;
+                    } else {
+                        moduleNameLabel.innerText = (viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop).replace('.svg', '');
+                    }
+                }
+
+                // If spacer, ensure no border
+                if (category === "Spacers") {
+                    el.style.border = "none";
+                }
             });
+
+            // Update modules in the modal if it's open
+            const modulesModalEl = document.getElementById('modulesModal');
+            const modalInstance = bootstrap.Modal.getInstance(modulesModalEl);
+            if (modalInstance && modulesModalEl.classList.contains('show')) {
+                populateModulesModal(categories);
+            }
         }
 
-        // Populate the modules modal with accordions
+        // Populate the modules modal with tabs and module items
         function populateModulesModal(categories) {
-            const accordionContainer = document.getElementById('modulesAccordion');
-            accordionContainer.innerHTML = ''; // clear if needed
+            const tabList = document.getElementById('modulesTab');
+            const tabContent = document.getElementById('modulesTabContent');
+            tabList.innerHTML = '';
+            tabContent.innerHTML = '';
 
             categories.forEach((catObj, index) => {
                 const { category, files } = catObj;
 
-                // Create accordion item
-                const accordionItem = document.createElement('div');
-                accordionItem.classList.add('accordion-item');
+                // Create nav item
+                const navItem = document.createElement('li');
+                navItem.classList.add('nav-item');
+                navItem.setAttribute('role', 'presentation');
 
-                // Accordion header
-                const headerId = `heading-${index}`;
-                const collapseId = `collapse-${index}`;
-                const accordionHeader = document.createElement('h2');
-                accordionHeader.classList.add('accordion-header');
-                accordionHeader.id = headerId;
+                const navLink = document.createElement('button');
+                navLink.classList.add('nav-link');
+                // Removed active class to keep modal clean
+                // if (index === 0) navLink.classList.add('active');
+                navLink.id = `tab-${index}`;
+                navLink.setAttribute('data-bs-toggle', 'pill');
+                navLink.setAttribute('data-bs-target', `#pill-${index}`);
+                navLink.setAttribute('type', 'button');
+                navLink.setAttribute('role', 'tab');
+                navLink.setAttribute('aria-controls', `pill-${index}`);
+                navLink.setAttribute('aria-selected', 'false'); // Set to false for all
+                navLink.innerText = category;
 
-                const accordionButton = document.createElement('button');
-                // Add bold font-weight for category title
-                accordionButton.classList.add('accordion-button', 'collapsed', 'fw-bold');
-                accordionButton.type = 'button';
-                accordionButton.setAttribute('data-bs-toggle', 'collapse');
-                accordionButton.setAttribute('data-bs-target', `#${collapseId}`);
-                accordionButton.setAttribute('aria-expanded', 'false');
-                accordionButton.setAttribute('aria-controls', collapseId);
-                accordionButton.innerText = category;
-                accordionHeader.appendChild(accordionButton);
+                navItem.appendChild(navLink);
+                tabList.appendChild(navItem);
 
-                // Accordion collapse div
-                const accordionCollapse = document.createElement('div');
-                accordionCollapse.id = collapseId;
-                accordionCollapse.classList.add('accordion-collapse', 'collapse');
-                accordionCollapse.setAttribute('aria-labelledby', headerId);
-                accordionCollapse.setAttribute('data-bs-parent', '#modulesAccordion');
+                // Create tab pane
+                const tabPane = document.createElement('div');
+                tabPane.classList.add('tab-pane', 'fade');
+                // Removed show and active classes to keep modal clean
+                // if (index === 0) tabPane.classList.add('show', 'active');
+                tabPane.id = `pill-${index}`;
+                tabPane.setAttribute('role', 'tabpanel');
+                tabPane.setAttribute('aria-labelledby', `tab-${index}`);
 
-                const accordionBody = document.createElement('div');
-                accordionBody.classList.add('accordion-body');
-
-                // Create a list container for module files (each file as a clickable item)
-                const listContainer = document.createElement('ul');
-                listContainer.classList.add('list-unstyled');
-
+                // Create module items inside the tab pane
                 files.forEach(fileObj => {
-                    const listItem = document.createElement('li');
-                    listItem.classList.add('mb-3'); // add spacing below each item
+                    const moduleContainer = document.createElement('div');
+                    moduleContainer.classList.add('module-item-container');
 
-                    // Create a clickable container that shows the image (or spacer preview) and name
-                    const moduleItem = document.createElement('div');
-                    moduleItem.classList.add('p-2', 'rounded', 'module-item');
-                    moduleItem.style.cursor = 'pointer';
+                    // Apply mobile mode styles if in mobile view
+                    if (viewMode === "mobile") {
+                        moduleContainer.classList.add('mobile-mode');
+                    }
 
-                    let fileContent, displayName;
+                    // Module Title
+                    const titleDiv = document.createElement('div');
+                    titleDiv.classList.add('module-title');
                     if (category === "Spacers") {
-                        // For spacers, fileObj.desktop is the height (in px)
+                        titleDiv.innerText = `${viewMode === "mobile" ? fileObj.mobile : fileObj.desktop}px Spacer`;
+                    } else {
+                        const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
+                        titleDiv.innerText = fileName.replace('.svg', '');
+                    }
+                    moduleContainer.appendChild(titleDiv);
+
+                    // Module Image or Spacer
+                    let fileContent;
+                    if (category === "Spacers") {
                         const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
                         fileContent = document.createElement('div');
                         fileContent.style.height = height + "px";
-                        // Keep modal spacer preview with gray background
-                        fileContent.style.background = "#f0f0f0";
+                        // Set modal spacer preview with gray background
+                        fileContent.style.background = "#d3d3d3";
                         fileContent.style.width = "100%";
-                        displayName = `${height}px Spacer`;
+                        // Removed border for spacers
                     } else {
-                        // Choose the appropriate file for the current view mode
                         const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
                         fileContent = document.createElement('img');
                         fileContent.src = `Modules/${category}/${fileName}`;
                         fileContent.alt = fileName;
-                        fileContent.classList.add('img-fluid', 'module-item-thumb');
-                        displayName = fileName.replace('.svg', '');
+                        fileContent.classList.add('img-fluid', 'module-item-thumb', 'module-image');
+                        fileContent.style.cursor = 'pointer';
                     }
-                    moduleItem.appendChild(fileContent);
+                    moduleContainer.appendChild(fileContent);
 
-                    // The text name below the preview
-                    const nameSpan = document.createElement('div');
-                    nameSpan.classList.add('mt-2');
-                    nameSpan.innerText = displayName;
-                    moduleItem.appendChild(nameSpan);
+                    // Module Tags
+                    if (fileObj.tags && fileObj.tags.length > 0) {
+                        const tagsContainer = document.createElement('div');
+                        tagsContainer.classList.add('module-tags');
+                        fileObj.tags.forEach(tag => {
+                            const tagSpan = document.createElement('span');
+                            tagSpan.classList.add('module-tag');
+                            tagSpan.innerText = tag;
+                            tagsContainer.appendChild(tagSpan);
+                        });
+                        moduleContainer.appendChild(tagsContainer);
+                    }
 
                     // Click logic for the module item
-                    moduleItem.onclick = () => {
+                    moduleContainer.onclick = () => {
                         if (currentlySwappingBlock) {
                             // If swapping, update the existing block's content
                             updateBlockSrc(currentlySwappingBlock, category, fileObj);
@@ -434,19 +790,10 @@
                         }
                     };
 
-                    listItem.appendChild(moduleItem);
-                    listContainer.appendChild(listItem);
+                    tabPane.appendChild(moduleContainer);
                 });
 
-                accordionBody.appendChild(listContainer);
-                accordionCollapse.appendChild(accordionBody);
-
-                // Assemble the accordion item
-                accordionItem.appendChild(accordionHeader);
-                accordionItem.appendChild(accordionCollapse);
-
-                // Append to the main accordion container
-                accordionContainer.appendChild(accordionItem);
+                tabContent.appendChild(tabPane);
             });
         }
 
@@ -476,8 +823,6 @@
             if (category === "Spacers") {
                 blockDiv.classList.add('spacer-block');
             }
-            // Make block draggable
-            blockDiv.setAttribute('draggable', 'true');
 
             let contentElement;
             let moduleName;
@@ -485,12 +830,13 @@
             if (category === "Spacers") {
                 // For spacers, the fileObj value is a height (as a string)
                 const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
-                moduleName = height + "px Spacer";
+                moduleName = `${height}px Spacer`;
                 contentElement = document.createElement('div');
                 contentElement.style.height = height + "px";
-                // Set canvas spacer background to transparent
-                contentElement.style.background = "transparent";
+                // Set canvas spacer background to white
+                contentElement.style.background = "#ffffff"; // Changed from #f0f0f0 to #ffffff
                 contentElement.style.width = "100%";
+                // Removed border for spacers
             } else {
                 // For modules that use images
                 const fileName = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
@@ -498,6 +844,7 @@
                 contentElement = document.createElement('img');
                 contentElement.src = `Modules/${category}/${fileName}`;
                 contentElement.alt = fileName;
+                contentElement.classList.add('module-image');
                 contentElement.style.display = 'block';
                 contentElement.style.margin = '0';
                 contentElement.style.maxWidth = '100%';
@@ -508,6 +855,9 @@
             contentElement.dataset.category = category;
             contentElement.dataset.desktop = fileObj.desktop;
             contentElement.dataset.mobile = fileObj.mobile;
+
+            // Initialize note data attribute
+            blockDiv.dataset.note = "";
 
             // Append the content element to the block container
             blockDiv.appendChild(contentElement);
@@ -530,7 +880,9 @@
             const deleteBtn = document.createElement('button');
             deleteBtn.classList.add('icon-btn');
             deleteBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
-            deleteBtn.onclick = () => {
+            deleteBtn.title = "Delete";
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
                 blockDiv.remove();
             };
 
@@ -538,7 +890,9 @@
             const swapBtn = document.createElement('button');
             swapBtn.classList.add('icon-btn');
             swapBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
-            swapBtn.onclick = () => {
+            swapBtn.title = "Swap Module";
+            swapBtn.onclick = (e) => {
+                e.stopPropagation();
                 currentlySwappingBlock = contentElement;
                 const modulesModalEl = document.getElementById('modulesModal');
                 const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
@@ -549,7 +903,9 @@
             const cloneBtn = document.createElement('button');
             cloneBtn.classList.add('icon-btn');
             cloneBtn.innerHTML = '<i class="bi bi-files"></i>';
-            cloneBtn.onclick = () => {
+            cloneBtn.title = "Clone Module";
+            cloneBtn.onclick = (e) => {
+                e.stopPropagation();
                 cloneBlock(blockDiv);
             };
 
@@ -557,10 +913,28 @@
             const addAfterBtn = document.createElement('button');
             addAfterBtn.classList.add('icon-btn');
             addAfterBtn.innerHTML = '<i class="bi bi-plus-circle"></i>';
-            addAfterBtn.onclick = () => {
+            addAfterBtn.title = "Add Module After";
+            addAfterBtn.onclick = (e) => {
+                e.stopPropagation();
                 currentlyInsertingBlockAfter = blockDiv;
                 const modulesModalEl = document.getElementById('modulesModal');
                 const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            // Comment button
+            const commentBtn = document.createElement('button');
+            commentBtn.classList.add('icon-btn');
+            commentBtn.innerHTML = '<i class="bi bi-chat-dots"></i>';
+            commentBtn.title = "Add/View Note";
+            commentBtn.onclick = (e) => {
+                e.stopPropagation();
+                currentlyEditingNoteBlock = blockDiv;
+                const existingNote = blockDiv.dataset.note;
+                const noteEditor = document.getElementById('noteEditor');
+                noteEditor.innerHTML = existingNote;
+                const noteModalEl = document.getElementById('noteModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(noteModalEl);
                 modal.show();
             };
 
@@ -569,13 +943,16 @@
             overlayIcons.appendChild(swapBtn);
             overlayIcons.appendChild(cloneBtn);
             overlayIcons.appendChild(addAfterBtn);
+            overlayIcons.appendChild(commentBtn); // Add the comment button
             overlayDiv.appendChild(overlayIcons);
 
             // Append overlay to the block container
             blockDiv.appendChild(overlayDiv);
 
-            // Add drag & drop event listeners
-            addDragAndDropHandlers(blockDiv);
+            // If the block has a note, display the note indicator
+            if (blockDiv.dataset.note.trim() !== "") {
+                addNoteIndicator(blockDiv);
+            }
 
             return blockDiv;
         }
@@ -588,12 +965,14 @@
                 // For spacers, update the height of the div
                 const height = viewMode === "mobile" ? fileObj.mobile : fileObj.desktop;
                 contentElement.style.height = height + "px";
+                // Update background color for spacers on the canvas to white
+                contentElement.style.background = "#ffffff"; // Ensure white background
                 contentElement.dataset.desktop = fileObj.desktop;
                 contentElement.dataset.mobile = fileObj.mobile;
                 const overlayDiv = contentElement.parentElement.querySelector('.module-overlay');
                 if (overlayDiv) {
                     const moduleNameLabel = overlayDiv.querySelector('.module-name-label');
-                    moduleNameLabel.innerText = height + "px Spacer";
+                    moduleNameLabel.innerText = `${height}px Spacer`;
                 }
             } else {
                 // For images, update the source
@@ -628,36 +1007,51 @@
         function cloneBlock(blockDiv) {
             const newBlockDiv = blockDiv.cloneNode(true);
             newBlockDiv.style.opacity = '1';
-            addDragAndDropHandlers(newBlockDiv);
 
             // Re-hook the button event handlers in the cloned overlay
             const overlayButtons = newBlockDiv.querySelectorAll('.icon-btn');
             const newDeleteBtn = overlayButtons[0],
                 newSwapBtn = overlayButtons[1],
                 newCloneBtn = overlayButtons[2],
-                newAddAfterBtn = overlayButtons[3];
+                newAddAfterBtn = overlayButtons[3],
+                newCommentBtn = overlayButtons[4];
 
             const newContentElement = newBlockDiv.querySelector(':first-child');
 
-            newDeleteBtn.onclick = () => {
+            newDeleteBtn.onclick = (e) => {
+                e.stopPropagation();
                 newBlockDiv.remove();
             };
 
-            newSwapBtn.onclick = () => {
+            newSwapBtn.onclick = (e) => {
+                e.stopPropagation();
                 currentlySwappingBlock = newContentElement;
                 const modulesModalEl = document.getElementById('modulesModal');
                 const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
                 modal.show();
             };
 
-            newCloneBtn.onclick = () => {
+            newCloneBtn.onclick = (e) => {
+                e.stopPropagation();
                 cloneBlock(newBlockDiv);
             };
 
-            newAddAfterBtn.onclick = () => {
+            newAddAfterBtn.onclick = (e) => {
+                e.stopPropagation();
                 currentlyInsertingBlockAfter = newBlockDiv;
                 const modulesModalEl = document.getElementById('modulesModal');
                 const modal = bootstrap.Modal.getOrCreateInstance(modulesModalEl);
+                modal.show();
+            };
+
+            newCommentBtn.onclick = (e) => {
+                e.stopPropagation();
+                currentlyEditingNoteBlock = newBlockDiv;
+                const existingNote = newBlockDiv.dataset.note;
+                const noteEditor = document.getElementById('noteEditor');
+                noteEditor.innerHTML = existingNote;
+                const noteModalEl = document.getElementById('noteModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(noteModalEl);
                 modal.show();
             };
 
@@ -665,57 +1059,27 @@
             const newOverlay = newBlockDiv.querySelector('.module-overlay');
             newOverlay.style.display = '';
 
+            // If the original block had a note, ensure the cloned block has it too
+            if (blockDiv.dataset.note.trim() !== "") {
+                newBlockDiv.dataset.note = blockDiv.dataset.note;
+                addNoteIndicator(newBlockDiv);
+            }
+
+            // Insert the cloned block after the original
             blockDiv.insertAdjacentElement('afterend', newBlockDiv);
         }
 
         //===============================
-        //  Drag & Drop Logic
+        //  Initialize Sortable.js
         //===============================
-        let draggedBlock = null;
-
-        function addDragAndDropHandlers(blockDiv) {
-            blockDiv.addEventListener('dragstart', handleDragStart);
-            blockDiv.addEventListener('dragover', handleDragOver);
-            blockDiv.addEventListener('dragenter', handleDragEnter);
-            blockDiv.addEventListener('dragleave', handleDragLeave);
-            blockDiv.addEventListener('drop', handleDrop);
-            blockDiv.addEventListener('dragend', handleDragEnd);
-        }
-
-        function handleDragStart(e) {
-            draggedBlock = this;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML);
-            this.style.opacity = '0.4';
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault(); // allow dropping
-        }
-
-        function handleDragEnter(e) {
-            this.classList.add('bg-info', 'bg-opacity-25');
-        }
-
-        function handleDragLeave(e) {
-            this.classList.remove('bg-info', 'bg-opacity-25');
-        }
-
-        function handleDrop(e) {
-            e.stopPropagation();
-            e.preventDefault();
-
-            if (draggedBlock !== this) {
-                const canvas = document.getElementById('canvas');
-                canvas.insertBefore(draggedBlock, this);
-            }
-            return false;
-        }
-
-        function handleDragEnd(e) {
-            this.style.opacity = '1';
-            document.querySelectorAll('.block-container').forEach(block => {
-                block.classList.remove('bg-info', 'bg-opacity-25');
+        function initializeSortable() {
+            const canvas = document.getElementById('canvas');
+            Sortable.create(canvas, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (/**Event*/evt) {
+                    // You can handle events after sorting here if needed
+                }
             });
         }
 
@@ -723,11 +1087,15 @@
         //  Export / Import / Get List Functions
         //===============================
         function exportMockup() {
-            const modules = Array.from(document.querySelectorAll('#canvas .block-container > :first-child')).map(el => ({
-                category: el.dataset.category,
-                desktop: el.dataset.desktop,
-                mobile: el.dataset.mobile
-            }));
+            const modules = Array.from(document.querySelectorAll('#canvas .block-container')).map(block => {
+                const el = block.querySelector(':first-child');
+                return {
+                    category: el.dataset.category,
+                    desktop: el.dataset.desktop,
+                    mobile: el.dataset.mobile,
+                    note: block.dataset.note
+                };
+            });
             const jsonStr = JSON.stringify(modules, null, 2);
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -754,6 +1122,11 @@
                             desktop: moduleData.desktop,
                             mobile: moduleData.mobile
                         });
+                        // Set the note if it exists
+                        if (moduleData.note && moduleData.note.trim() !== "") {
+                            block.dataset.note = moduleData.note;
+                            addNoteIndicator(block);
+                        }
                         canvas.appendChild(block);
                     });
                 } catch (error) {
@@ -765,21 +1138,75 @@
         }
 
         function getModuleList() {
-            const modules = Array.from(document.querySelectorAll('#canvas .block-container > :first-child')).map(el => {
-                let displayVal = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
-                if (el.dataset.category === "Spacers") {
-                    displayVal = displayVal + "px Spacer";
+            const modules = Array.from(document.querySelectorAll('#canvas .block-container')).map(block => {
+                const el = block.querySelector(':first-child');
+                const category = el.dataset.category;
+                let displayName = viewMode === "mobile" ? el.dataset.mobile : el.dataset.desktop;
+                if (category === "Spacers") {
+                    displayName = displayName + "px Spacer";
                 } else {
-                    displayVal = displayVal.replace('.svg', '');
+                    displayName = displayName.replace('.svg', '');
                 }
-                return displayVal;
+
+                const note = block.dataset.note.trim();
+
+                return {
+                    name: displayName,
+                    note: note
+                };
             });
-            const listStr = modules.join("\n");
-            const moduleListPre = document.getElementById('moduleListPre');
-            moduleListPre.innerText = listStr;
+
+            // Build HTML content
+            let listHTML = '';
+            modules.forEach(module => {
+                listHTML += `<div class="module-entry">
+    <div class="module-name">${module.name}</div>`;
+                if (module.note !== "") {
+                    listHTML += `<div class="module-note">${module.note}</div>`;
+                }
+                listHTML += `</div>`;
+            });
+
+            const moduleListContainer = document.getElementById('moduleListContainer');
+            moduleListContainer.innerHTML = listHTML;
+
             const listModalEl = document.getElementById('listModal');
             const modal = bootstrap.Modal.getOrCreateInstance(listModalEl);
             modal.show();
+        }
+
+        //===============================
+        //  Note Functionality
+        //===============================
+        function saveNote() {
+            if (!currentlyEditingNoteBlock) return;
+            const noteContent = document.getElementById('noteEditor').innerHTML.trim();
+            currentlyEditingNoteBlock.dataset.note = noteContent;
+
+            // Manage the note indicator
+            const existingIndicator = currentlyEditingNoteBlock.querySelector('.note-indicator');
+            if (noteContent !== "") {
+                if (!existingIndicator) {
+                    addNoteIndicator(currentlyEditingNoteBlock);
+                }
+            } else {
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+            }
+
+            const noteModalEl = document.getElementById('noteModal');
+            const modal = bootstrap.Modal.getInstance(noteModalEl);
+            modal.hide();
+        }
+
+        function addNoteIndicator(blockDiv) {
+            // Check if indicator already exists
+            if (blockDiv.querySelector('.note-indicator')) return;
+
+            const indicator = document.createElement('div');
+            indicator.classList.add('note-indicator');
+            blockDiv.appendChild(indicator);
         }
     </script>
 </body>
