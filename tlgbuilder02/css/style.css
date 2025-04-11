@@ -1,0 +1,408 @@
+/* Global Styles */
+body {
+  background-color: #f5f5f6;
+  color: #000000;
+  font-family: Arial, sans-serif;
+}
+
+/* Remove rounded corners globally */
+.btn,
+.modal-content,
+.block-container,
+.module-overlay,
+.module-item-container,
+.note-editor {
+  border-radius: 0 !important;
+}
+
+/* Top Bar Styles */
+.top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 2px solid #000000;
+  background-color: #ffffff;
+}
+
+.top-bar .title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.top-bar .button-group .btn {
+  margin-left: 0.5rem;
+}
+
+/* Button Styles */
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-warning,
+.btn-info,
+.btn-outline-primary {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+.btn-success {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.btn-warning {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.btn-info {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.btn-outline-primary {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+/* New Button Style for Light Gray Buttons */
+.btn-light-gray {
+  background-color: #d3d3d3;
+  color: #000000;
+  border: 1px solid #d3d3d3;
+}
+
+.btn-light-gray:hover {
+  background-color: #a9a9a9;
+  color: #ffffff;
+  border: 1px solid #a9a9a9;
+}
+
+/* Hover Effects for Buttons */
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-success:hover,
+.btn-warning:hover,
+.btn-info:hover,
+.btn-outline-primary:hover {
+  background-color: #333333;
+  color: #ffffff;
+  border: 1px solid #333333;
+}
+
+/* Container with no top/bottom margin */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.canvas {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #ffffff;
+}
+
+/* Each block container is position: relative */
+.block-container {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* The overlay that shows on hover */
+.module-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+/* Show the overlay when hovering */
+.block-container:hover .module-overlay {
+  display: flex;
+}
+
+/* Icons inside the overlay */
+.overlay-icons {
+  color: #ffffff;
+  font-size: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Spacing between overlay icons */
+.overlay-icons > .icon-btn {
+  margin: 0 0.5rem;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+}
+
+/* Module name label in overlay */
+.module-name-label {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.75rem;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+  --bs-modal-width: 64%;
+}
+
+/* Modal changes for module list */
+.accordion-button {
+  font-weight: bold;
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Module item container */
+.module-item-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+/* Module title */
+.module-title {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+/* Module tags */
+.module-tags {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-start;
+}
+
+.module-tag {
+  font-size: 0.75rem;
+  color: #000000;
+  border: 1px solid #000000;
+  padding: 0.1rem 0.3rem;
+  display: inline-block;
+  background-color: #ffffff;
+}
+
+/* Tabbed navigation styles */
+.nav-pills .nav-link.active {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 0;
+}
+
+.nav-pills .nav-link {
+  background-color: transparent;
+  color: #000000;
+  border: none;
+  border-radius: 0;
+}
+
+/* Additional styling for module images */
+.module-image {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+/* Modal Header and Footer */
+.modal-header,
+.modal-footer {
+  border: none;
+}
+
+/* Remove outline from focus */
+.btn:focus {
+  box-shadow: none;
+}
+
+/* Adjust note indicator for spacers */
+.block-container.spacer-block .note-indicator {
+  background-color: #000000;
+}
+
+/* Styling for the rich text editor in note modal */
+.note-editor {
+  width: 100%;
+  height: 200px;
+  border: 1px solid #000000;
+  padding: 0.5rem;
+  overflow-y: auto;
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Light gray border between module items in modules modal */
+#modulesModal .module-item-container:not(:last-child) {
+  border-bottom: 1px solid #d3d3d3;
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  margin-top: 2rem;
+}
+
+/* Note indicator */
+.note-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 12px;
+  height: 12px;
+  background-color: red;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* Custom styles for toggle switch */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-switch label {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+.button-group {
+  display: flex;
+}
+
+.modal-title {
+  font-weight: bold;
+}
+
+.modal-content {
+  background-color: #f5f5f6;
+}
+
+/* Custom Insert Clipping Styles */
+
+/* Container for the custom insert module */
+.module-item-container.custom-insert {
+  border: none !important;
+  background: none !important;
+  width: 100%;
+  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Row 1: label/input + three buttons */
+.custom-insert-row1 {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-end; /* so label+input is stacked, label on top of input */
+}
+
+/* The label+input group for the module name */
+.custom-field-group {
+  display: flex;
+  flex-direction: column;
+  flex: 2; /* Make this portion wider */
+}
+
+/* The label for module name */
+.custom-field-group label {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+/* The wide input */
+.custom-field-group input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Each button container in row 1 */
+.custom-btn-container {
+  flex: 1;
+}
+
+/* Force each button to fill container's width */
+.custom-btn-container button {
+  width: 100%;
+}
+
+/* Row 2: preview images row */
+.custom-insert-row2 {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Each preview container */
+.custom-preview-container {
+  position: relative;
+  flex: 1;
+}
+
+/* Preview images */
+.custom-preview-container .image-preview {
+  width: 100%;
+  max-width: 150px;
+  display: block;
+}
+
+/* Clear (✕) button for previews */
+.clear-preview-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: red;
+  color: white;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.8rem;
+}
