@@ -4,7 +4,7 @@ import {
   doc, updateDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-/* ⚠️ REEMPLAZA ESTOS DATOS CON TU PROPIA CONFIGURACIÓN */
+/* ⚠️ Sustituye con tu propia configuración */
 const firebaseConfig = {
   apiKey: "AIzaSyAlBA_fpzJvWobC3oqdZnTdzSvxDJHDwZI",
   authDomain: "unoriginal-tasks.firebaseapp.com",
@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const tareasRef = collection(db, "tareas");
 
-/* ---------- AÑADIR NUEVA TAREA ---------- */
+/* -------- Añadir nueva tarea -------- */
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = e.target.text;
@@ -32,34 +32,33 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   }
 });
 
-/* ---------- ACTUALIZAR LISTA EN TIEMPO REAL ---------- */
+/* -------- Actualizar lista en tiempo real -------- */
 onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
   const list = document.getElementById("list");
   list.innerHTML = "";
 
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
-
-    const li = document.createElement("li");
+    const li   = document.createElement("li");
     li.className = "task-item";
 
     /* Checkbox */
     const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
+    checkbox.type  = "checkbox";
     checkbox.className = "form-check-input";
-    checkbox.checked = data.completed;
+    checkbox.checked   = data.completed;
 
     /* Texto */
     const span = document.createElement("span");
     span.textContent = data.text;
     if (data.completed) span.classList.add("completed");
 
-    /* Botón eliminar (X) */
+    /* Botón eliminar */
     const delBtn = document.createElement("button");
     delBtn.className = "delete-btn";
     delBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
 
-    /*  ---- Eventos ---- */
+    /* Eventos */
     checkbox.addEventListener("change", async () => {
       await updateDoc(doc(tareasRef, docSnap.id), { completed: checkbox.checked });
     });
@@ -68,7 +67,7 @@ onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
       await deleteDoc(doc(tareasRef, docSnap.id));
     });
 
-    /* Montar elementos */
+    /* Montar */
     li.appendChild(checkbox);
     li.appendChild(span);
     li.appendChild(delBtn);
