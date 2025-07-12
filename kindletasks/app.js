@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, deleteDoc,
-  doc, updateDoc, onSnapshot, query, orderBy,
-  getDocs, where, limit
+  doc, updateDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 /* ⚠️ Sustituye con tu propia configuración */
@@ -19,50 +18,44 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const tareasRef = collection(db, "tareas");
 
-async function getLastTaskId() {
-  const q = query(
-    tareasRef,
-    where("type", "==", "task"),
-    orderBy("ts", "desc"),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    return snap.docs[0].id;
-  }
-  return null;
-}
+// Guardamos la última tarea creada para subtareas
+let lastTask = { id: null, level: 0 };
 
-/* -------- Añadir nueva tarea o subtarea -------- */
+/* -------- Añadir nueva tarea -------- */
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const input     = e.target.text;
-  const select    = document.getElementById("taskType");
-  const kind      = select.value; // "task" o "subtask"
-  const textValue = input.value.trim();
+  const input = e.target.text;
+  const type  = e.target.type.value; // "task" o "subtask"
+  const text  = input.value.trim();
+  if (!text) return;
 
-  if (!textValue) return;
-
-  let payload = {
-    text: textValue,
-    completed: false,
-    ts: Date.now(),
-    type: kind
-  };
-
-  if (kind === "subtask") {
-    const parentId = await getLastTaskId();
-    if (parentId) {
-      payload.parent = parentId;
-    }
+  // Calculamos datos de herencia
+  let parentId = null;
+  let level = 0;
+  if (type === "subtask" && lastTask.id) {
+    parentId = lastTask.id;
+    level = lastTask.level + 1;
   }
 
-  await addDoc(tareasRef, payload);
+  // Creamos en Firestore
+  const docRef = await addDoc(tareasRef, {
+    text,
+    completed: false,
+    ts: Date.now(),
+    parentId,
+    level
+  });
+
+  // Actualizamos la referencia de la última tarea creada
+  lastTask = { id: docRef.id, level };
+
+  // Limpiamos formulario y volvemos a Task
   input.value = "";
+  e.target.type.value = "task";
 });
 
 /* -------- Actualizar lista en tiempo real -------- */
-onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
+onSnapshot(query(tareasRef, orderBy("ts", "asc")), (snapshot) => {
   const list = document.getElementById("list");
   list.innerHTML = "";
 
@@ -70,13 +63,13 @@ onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
     const data = docSnap.data();
     const li   = document.createElement("li");
     li.className = "task-item";
-    if (data.type === "subtask") {
-      li.classList.add("subtask");
-    }
+
+    // Indentación según nivel
+    li.style.marginLeft = `${data.level * 2}rem`;
 
     /* Checkbox */
     const checkbox = document.createElement("input");
-    checkbox.type      = "checkbox";
+    checkbox.type  = "checkbox";
     checkbox.className = "form-check-input";
     checkbox.checked   = data.completed;
 

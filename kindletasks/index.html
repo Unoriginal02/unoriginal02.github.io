@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mis tareas</title>
 
-  <!-- Bootstrap CSS (serializado para sus utilidades, pero sobrescribiremos los colores) -->
+  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
     /* — Paleta blanco-negro sólida — */
     body            { background:#fff; color:#000; }
-    input, button   { border:2px solid #000 !important; }
+    input, select, button   { border:2px solid #000 !important; }
     button          { background:#000 !important; color:#fff !important; }
     button:hover    { background:#222 !important; }
 
@@ -29,11 +29,8 @@
 
     /* — Checkbox grande y con trazo negro — */
     .form-check-input {
-      /* tamaño */
       width:1.3em; height:1.3em;
-      /* color interior cuando está marcado */
       accent-color:#000;
-      /* contorno negro aunque esté sin marcar */
       border:2px solid #000;
       margin-top:0;
       cursor:pointer;
@@ -41,9 +38,6 @@
 
     /* — Texto tachado al completar — */
     .completed { text-decoration:line-through; color:#555; }
-
-    /* — Subtasks con indentación — */
-    .subtask { padding-left: 2rem; }
 
     /* — Botón eliminar — */
     .delete-btn {
@@ -62,19 +56,15 @@
   <div class="container py-5">
     <h1 class="mb-4">Mis tareas</h1>
 
-    <form id="form" class="input-group mb-2">
+    <form id="form" class="input-group mb-4">
+      <!-- Selector de tipo -->
+      <select name="type" class="form-select" style="max-width: 8rem;">
+        <option value="task" selected>Task</option>
+        <option value="subtask">Subtask</option>
+      </select>
       <input name="text" class="form-control" placeholder="Escribe una tarea..." required />
       <button class="btn">Añadir</button>
     </form>
-
-    <!-- Selector de tipo de tarea -->
-    <div class="mb-4">
-      <label for="taskType" class="form-label">Tipo de elemento:</label>
-      <select id="taskType" name="taskType" class="form-select" style="max-width:200px;">
-        <option value="task">Task</option>
-        <option value="subtask">Subtask</option>
-      </select>
-    </div>
 
     <ul id="list" class="list-unstyled"></ul>
   </div>
