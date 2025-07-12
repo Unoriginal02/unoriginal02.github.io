@@ -18,44 +18,22 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const tareasRef = collection(db, "tareas");
 
-// Guardamos la última tarea creada para subtareas
-let lastTask = { id: null, level: 0 };
-
 /* -------- Añadir nueva tarea -------- */
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = e.target.text;
-  const type  = e.target.type.value; // "task" o "subtask"
-  const text  = input.value.trim();
-  if (!text) return;
-
-  // Calculamos datos de herencia
-  let parentId = null;
-  let level = 0;
-  if (type === "subtask" && lastTask.id) {
-    parentId = lastTask.id;
-    level = lastTask.level + 1;
+  if (input.value.trim()) {
+    await addDoc(tareasRef, {
+      text: input.value.trim(),
+      completed: false,
+      ts: Date.now()
+    });
+    input.value = "";
   }
-
-  // Creamos en Firestore
-  const docRef = await addDoc(tareasRef, {
-    text,
-    completed: false,
-    ts: Date.now(),
-    parentId,
-    level
-  });
-
-  // Actualizamos la referencia de la última tarea creada
-  lastTask = { id: docRef.id, level };
-
-  // Limpiamos formulario y volvemos a Task
-  input.value = "";
-  e.target.type.value = "task";
 });
 
 /* -------- Actualizar lista en tiempo real -------- */
-onSnapshot(query(tareasRef, orderBy("ts", "asc")), (snapshot) => {
+onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
   const list = document.getElementById("list");
   list.innerHTML = "";
 
@@ -63,9 +41,6 @@ onSnapshot(query(tareasRef, orderBy("ts", "asc")), (snapshot) => {
     const data = docSnap.data();
     const li   = document.createElement("li");
     li.className = "task-item";
-
-    // Indentación según nivel
-    li.style.marginLeft = `${data.level * 2}rem`;
 
     /* Checkbox */
     const checkbox = document.createElement("input");
