@@ -152,6 +152,7 @@ onSnapshot(tareasRef, (snapshot) => {
       const cb   = renderCheckbox(id, completed);
       const span = document.createElement("span");
       span.textContent = text;
+      span.classList.add("task-text");
       if (completed) span.classList.add("completed");
 
       const del    = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
