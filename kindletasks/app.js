@@ -1,3 +1,4 @@
+// app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
   getFirestore,
@@ -27,6 +28,12 @@ const tareasRef = collection(db, "tareas");
 // Guarda el ID de la última tarea de primer nivel para nuevas subtareas
 let lastTaskId = null;
 
+/** Parsea *word* → <strong>word</strong> */
+function parseMarkup(text) {
+  return text.replace(/\*(.+?)\*/g, '<strong>$1</strong>');
+}
+
+// Añadir tarea individual
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const texto = e.target.text.value.trim();
@@ -49,25 +56,82 @@ document.getElementById("form").addEventListener("submit", async (e) => {
     ts: Date.now(),
     order: maxOrder + 1
   };
-  if (parentId) {
-    nuevo.parent = parentId;
-  }
+  if (parentId) nuevo.parent = parentId;
 
   await addDoc(tareasRef, nuevo);
   e.target.text.value = "";
 });
 
+// Configurar Bulk UI
+const bulkBtn       = document.getElementById("bulk-btn");
+const bulkContainer = document.getElementById("bulk-container");
+const bulkCancel    = document.getElementById("bulk-cancel-btn");
+const bulkAddBtn    = document.getElementById("bulk-add-btn");
+const bulkText      = document.getElementById("bulk-text");
+
+bulkBtn.addEventListener("click", () => {
+  bulkContainer.style.display = "block";
+});
+bulkCancel.addEventListener("click", () => {
+  bulkContainer.style.display = "none";
+  bulkText.value = "";
+});
+
+bulkAddBtn.addEventListener("click", async () => {
+  const lines = bulkText.value.split("\n").map(l => l.trim()).filter(l => l);
+  let currentTaskId = null;
+
+  for (let raw of lines) {
+    if (raw.startsWith("--")) {
+      // Subtarea
+      const text = raw.replace(/^--\s*/, "");
+      if (!currentTaskId) continue;
+      const snapshotAll = await getDocs(tareasRef);
+      const siblings = snapshotAll.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(d => d.parent === currentTaskId);
+      const maxOrder = siblings.reduce((m, d) => d.order > m ? d.order : m, 0);
+
+      await addDoc(tareasRef, {
+        text,
+        completed: false,
+        ts: Date.now(),
+        order: maxOrder + 1,
+        parent: currentTaskId
+      });
+    } else if (raw.startsWith("-")) {
+      // Tarea
+      const text = raw.replace(/^-+\s*/, "");
+      const snapshotAll = await getDocs(tareasRef);
+      const docs = snapshotAll.docs.map(d => ({ id: d.id, ...d.data() }));
+      const topSiblings = docs.filter(d => !d.parent);
+      const maxOrder = topSiblings.reduce((m, d) => d.order > m ? d.order : m, 0);
+
+      const ref = await addDoc(tareasRef, {
+        text,
+        completed: false,
+        ts: Date.now(),
+        order: maxOrder + 1
+      });
+      currentTaskId = ref.id;
+    }
+  }
+
+  // Limpiar UI
+  bulkContainer.style.display = "none";
+  bulkText.value = "";
+});
+
+// Renderizado en tiempo real
 onSnapshot(tareasRef, (snapshot) => {
   const list = document.getElementById("list");
   list.innerHTML = "";
 
-  const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  const tasks    = docs.filter(d => !d.parent).sort((a, b) => a.order - b.order);
-  const subtasks = docs.filter(d => d.parent);
+  const docs    = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const tasks   = docs.filter(d => !d.parent).sort((a, b) => a.order - b.order);
+  const subtasks= docs.filter(d => d.parent);
 
-  if (tasks.length) {
-    lastTaskId = tasks[tasks.length - 1].id;
-  }
+  if (tasks.length) lastTaskId = tasks[tasks.length - 1].id;
 
   const moveTask = async (id, parentId, direction) => {
     const siblings = docs
@@ -115,16 +179,16 @@ onSnapshot(tareasRef, (snapshot) => {
     // checkbox
     const cb = renderCheckbox(id, completed);
 
-    // texto
+    // texto con markup
     const span = document.createElement("span");
-    span.textContent = text;
     span.classList.add("task-text");
     if (completed) span.classList.add("completed");
+    span.innerHTML = parseMarkup(text);
 
     // controles
-    const del    = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
-    const upBtn  = btnFactory("chevron-up", () => moveTask(id, null, "up"));
-    const downBtn= btnFactory("chevron-down", () => moveTask(id, null, "down"));
+    const del     = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
+    const upBtn   = btnFactory("chevron-up",   () => moveTask(id, null, "up"));
+    const downBtn = btnFactory("chevron-down", () => moveTask(id, null, "down"));
 
     contentDiv.append(cb, span, upBtn, downBtn, del);
     li.append(contentDiv);
@@ -151,13 +215,13 @@ onSnapshot(tareasRef, (snapshot) => {
 
       const cb   = renderCheckbox(id, completed);
       const span = document.createElement("span");
-      span.textContent = text;
       span.classList.add("task-text");
       if (completed) span.classList.add("completed");
+      span.innerHTML = parseMarkup(text);
 
-      const del    = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
-      const upBtn  = btnFactory("chevron-up", () => moveTask(id, parent, "up"));
-      const downBtn= btnFactory("chevron-down", () => moveTask(id, parent, "down"));
+      const del     = btnFactory("x-lg",        () => deleteDoc(doc(tareasRef, id)));
+      const upBtn   = btnFactory("chevron-up",   () => moveTask(id, parent, "up"));
+      const downBtn = btnFactory("chevron-down", () => moveTask(id, parent, "down"));
 
       contentDiv.append(cb, span, upBtn, downBtn, del);
       li.append(contentDiv);

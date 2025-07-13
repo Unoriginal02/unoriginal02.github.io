@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,9 +13,9 @@
   <style>
     /* — Paleta blanco-negro sólida — */
     body { background:#fff; color:#000; }
-    input, button, select { border:2px solid #000 !important;}
+    input, button, select, textarea { border:2px solid #000 !important;}
     button { background:#000; color:#fff;}
-    button:hover { background:#000 !important; color:#fff; }
+    button:hover { background:#000 !important; color:#fff !important; }
 
     /* — Tamaño de fuente — */
     .task-content { 
@@ -68,7 +69,6 @@
       padding: 0;
       margin: 0;
     }
-    /* solapar bordes uno encima de otro */
     .icon-btn + .icon-btn {
       margin-left: -2px;
     }
@@ -77,18 +77,18 @@
       line-height: 1;
       color: #000;
     }
-    /* .icon-btn:hover {
+
+   .icon-btn:hover {
       background: #000;
-    } */
-    /* .icon-btn:hover i {
+    }
+    .icon-btn:hover i {
       color: #fff;
-    } */
+    }
 
     /* — Tarea: bloque principal — */
     .task-item {
       padding: .35rem 0;
       background: transparent;
-      /* border-bottom: 1px solid #000; */
     }
     .subtask-item {
       border: none !important;
@@ -113,18 +113,37 @@
     #type-selector {
       max-width: 200px;
     }
+
+    /* Bulk input */
+    #bulk-container {
+      display: none;
+      margin-bottom: 1rem;
+    }
+    #bulk-text {
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
   <div class="containert py-5">
-    <form id="form" class="input-group mb-4">
+    <form id="form" class="input-group mb-3">
       <select id="type-selector" class="form-select w-auto">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
       </select>
       <input name="text" class="form-control" placeholder="Escribe una tarea..." required />
       <button class="btn">Añadir</button>
+      <button id="bulk-btn" type="button" class="btn">Bulk</button>
     </form>
+
+    <div id="bulk-container">
+      <textarea id="bulk-text" class="form-control mb-2" rows="6"
+        placeholder="- Tarea 1\n-- Subtarea 1.1\n- Tarea 2\n-- Subtarea 2.1"></textarea>
+      <div>
+        <button id="bulk-add-btn" class="btn">Agregar en bloque</button>
+        <button id="bulk-cancel-btn" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </div>
 
     <ul id="list" class="list-unstyled"></ul>
   </div>
