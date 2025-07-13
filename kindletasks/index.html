@@ -17,10 +17,11 @@
     button:hover    { background:#222 !important; }
 
     /* — Tarea: bloque principal — */
-    #list .task-item {
+    .task-item {
       border: none !important;
       padding: .35rem 0;
       background: transparent;
+      border-bottom: 1px solid #000;
     }
     /* — Fila con checkbox, texto y eliminar — */
     .task-content {
@@ -39,7 +40,8 @@
 
     /* — Checkbox grande y con trazo negro — */
     .form-check-input {
-      width:1.3em; height:1.3em;
+      width:1.3em; 
+      height:1.3em;
       accent-color:#000;
       border:2px solid #000;
       margin-top:0;
@@ -60,10 +62,15 @@
       cursor:pointer;
     }
     .delete-btn:hover { opacity:.7; }
+
+    .containert {
+      width: 94%;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body>
-  <div class="container py-5">
+  <div class="containert py-5">
     <h1 class="mb-4">Mis tareas</h1>
 
     <form id="form" class="input-group mb-4">
