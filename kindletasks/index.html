@@ -11,10 +11,68 @@
 
   <style>
     /* — Paleta blanco-negro sólida — */
-    body            { background:#fff; color:#000; }
+    body { background:#fff; color:#000; }
     input, button, select { border:2px solid #000 !important; }
-    button          { background:#000 !important; color:#fff !important; }
-    button:hover    { background:#222 !important; }
+    button { background:#000 !important; color:#fff !important; }
+    button:hover { background:#222 !important; }
+
+    /* — Tamaño de fuente — */
+    .task-content { font-size: 2rem; }
+
+    /* — Checkbox personalizado — */
+    .checkbox-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid #000;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      padding: 0;
+    }
+    .checkbox-btn i {
+      display: none;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .checkbox-btn.checked {
+      background: #000;
+    }
+    .checkbox-btn.checked i {
+      display: block;
+      color: #fff;
+    }
+
+    /* — Controles (eliminar y reorganizar) — */
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid #000;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+    }
+    /* solapar bordes uno encima de otro */
+    .icon-btn + .icon-btn {
+      margin-left: -2px;
+    }
+    .icon-btn i {
+      font-size: 1.5rem;
+      line-height: 1;
+      color: #000;
+    }
+    .icon-btn:hover {
+      background: #000;
+    }
+    .icon-btn:hover i {
+      color: #fff;
+    }
 
     /* — Tarea: bloque principal — */
     .task-item {
@@ -22,51 +80,19 @@
       background: transparent;
       border-bottom: 1px solid #000;
     }
-
     .subtask-item {
       border: none !important;
       padding: .35rem 0;
       background: transparent;
     }
-    /* — Fila con checkbox, texto y eliminar — */
-    .task-content {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      font-size: 1.15rem;
-    }
-
     /* — Indent para subtareas — */
     .subtask-list {
       list-style: none;
       padding-left: 1.5rem;
       margin-top: .5rem;
     }
-
-    /* — Checkbox grande y con trazo negro — */
-    .form-check-input {
-      width:1.3em; 
-      height:1.3em;
-      accent-color:#000;
-      border:2px solid #000;
-      margin-top:0;
-      cursor:pointer;
-    }
-
     /* — Texto tachado al completar — */
-    .completed { text-decoration:line-through; color:#555; }
-
-    /* — Botón eliminar — */
-    .delete-btn {
-      margin-left:auto;
-      border:none;
-      background:transparent;
-      font-size:1.25rem;
-      line-height:1;
-      color:#000;
-      cursor:pointer;
-    }
-    .delete-btn:hover { opacity:.7; }
+    .completed { text-decoration: line-through; color: #555; }
 
     .containert {
       width: 94%;

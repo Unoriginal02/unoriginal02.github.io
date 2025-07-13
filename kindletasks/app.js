@@ -33,19 +33,16 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   const tipo  = document.getElementById("type-selector").value;
   if (!texto) return;
 
-  // Determinar parent
   let parentId = null;
   if (tipo === "subtask" && lastTaskId) {
     parentId = lastTaskId;
   }
 
-  // Obtener todas las tareas y calcular el mayor 'order' para ese nivel
   const snapshotAll = await getDocs(tareasRef);
   const docs = snapshotAll.docs.map(d => ({ id: d.id, ...d.data() }));
   const siblings = docs.filter(d => (d.parent || null) === parentId);
   const maxOrder = siblings.reduce((max, d) => d.order > max ? d.order : max, 0);
 
-  // Crear nuevo documento
   const nuevo = {
     text: texto,
     completed: false,
@@ -60,133 +57,109 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   e.target.text.value = "";
 });
 
-onSnapshot(
-  tareasRef,
-  (snapshot) => {
-    const list = document.getElementById("list");
-    list.innerHTML = "";
+onSnapshot(tareasRef, (snapshot) => {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
 
-    const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    // Separar y ordenar
-    const tasks    = docs.filter(d => !d.parent).sort((a, b) => a.order - b.order);
-    const subtasks = docs.filter(d => d.parent);
+  const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const tasks    = docs.filter(d => !d.parent).sort((a, b) => a.order - b.order);
+  const subtasks = docs.filter(d => d.parent);
 
-    // Actualizar lastTaskId
-    if (tasks.length) {
-      lastTaskId = tasks[tasks.length - 1].id;
-    }
+  if (tasks.length) {
+    lastTaskId = tasks[tasks.length - 1].id;
+  }
 
-    // Función para intercambiar 'order' entre hermanos
-    const moveTask = async (id, parentId, direction) => {
-      const siblings = docs
-        .filter(d => (d.parent || null) === parentId)
-        .sort((a, b) => a.order - b.order);
-      const idx = siblings.findIndex(d => d.id === id);
-      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= siblings.length) return;
-      const current = siblings[idx];
-      const target  = siblings[targetIdx];
-      await updateDoc(doc(tareasRef, current.id), { order: target.order });
-      await updateDoc(doc(tareasRef, target.id),  { order: current.order });
-    };
+  const moveTask = async (id, parentId, direction) => {
+    const siblings = docs
+      .filter(d => (d.parent || null) === parentId)
+      .sort((a, b) => a.order - b.order);
+    const idx = siblings.findIndex(d => d.id === id);
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= siblings.length) return;
+    const current = siblings[idx];
+    const target  = siblings[targetIdx];
+    await updateDoc(doc(tareasRef, current.id), { order: target.order });
+    await updateDoc(doc(tareasRef, target.id),  { order: current.order });
+  };
 
-    // Crea botones SVG con icono 'bi-[icon]'
-    const btnFactory = (icon) => {
-      const b = document.createElement("button");
-      b.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-      b.innerHTML = `<i class="bi bi-${icon}"></i>`;
-      return b;
-    };
+  const btnFactory = (icon, onClick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "icon-btn";
+    b.innerHTML = `<i class="bi bi-${icon}"></i>`;
+    b.addEventListener("click", onClick);
+    return b;
+  };
 
-    // Render de tareas de primer nivel
-    const containers = {};
-    tasks.forEach(({ id, text, completed }) => {
+  const renderCheckbox = (id, completed) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "checkbox-btn" + (completed ? " checked" : "");
+    btn.innerHTML = `<i class="bi bi-check-lg"></i>`;
+    btn.addEventListener("click", async () => {
+      const newState = !btn.classList.contains("checked");
+      btn.classList.toggle("checked", newState);
+      await updateDoc(doc(tareasRef, id), { completed: newState });
+    });
+    return btn;
+  };
+
+  const containers = {};
+  tasks.forEach(({ id, text, completed }) => {
+    const li = document.createElement("li");
+    li.className = "task-item";
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "task-content";
+
+    // checkbox
+    const cb = renderCheckbox(id, completed);
+
+    // texto
+    const span = document.createElement("span");
+    span.textContent = text;
+    if (completed) span.classList.add("completed");
+
+    // controles
+    const del    = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
+    const upBtn  = btnFactory("chevron-up", () => moveTask(id, null, "up"));
+    const downBtn= btnFactory("chevron-down", () => moveTask(id, null, "down"));
+
+    contentDiv.append(cb, span, del, upBtn, downBtn);
+    li.append(contentDiv);
+
+    const subUl = document.createElement("ul");
+    subUl.className = "subtask-list";
+    li.append(subUl);
+
+    list.append(li);
+    containers[id] = subUl;
+  });
+
+  tasks.forEach(task => {
+    const parentUl = containers[task.id];
+    const children = subtasks
+      .filter(s => s.parent === task.id)
+      .sort((a, b) => a.order - b.order);
+    children.forEach(({ id, text, completed, parent }) => {
       const li = document.createElement("li");
-      li.className = "task-item";
+      li.className = "subtask-item";
 
       const contentDiv = document.createElement("div");
       contentDiv.className = "task-content";
 
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "form-check-input";
-      cb.checked = completed;
-      cb.addEventListener("change", () =>
-        updateDoc(doc(tareasRef, id), { completed: cb.checked })
-      );
-
+      const cb   = renderCheckbox(id, completed);
       const span = document.createElement("span");
       span.textContent = text;
       if (completed) span.classList.add("completed");
 
-      const del = document.createElement("button");
-      del.className = "delete-btn";
-      del.innerHTML = '<i class="bi bi-x-lg"></i>';
-      del.addEventListener("click", () =>
-        deleteDoc(doc(tareasRef, id))
-      );
+      const del    = btnFactory("x-lg", () => deleteDoc(doc(tareasRef, id)));
+      const upBtn  = btnFactory("chevron-up", () => moveTask(id, parent, "up"));
+      const downBtn= btnFactory("chevron-down", () => moveTask(id, parent, "down"));
 
-      const upBtn = btnFactory("chevron-up");
-      upBtn.addEventListener("click", () => moveTask(id, null, "up"));
-
-      const downBtn = btnFactory("chevron-down");
-      downBtn.addEventListener("click", () => moveTask(id, null, "down"));
-
-      // Botones de reorganización y eliminar a la derecha
       contentDiv.append(cb, span, del, upBtn, downBtn);
-
       li.append(contentDiv);
-
-      const subUl = document.createElement("ul");
-      subUl.className = "subtask-list";
-      li.append(subUl);
-
-      list.append(li);
-      containers[id] = subUl;
+      parentUl.append(li);
     });
-
-    // Render de subtareas dentro de su padre
-    tasks.forEach(task => {
-      const parentUl = containers[task.id];
-      const children = subtasks
-        .filter(s => s.parent === task.id)
-        .sort((a, b) => a.order - b.order);
-      children.forEach(({ id, text, completed, parent }) => {
-        const li = document.createElement("li");
-        li.className = "subtask-item";
-
-        const contentDiv = document.createElement("div");
-        contentDiv.className = "task-content";
-
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.className = "form-check-input";
-        cb.checked = completed;
-        cb.addEventListener("change", () =>
-          updateDoc(doc(tareasRef, id), { completed: cb.checked })
-        );
-
-        const span = document.createElement("span");
-        span.textContent = text;
-        if (completed) span.classList.add("completed");
-
-        const del = document.createElement("button");
-        del.className = "delete-btn";
-        del.innerHTML = '<i class="bi bi-x-lg"></i>';
-        del.addEventListener("click", () =>
-          deleteDoc(doc(tareasRef, id))
-        );
-
-        const upBtn = btnFactory("chevron-up");
-        upBtn.addEventListener("click", () => moveTask(id, parent, "up"));
-
-        const downBtn = btnFactory("chevron-down");
-        downBtn.addEventListener("click", () => moveTask(id, parent, "down"));
-
-        contentDiv.append(cb, span, del, upBtn, downBtn);
-        li.append(contentDiv);
-        parentUl.append(li);
-      });
-    });
-  }
-);
+  });
+});
