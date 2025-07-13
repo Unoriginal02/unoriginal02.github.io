@@ -153,7 +153,7 @@ onSnapshot(
         .sort((a, b) => a.order - b.order);
       children.forEach(({ id, text, completed, parent }) => {
         const li = document.createElement("li");
-        li.className = "task-item";
+        li.className = "subtask-item";
 
         const contentDiv = document.createElement("div");
         contentDiv.className = "task-content";
