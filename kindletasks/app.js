@@ -1,8 +1,13 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, deleteDoc,
-  doc, updateDoc, onSnapshot, query, orderBy,
-  getDocs, where, limit
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  onSnapshot,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 /* ⚠️ Sustituye con tu propia configuración */
@@ -28,22 +33,19 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   const tipo  = document.getElementById("type-selector").value;
   if (!texto) return;
 
-  // Determinar parent y calcular nuevo orden
+  // Determinar parent
   let parentId = null;
   if (tipo === "subtask" && lastTaskId) {
     parentId = lastTaskId;
   }
-  // Query para sacar el mayor order del mismo nivel
-  const parentWhere = parentId
-    ? where("parent", "==", parentId)
-    : where("parent", "==", null);
-  const q = query(tareasRef, parentWhere, orderBy("order", "desc"), limit(1));
-  const snap = await getDocs(q);
-  let maxOrder = 0;
-  if (!snap.empty) {
-    maxOrder = snap.docs[0].data().order;
-  }
 
+  // Obtener todas las tareas y calcular el mayor 'order' para ese nivel
+  const snapshotAll = await getDocs(tareasRef);
+  const docs = snapshotAll.docs.map(d => ({ id: d.id, ...d.data() }));
+  const siblings = docs.filter(d => (d.parent || null) === parentId);
+  const maxOrder = siblings.reduce((max, d) => d.order > max ? d.order : max, 0);
+
+  // Crear nuevo documento
   const nuevo = {
     text: texto,
     completed: false,
@@ -59,30 +61,28 @@ document.getElementById("form").addEventListener("submit", async (e) => {
 });
 
 onSnapshot(
-  query(tareasRef),
+  tareasRef,
   (snapshot) => {
     const list = document.getElementById("list");
     list.innerHTML = "";
 
     const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     // Separar y ordenar
-    const tasks = docs
-      .filter(d => !d.parent)
-      .sort((a, b) => a.order - b.order);
+    const tasks    = docs.filter(d => !d.parent).sort((a, b) => a.order - b.order);
     const subtasks = docs.filter(d => d.parent);
 
-    // Actualizar lastTaskId para nuevas subtareas
+    // Actualizar lastTaskId
     if (tasks.length) {
       lastTaskId = tasks[tasks.length - 1].id;
     }
 
-    // Función para intercambiar orders entre dos hermanos
+    // Intercambiar orden entre hermanos
     const moveTask = async (id, parentId, direction) => {
       const siblings = docs
         .filter(d => (d.parent || null) === parentId)
         .sort((a, b) => a.order - b.order);
       const idx = siblings.findIndex(d => d.id === id);
-      let targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
       if (targetIdx < 0 || targetIdx >= siblings.length) return;
       const current = siblings[idx];
       const target  = siblings[targetIdx];
@@ -90,7 +90,7 @@ onSnapshot(
       await updateDoc(doc(tareasRef, target.id),  { order: current.order });
     };
 
-    // Función para cambiar nivel (indentar/outdent)
+    // Cambiar nivel de indentación
     const changeParent = async (id, currentParent, direction) => {
       if (direction === "indent") {
         const siblings = docs
@@ -130,24 +130,23 @@ onSnapshot(
       span.textContent = text;
       if (completed) span.classList.add("completed");
 
-      const indentBtn = document.createElement("button");
-      indentBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-      indentBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+      const btnFactory = icon => {
+        const b = document.createElement("button");
+        b.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
+        b.innerHTML = `<i class="bi bi-${icon}"></i>`;
+        return b;
+      };
+
+      const indentBtn = btnFactory("chevron-right");
       indentBtn.addEventListener("click", () => changeParent(id, null, "indent"));
 
-      const outdentBtn = document.createElement("button");
-      outdentBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-      outdentBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+      const outdentBtn = btnFactory("chevron-left");
       outdentBtn.addEventListener("click", () => changeParent(id, null, "outdent"));
 
-      const upBtn = document.createElement("button");
-      upBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-      upBtn.innerHTML = '<i class="bi bi-chevron-up"></i>';
+      const upBtn = btnFactory("chevron-up");
       upBtn.addEventListener("click", () => moveTask(id, null, "up"));
 
-      const downBtn = document.createElement("button");
-      downBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-      downBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+      const downBtn = btnFactory("chevron-down");
       downBtn.addEventListener("click", () => moveTask(id, null, "down"));
 
       const del = document.createElement("button");
@@ -163,6 +162,7 @@ onSnapshot(
       const subUl = document.createElement("ul");
       subUl.className = "subtask-list";
       li.append(subUl);
+
       list.append(li);
       containers[id] = subUl;
     });
@@ -192,24 +192,16 @@ onSnapshot(
         span.textContent = text;
         if (completed) span.classList.add("completed");
 
-        const indentBtn = document.createElement("button");
-        indentBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-        indentBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+        const indentBtn = btnFactory("chevron-right");
         indentBtn.addEventListener("click", () => changeParent(id, parent, "indent"));
 
-        const outdentBtn = document.createElement("button");
-        outdentBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-        outdentBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+        const outdentBtn = btnFactory("chevron-left");
         outdentBtn.addEventListener("click", () => changeParent(id, parent, "outdent"));
 
-        const upBtn = document.createElement("button");
-        upBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-        upBtn.innerHTML = '<i class="bi bi-chevron-up"></i>';
+        const upBtn = btnFactory("chevron-up");
         upBtn.addEventListener("click", () => moveTask(id, parent, "up"));
 
-        const downBtn = document.createElement("button");
-        downBtn.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-        downBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+        const downBtn = btnFactory("chevron-down");
         downBtn.addEventListener("click", () => moveTask(id, parent, "down"));
 
         const del = document.createElement("button");
