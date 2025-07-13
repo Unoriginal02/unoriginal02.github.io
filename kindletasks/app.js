@@ -126,7 +126,7 @@ onSnapshot(tareasRef, (snapshot) => {
     const upBtn  = btnFactory("chevron-up", () => moveTask(id, null, "up"));
     const downBtn= btnFactory("chevron-down", () => moveTask(id, null, "down"));
 
-    contentDiv.append(cb, span, del, upBtn, downBtn);
+    contentDiv.append(cb, span, upBtn, downBtn, del);
     li.append(contentDiv);
 
     const subUl = document.createElement("ul");
@@ -159,7 +159,7 @@ onSnapshot(tareasRef, (snapshot) => {
       const upBtn  = btnFactory("chevron-up", () => moveTask(id, parent, "up"));
       const downBtn= btnFactory("chevron-down", () => moveTask(id, parent, "down"));
 
-      contentDiv.append(cb, span, del, upBtn, downBtn);
+      contentDiv.append(cb, span, upBtn, downBtn, del);
       li.append(contentDiv);
       parentUl.append(li);
     });
