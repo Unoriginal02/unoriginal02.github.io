@@ -1,4 +1,4 @@
-// app.js (modificado)
+// app.js (modificado para restringir drag & drop)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, deleteDoc,
@@ -19,31 +19,24 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const tareasRef = collection(db, "tareas");
 
-// Estado en memoria para cálculos de orden
 let tasksList = [], subtasksList = [];
 let lastTaskId = null;
 
-// Form: añade nueva tarea o subtarea con campo 'order'
+// Añadir tarea o subtarea con campo 'order'
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const texto = e.target.text.value.trim();
   const tipo  = document.getElementById("type-selector").value;
   if (!texto) return;
 
-  const nuevo = {
-    text: texto,
-    completed: false,
-    ts: Date.now()
-  };
+  const nuevo = { text: texto, completed: false, ts: Date.now() };
 
   if (tipo === "task") {
-    // calcular order para tarea
     const maxOrder = tasksList.length
       ? Math.max(...tasksList.map(t => t.order ?? t.ts))
       : 0;
     nuevo.order = maxOrder + 1;
   } else if (tipo === "subtask" && lastTaskId) {
-    // calcular order para subtarea
     const bajo = subtasksList
       .filter(s => s.parent === lastTaskId)
       .map(s => s.order ?? s.ts);
@@ -56,23 +49,23 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   e.target.text.value = "";
 });
 
-// Escucha en tiempo real y renderiza
 let taskSortable = null;
 let subtaskSortables = [];
 
+// Render y drag & drop en tiempo real
 onSnapshot(query(tareasRef), (snapshot) => {
   const list = document.getElementById("list");
-  // destruir instancias previas de Sortable
+
+  // destruye Sortables previos
   if (taskSortable) taskSortable.destroy();
   subtaskSortables.forEach(s => s.destroy());
   subtaskSortables = [];
 
   list.innerHTML = "";
 
-  // extrae datos
   const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  // separar y ordenar por 'order' (o ts si no existe)
   const orderVal = d => d.order !== undefined ? d.order : d.ts;
+
   const tasks = docs
     .filter(d => !d.parent)
     .sort((a,b) => orderVal(a) - orderVal(b));
@@ -87,10 +80,9 @@ onSnapshot(query(tareasRef), (snapshot) => {
   subtasksList = subtasks;
   if (tasks.length) lastTaskId = tasks[tasks.length - 1].id;
 
-  // contenedores de subtareas por task
   const containers = {};
 
-  // renderiza tareas
+  // Render tareas
   tasks.forEach(({ id, text, completed }) => {
     const li = document.createElement("li");
     li.className = "task-item";
@@ -122,7 +114,6 @@ onSnapshot(query(tareasRef), (snapshot) => {
     contentDiv.append(cb, span, del);
     li.append(contentDiv);
 
-    // contenedor para subtareas
     const subUl = document.createElement("ul");
     subUl.className = "subtask-list";
     li.append(subUl);
@@ -131,7 +122,7 @@ onSnapshot(query(tareasRef), (snapshot) => {
     containers[id] = subUl;
   });
 
-  // renderiza subtareas en su padre
+  // Render subtareas
   subtasks.forEach(({ id, text, completed, parent }) => {
     const parentUl = containers[parent];
     if (!parentUl) return;
@@ -168,29 +159,28 @@ onSnapshot(query(tareasRef), (snapshot) => {
     parentUl.append(li);
   });
 
-  // inicializa Sortable para tareas
+  // Sólo reordenar tareas dentro de su lista
   taskSortable = new Sortable(list, {
     animation: 150,
     handle: '.task-content',
+    group: { name: 'tasks', pull: true, put: false },
     onEnd: async () => {
-      // recalcular order secuencialmente
       Array.from(list.children).forEach((li, idx) => {
-        const tid = li.dataset.id;
-        updateDoc(doc(tareasRef, tid), { order: idx + 1 });
+        updateDoc(doc(tareasRef, li.dataset.id), { order: idx + 1 });
       });
     }
   });
 
-  // inicializa Sortable para cada subtask-list
+  // Sólo mover subtareas entre sublistas (no aceptan tareas)
   Object.values(containers).forEach(subUl => {
     const sortable = new Sortable(subUl, {
-      group: { name: 'subtasks', pull: true, put: true },
+      group: { name: 'subtasks', pull: true, put: ['subtasks'] },
       animation: 150,
       handle: '.task-content',
       onEnd: async (evt) => {
-        const movedId = evt.item.dataset.id;
-        // nuevo padre (el <li> encima del <ul>)
+        const movedId     = evt.item.dataset.id;
         const newParentId = evt.to.parentElement.dataset.id;
+
         // actualiza parent si cambió
         await updateDoc(doc(tareasRef, movedId), { parent: newParentId });
 
@@ -198,7 +188,7 @@ onSnapshot(query(tareasRef), (snapshot) => {
         Array.from(evt.to.children).forEach((li, idx) => {
           updateDoc(doc(tareasRef, li.dataset.id), { order: idx + 1 });
         });
-        // reordena vieja lista si viene de distinta
+        // reordena lista origen si distinta
         if (evt.from !== evt.to) {
           Array.from(evt.from.children).forEach((li, idx) => {
             updateDoc(doc(tareasRef, li.dataset.id), { order: idx + 1 });
