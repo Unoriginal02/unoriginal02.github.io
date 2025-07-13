@@ -18,59 +18,118 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const tareasRef = collection(db, "tareas");
 
-/* -------- Añadir nueva tarea -------- */
+// Guarda el ID de la última tarea de primer nivel
+let lastTaskId = null;
+
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const input = e.target.text;
-  if (input.value.trim()) {
-    await addDoc(tareasRef, {
-      text: input.value.trim(),
-      completed: false,
-      ts: Date.now()
-    });
-    input.value = "";
+  const texto = e.target.text.value.trim();
+  const tipo  = document.getElementById("type-selector").value;
+  if (!texto) return;
+
+  const nuevo = {
+    text: texto,
+    completed: false,
+    ts: Date.now()
+  };
+  if (tipo === "subtask" && lastTaskId) {
+    nuevo.parent = lastTaskId;
   }
+
+  await addDoc(tareasRef, nuevo);
+  e.target.text.value = "";
 });
 
-/* -------- Actualizar lista en tiempo real -------- */
-onSnapshot(query(tareasRef, orderBy("ts", "desc")), (snapshot) => {
-  const list = document.getElementById("list");
-  list.innerHTML = "";
+onSnapshot(
+  query(tareasRef, orderBy("ts", "asc")),
+  (snapshot) => {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
 
-  snapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const li   = document.createElement("li");
-    li.className = "task-item";
+    const docs     = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const tasks    = docs.filter(d => !d.parent);
+    const subtasks = docs.filter(d => d.parent);
 
-    /* Checkbox */
-    const checkbox = document.createElement("input");
-    checkbox.type  = "checkbox";
-    checkbox.className = "form-check-input";
-    checkbox.checked   = data.completed;
+    if (tasks.length) {
+      lastTaskId = tasks[tasks.length - 1].id;
+    }
 
-    /* Texto */
-    const span = document.createElement("span");
-    span.textContent = data.text;
-    if (data.completed) span.classList.add("completed");
+    // Renderiza tareas de primer nivel
+    const containers = {};
+    tasks.forEach(({ id, text, completed }) => {
+      const li = document.createElement("li");
+      li.className = "task-item";
 
-    /* Botón eliminar */
-    const delBtn = document.createElement("button");
-    delBtn.className = "delete-btn";
-    delBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+      // Fila principal
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "task-content";
 
-    /* Eventos */
-    checkbox.addEventListener("change", async () => {
-      await updateDoc(doc(tareasRef, docSnap.id), { completed: checkbox.checked });
+      const cb   = document.createElement("input");
+      cb.type    = "checkbox";
+      cb.className = "form-check-input";
+      cb.checked = completed;
+
+      const span = document.createElement("span");
+      span.textContent = text;
+      if (completed) span.classList.add("completed");
+
+      const del  = document.createElement("button");
+      del.className = "delete-btn";
+      del.innerHTML = '<i class="bi bi-x-lg"></i>';
+
+      cb.addEventListener("change", () =>
+        updateDoc(doc(tareasRef, id), { completed: cb.checked })
+      );
+      del.addEventListener("click", () =>
+        deleteDoc(doc(tareasRef, id))
+      );
+
+      contentDiv.append(cb, span, del);
+      li.append(contentDiv);
+
+      // Contenedor para subtareas
+      const subUl = document.createElement("ul");
+      subUl.className = "subtask-list";
+      li.append(subUl);
+
+      list.append(li);
+      containers[id] = subUl;
     });
 
-    delBtn.addEventListener("click", async () => {
-      await deleteDoc(doc(tareasRef, docSnap.id));
-    });
+    // Renderiza subtareas dentro de su padre
+    subtasks.forEach(({ id, text, completed, parent }) => {
+      const parentUl = containers[parent];
+      if (!parentUl) return;
 
-    /* Montar */
-    li.appendChild(checkbox);
-    li.appendChild(span);
-    li.appendChild(delBtn);
-    list.appendChild(li);
-  });
-});
+      const li = document.createElement("li");
+      li.className = "task-item";
+
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "task-content";
+
+      const cb   = document.createElement("input");
+      cb.type    = "checkbox";
+      cb.className = "form-check-input";
+      cb.checked = completed;
+
+      const span = document.createElement("span");
+      span.textContent = text;
+      if (completed) span.classList.add("completed");
+
+      const del  = document.createElement("button");
+      del.className = "delete-btn";
+      del.innerHTML = '<i class="bi bi-x-lg"></i>';
+
+      cb.addEventListener("change", () =>
+        updateDoc(doc(tareasRef, id), { completed: cb.checked })
+      );
+      del.addEventListener("click", () =>
+        deleteDoc(doc(tareasRef, id))
+      );
+
+      contentDiv.append(cb, span, del);
+      li.append(contentDiv);
+      parentUl.append(li);
+    });
+  }
+);
