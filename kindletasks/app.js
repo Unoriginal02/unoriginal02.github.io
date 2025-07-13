@@ -76,7 +76,7 @@ onSnapshot(
       lastTaskId = tasks[tasks.length - 1].id;
     }
 
-    // Intercambiar orden entre hermanos
+    // Función para intercambiar 'order' entre hermanos
     const moveTask = async (id, parentId, direction) => {
       const siblings = docs
         .filter(d => (d.parent || null) === parentId)
@@ -90,23 +90,12 @@ onSnapshot(
       await updateDoc(doc(tareasRef, target.id),  { order: current.order });
     };
 
-    // Cambiar nivel de indentación
-    const changeParent = async (id, currentParent, direction) => {
-      if (direction === "indent") {
-        const siblings = docs
-          .filter(d => (d.parent || null) === currentParent)
-          .sort((a, b) => a.order - b.order);
-        const idx = siblings.findIndex(d => d.id === id);
-        if (idx > 0) {
-          const newParent = siblings[idx - 1].id;
-          await updateDoc(doc(tareasRef, id), { parent: newParent });
-        }
-      } else { // outdent
-        if (!currentParent) return;
-        const parentDoc = docs.find(d => d.id === currentParent);
-        const newParent = parentDoc?.parent || null;
-        await updateDoc(doc(tareasRef, id), { parent: newParent || deleteField() });
-      }
+    // Crea botones SVG con icono 'bi-[icon]'
+    const btnFactory = (icon) => {
+      const b = document.createElement("button");
+      b.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
+      b.innerHTML = `<i class="bi bi-${icon}"></i>`;
+      return b;
     };
 
     // Render de tareas de primer nivel
@@ -130,25 +119,6 @@ onSnapshot(
       span.textContent = text;
       if (completed) span.classList.add("completed");
 
-      const btnFactory = icon => {
-        const b = document.createElement("button");
-        b.style.cssText = "border:none;background:transparent;cursor:pointer;font-size:1rem;color:#000";
-        b.innerHTML = `<i class="bi bi-${icon}"></i>`;
-        return b;
-      };
-
-      const indentBtn = btnFactory("chevron-right");
-      indentBtn.addEventListener("click", () => changeParent(id, null, "indent"));
-
-      const outdentBtn = btnFactory("chevron-left");
-      outdentBtn.addEventListener("click", () => changeParent(id, null, "outdent"));
-
-      const upBtn = btnFactory("chevron-up");
-      upBtn.addEventListener("click", () => moveTask(id, null, "up"));
-
-      const downBtn = btnFactory("chevron-down");
-      downBtn.addEventListener("click", () => moveTask(id, null, "down"));
-
       const del = document.createElement("button");
       del.className = "delete-btn";
       del.innerHTML = '<i class="bi bi-x-lg"></i>';
@@ -156,7 +126,15 @@ onSnapshot(
         deleteDoc(doc(tareasRef, id))
       );
 
-      contentDiv.append(cb, span, indentBtn, outdentBtn, upBtn, downBtn, del);
+      const upBtn = btnFactory("chevron-up");
+      upBtn.addEventListener("click", () => moveTask(id, null, "up"));
+
+      const downBtn = btnFactory("chevron-down");
+      downBtn.addEventListener("click", () => moveTask(id, null, "down"));
+
+      // Botones de reorganización y eliminar a la derecha
+      contentDiv.append(cb, span, del, upBtn, downBtn);
+
       li.append(contentDiv);
 
       const subUl = document.createElement("ul");
@@ -192,18 +170,6 @@ onSnapshot(
         span.textContent = text;
         if (completed) span.classList.add("completed");
 
-        const indentBtn = btnFactory("chevron-right");
-        indentBtn.addEventListener("click", () => changeParent(id, parent, "indent"));
-
-        const outdentBtn = btnFactory("chevron-left");
-        outdentBtn.addEventListener("click", () => changeParent(id, parent, "outdent"));
-
-        const upBtn = btnFactory("chevron-up");
-        upBtn.addEventListener("click", () => moveTask(id, parent, "up"));
-
-        const downBtn = btnFactory("chevron-down");
-        downBtn.addEventListener("click", () => moveTask(id, parent, "down"));
-
         const del = document.createElement("button");
         del.className = "delete-btn";
         del.innerHTML = '<i class="bi bi-x-lg"></i>';
@@ -211,7 +177,13 @@ onSnapshot(
           deleteDoc(doc(tareasRef, id))
         );
 
-        contentDiv.append(cb, span, indentBtn, outdentBtn, upBtn, downBtn, del);
+        const upBtn = btnFactory("chevron-up");
+        upBtn.addEventListener("click", () => moveTask(id, parent, "up"));
+
+        const downBtn = btnFactory("chevron-down");
+        downBtn.addEventListener("click", () => moveTask(id, parent, "down"));
+
+        contentDiv.append(cb, span, del, upBtn, downBtn);
         li.append(contentDiv);
         parentUl.append(li);
       });
