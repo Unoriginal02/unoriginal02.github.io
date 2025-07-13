@@ -1,4 +1,4 @@
-<!-- index.html -->
+<!-- index.html (modificado) -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -17,15 +17,25 @@
     button          { background:#000 !important; color:#fff !important; }
     button:hover    { background:#222 !important; }
 
-    /* — Lista sin bordes — */
+    /* — Tarea: bloque principal — */
     #list .task-item {
-      border:none !important;
+      border: none !important;
       padding: .35rem 0;
-      background:transparent;
-      display:flex;
-      align-items:center;
-      gap:1rem;
-      font-size:1.15rem;
+      background: transparent;
+    }
+    /* — Fila con checkbox, texto y eliminar — */
+    .task-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 1.15rem;
+    }
+
+    /* — Indent para subtareas — */
+    .subtask-list {
+      list-style: none;
+      padding-left: 1.5rem;
+      margin-top: .5rem;
     }
 
     /* — Checkbox grande y con trazo negro — */
@@ -51,10 +61,6 @@
       cursor:pointer;
     }
     .delete-btn:hover { opacity:.7; }
-
-    /* — Indent para subtareas — */
-    .subtask-list .task-item { padding-left: 1.5rem; }
-
   </style>
 </head>
 <body>
@@ -62,7 +68,6 @@
     <h1 class="mb-4">Mis tareas</h1>
 
     <form id="form" class="input-group mb-4">
-      <!-- Selector de tipo -->
       <select id="type-selector" class="form-select w-auto">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
