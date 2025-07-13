@@ -118,6 +118,7 @@ onSnapshot(tareasRef, (snapshot) => {
     // texto
     const span = document.createElement("span");
     span.textContent = text;
+    span.classList.add("task-text");
     if (completed) span.classList.add("completed");
 
     // controles
