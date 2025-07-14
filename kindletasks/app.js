@@ -7,14 +7,19 @@ import {
   doc,
   updateDoc,
   onSnapshot,
-  getDocs
+  getDocs,
+  query,
+  where                     // 👈 nuevos imports para filtrar por owner
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// 👇 NUEVO: imports de autenticación
+// 👇 imports de autenticación
 import {
   getAuth,
   onAuthStateChanged,
-  signInAnonymously
+  signInAnonymously,
+  GoogleAuthProvider,
+  signInWithPopup,
+  linkWithPopup
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 /* ⚠️ Sustituye con tu propia configuración */
@@ -30,11 +35,11 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// 👉 Esperamos a que el usuario esté autenticado (anónimo) antes de iniciar la app
+// 👉 Esperamos a que el usuario esté autenticado (anónimo o Google) antes de iniciar la app
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     await signInAnonymously(auth);
-    return; // Cuando termine, onAuthStateChanged se dispara de nuevo
+    return; // onAuthStateChanged se disparará de nuevo
   }
   initTaskApp(); // Arrancamos toda la lógica original
 });
@@ -49,6 +54,26 @@ function initTaskApp() {
 
   const db  = getFirestore(app);
   const tareasRef = collection(db, "tareas");
+
+  // UID actual (anónimo o Google)
+  const uid = auth.currentUser.uid;
+
+  // Vincular sesión a Google cuando se pulse el botón
+  document.getElementById("google-btn").addEventListener("click", async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      if (auth.currentUser.isAnonymous) {
+        // Vinculamos sin perder datos
+        await linkWithPopup(auth.currentUser, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
+      alert("¡Éxito! Tus tareas están vinculadas a tu cuenta Google.");
+    } catch (err) {
+      console.error(err);
+      alert("Error al conectar con Google: " + err.message);
+    }
+  });
 
   // Guarda el ID de la última tarea de primer nivel para nuevas subtareas
   let lastTaskId = null;
@@ -70,7 +95,7 @@ function initTaskApp() {
       parentId = lastTaskId;
     }
 
-    const snapshotAll = await getDocs(tareasRef);
+    const snapshotAll = await getDocs(query(tareasRef, where("owner", "==", uid)));
     const docs = snapshotAll.docs.map(d => ({ id: d.id, ...d.data() }));
     const siblings = docs.filter(d => (d.parent || null) === parentId);
     const maxOrder = siblings.reduce((max, d) => d.order > max ? d.order : max, 0);
@@ -79,7 +104,8 @@ function initTaskApp() {
       text: texto,
       completed: false,
       ts: Date.now(),
-      order: maxOrder + 1
+      order: maxOrder + 1,
+      owner: uid                          // 👈 guardamos el propietario
     };
     if (parentId) nuevo.parent = parentId;
 
@@ -111,7 +137,7 @@ function initTaskApp() {
         // Subtarea
         const text = raw.replace(/^--\s*/, "");
         if (!currentTaskId) continue;
-        const snapshotAll = await getDocs(tareasRef);
+        const snapshotAll = await getDocs(query(tareasRef, where("owner", "==", uid)));
         const siblings = snapshotAll.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(d => d.parent === currentTaskId);
@@ -122,12 +148,13 @@ function initTaskApp() {
           completed: false,
           ts: Date.now(),
           order: maxOrder + 1,
-          parent: currentTaskId
+          parent: currentTaskId,
+          owner: uid                  // 👈 propietario
         });
       } else if (raw.startsWith("-")) {
         // Tarea
         const text = raw.replace(/^-+\s*/, "");
-        const snapshotAll = await getDocs(tareasRef);
+        const snapshotAll = await getDocs(query(tareasRef, where("owner", "==", uid)));
         const docs = snapshotAll.docs.map(d => ({ id: d.id, ...d.data() }));
         const topSiblings = docs.filter(d => !d.parent);
         const maxOrder = topSiblings.reduce((m, d) => d.order > m ? d.order : m, 0);
@@ -136,7 +163,8 @@ function initTaskApp() {
           text,
           completed: false,
           ts: Date.now(),
-          order: maxOrder + 1
+          order: maxOrder + 1,
+          owner: uid                // 👈 propietario
         });
         currentTaskId = ref.id;
       }
@@ -147,8 +175,8 @@ function initTaskApp() {
     bulkText.value = "";
   });
 
-  // Renderizado en tiempo real
-  onSnapshot(tareasRef, (snapshot) => {
+  // Renderizado en tiempo real (solo nuestras tareas)
+  onSnapshot(query(tareasRef, where("owner", "==", uid)), (snapshot) => {
     const list = document.getElementById("list");
     list.innerHTML = "";
 

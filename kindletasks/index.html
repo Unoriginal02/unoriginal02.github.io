@@ -76,7 +76,6 @@
       line-height: 1;
       color: #000;
     }
-
     .icon-btn:hover {
       background: #000;
     }
@@ -130,6 +129,15 @@
   <!-- Contenido real de la app (se oculta hasta que Auth esté listo) -->
   <div id="app" style="display:none">
     <div class="containert py-5">
+
+      <!-- Botón para vincular con Google -->
+      <div class="mb-3 text-end">
+        <button id="google-btn" class="btn btn-outline-dark">
+          <i class="bi bi-google me-1"></i>
+          Guardar mis tareas en Google
+        </button>
+      </div>
+
       <form id="form" class="input-group mb-3">
         <select id="type-selector" class="form-select w-auto">
           <option value="task">Tarea</option>
