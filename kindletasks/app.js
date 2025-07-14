@@ -270,4 +270,6 @@ function initTaskApp() {
       });
     });
   });
+  document.getElementById("user-info").textContent =
+  "Sesión: " + (firebase.auth().currentUser.email || uid);
 }
