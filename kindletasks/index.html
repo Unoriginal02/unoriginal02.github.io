@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -68,65 +69,83 @@
       padding: 0;
       margin: 0;
     }
-    .icon-btn + .icon-btn { margin-left: -2px; }
+    .icon-btn + .icon-btn {
+      margin-left: -2px;
+    }
     .icon-btn i {
       font-size: 1.5rem;
       line-height: 1;
       color: #000;
     }
-    .icon-btn:hover { background:#000; }
-    .icon-btn:hover i { color:#fff; }
+
+   .icon-btn:hover {
+      background: #000;
+    }
+    .icon-btn:hover i {
+      color: #fff;
+    }
 
     /* — Tarea: bloque principal — */
-    .task-item { padding:.35rem 0; background:transparent; }
-    .subtask-item { border:none !important; padding:.35rem 0; background:transparent; }
-
+    .task-item {
+      padding: .35rem 0;
+      background: transparent;
+    }
+    .subtask-item {
+      border: none !important;
+      padding: .35rem 0;
+      background: transparent;
+    }
     /* — Indent para subtareas — */
-    .subtask-list { list-style:none; padding-left:1.5rem; margin-top:.5rem; }
-
+    .subtask-list {
+      list-style: none;
+      padding-left: 1.5rem;
+      margin-top: .5rem;
+    }
     /* — Texto tachado al completar — */
-    .completed { text-decoration:line-through; color:#555; }
+    .completed { text-decoration: line-through; color: #555; }
 
-    .containert { width:94%; margin:0 auto; }
+    .containert {
+      width: 94%;
+      margin: 0 auto;
+    }
 
     /* Limitar ancho máximo del dropdown */
-    #type-selector { max-width:200px; }
+    #type-selector {
+      max-width: 200px;
+    }
 
     /* Bulk input */
-    #bulk-container { display:none; margin-bottom:1rem; }
-    #bulk-text { font-size:1rem; }
+    #bulk-container {
+      display: none;
+      margin-bottom: 1rem;
+    }
+    #bulk-text {
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
-  <!-- Loader mientras se realiza el login con Google -->
-  <div id="loading" class="text-center py-5">Iniciando sesión con Google…</div>
+  <div class="containert py-5">
+    <form id="form" class="input-group mb-3">
+      <select id="type-selector" class="form-select w-auto">
+        <option value="task">Tarea</option>
+        <option value="subtask">Subtarea</option>
+      </select>
+      <input name="text" class="form-control" placeholder="Escribe una tarea..." required />
+      <button class="btn">Añadir</button>
+      <button id="bulk-btn" type="button" class="btn">Bulk</button>
+    </form>
 
-  <!-- Contenido real de la app (se oculta hasta que Auth esté listo) -->
-  <div id="app" style="display:none">
-    <div class="containert py-5">
-      <form id="form" class="input-group mb-3">
-        <select id="type-selector" class="form-select w-auto">
-          <option value="task">Tarea</option>
-          <option value="subtask">Subtarea</option>
-        </select>
-        <input name="text" class="form-control" placeholder="Escribe una tarea..." required />
-        <button class="btn">Añadir</button>
-        <button id="bulk-btn" type="button" class="btn">Bulk</button>
-      </form>
-
-      <div id="user-info" class="mb-3 text-muted"></div>
-
-      <div id="bulk-container">
-        <textarea id="bulk-text" class="form-control mb-2" rows="6"
-          placeholder="- Tarea 1\n-- Subtarea 1.1\n- Tarea 2\n-- Subtarea 2.1"></textarea>
-        <div>
-          <button id="bulk-add-btn" class="btn">Agregar en bloque</button>
-          <button id="bulk-cancel-btn" class="btn btn-secondary">Cancelar</button>
-        </div>
+    <div id="bulk-container">
+      <textarea id="bulk-text" class="form-control mb-2" rows="6"
+        placeholder="- Tarea 1\n-- Subtarea 1.1\n- Tarea 2\n-- Subtarea 2.1"></textarea>
+      <div>
+        <button id="bulk-add-btn" class="btn">Agregar en bloque</button>
+        <button id="bulk-cancel-btn" class="btn btn-secondary">Cancelar</button>
       </div>
-
-      <ul id="list" class="list-unstyled"></ul>
     </div>
+
+    <ul id="list" class="list-unstyled"></ul>
   </div>
 
   <script type="module" src="app.js"></script>
