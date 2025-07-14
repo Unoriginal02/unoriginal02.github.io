@@ -9,17 +9,15 @@ import {
   onSnapshot,
   getDocs,
   query,
-  where                     // 👈 nuevos imports para filtrar por owner
+  where                 // 👈 filtrar por owner
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// 👇 imports de autenticación
+// 👇 autenticación con Google directa
 import {
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
   GoogleAuthProvider,
-  signInWithPopup,
-  linkWithPopup
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 /* ⚠️ Sustituye con tu propia configuración */
@@ -34,14 +32,21 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// 👉 Esperamos a que el usuario esté autenticado (anónimo o Google) antes de iniciar la app
+// 👉 Si no hay usuario, abrimos el popup de Google; si sí hay, iniciamos la app
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    await signInAnonymously(auth);
-    return; // onAuthStateChanged se disparará de nuevo
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error(err);
+      alert("Debes iniciar sesión con Google para usar la app.");
+      return;
+    }
+    return; // onAuthStateChanged se dispara de nuevo con el usuario ya logueado
   }
-  initTaskApp(); // Arrancamos toda la lógica original
+  initTaskApp();
 });
 
 // -------------------------
@@ -55,25 +60,8 @@ function initTaskApp() {
   const db  = getFirestore(app);
   const tareasRef = collection(db, "tareas");
 
-  // UID actual (anónimo o Google)
+  // UID Google estable
   const uid = auth.currentUser.uid;
-
-  // Vincular sesión a Google cuando se pulse el botón
-  document.getElementById("google-btn").addEventListener("click", async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      if (auth.currentUser.isAnonymous) {
-        // Vinculamos sin perder datos
-        await linkWithPopup(auth.currentUser, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
-      alert("¡Éxito! Tus tareas están vinculadas a tu cuenta Google.");
-    } catch (err) {
-      console.error(err);
-      alert("Error al conectar con Google: " + err.message);
-    }
-  });
 
   // Guarda el ID de la última tarea de primer nivel para nuevas subtareas
   let lastTaskId = null;
@@ -105,7 +93,7 @@ function initTaskApp() {
       completed: false,
       ts: Date.now(),
       order: maxOrder + 1,
-      owner: uid                          // 👈 guardamos el propietario
+      owner: uid              // 👈 propietario
     };
     if (parentId) nuevo.parent = parentId;
 
@@ -149,7 +137,7 @@ function initTaskApp() {
           ts: Date.now(),
           order: maxOrder + 1,
           parent: currentTaskId,
-          owner: uid                  // 👈 propietario
+          owner: uid
         });
       } else if (raw.startsWith("-")) {
         // Tarea
@@ -164,7 +152,7 @@ function initTaskApp() {
           completed: false,
           ts: Date.now(),
           order: maxOrder + 1,
-          owner: uid                // 👈 propietario
+          owner: uid
         });
         currentTaskId = ref.id;
       }
