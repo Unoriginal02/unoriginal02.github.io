@@ -143,22 +143,21 @@
     #bulk-text {
       font-size: 1rem;
     }
-    .input-group {
-      display: flex;
-      gap: 6px;
+    .le-margin {
+      margin-left: -1px;
     }
   </style>
 </head>
 <body>
   <div class="containert py-5">
     <form id="form" class="input-group mb-3">
-      <select id="type-selector" class="form-select w-auto">
+      <select id="type-selector" class="form-select w-auto le-margin">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
       </select>
-      <input name="text" class="form-control" placeholder="Escribe una tarea..." required />
-      <button class="btn">Añadir</button>
-      <button id="bulk-btn" type="button" class="btn">Bulk</button>
+      <input name="text" class="form-control le-margin" placeholder="Escribe una tarea..." required />
+      <button class="btn le-margin">Añadir</button>
+      <button id="bulk-btn" type="button" class="btn le-margin">Bulk</button>
     </form>
 
     <div id="bulk-container">
