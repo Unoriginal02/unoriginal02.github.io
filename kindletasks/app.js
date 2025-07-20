@@ -126,7 +126,7 @@ function iniciarApp() {
         currentTaskId = ref.id;
 
       } else {
-        /* Texto plano (ni "-" ni "--") */
+        /* Texto plano (ni "-" ni "--") → comentario/nota */
         const text = raw;
         const topSiblings = (await getDocs(tareasRef)).docs
           .map(d => ({ id: d.id, ...d.data() }))
@@ -134,8 +134,9 @@ function iniciarApp() {
         const maxOrd = topSiblings.reduce((m, d) => d.order > m ? d.order : m, 0);
 
         await addDoc(tareasRef, {
-          text, completed:false, ts:Date.now(), order:maxOrd+1
+          text, ts: Date.now(), order: maxOrd + 1, note: true
         });
+
         currentTaskId = null; // no parent link
       }
     }
@@ -189,20 +190,27 @@ function iniciarApp() {
     const containers = {};   /* para meter subtareas */
 
     /* --- Tareas de 1er nivel --- */
-    tasks.forEach(({id,text,completed})=>{
+    tasks.forEach(({id,text,completed,note})=>{
       const li  = document.createElement("li"); li.className="task-item";
       const div = document.createElement("div"); div.className="task-content";
 
-      const cb   = mkCheckbox(id, completed);
       const span = document.createElement("span");
       span.className="task-text"+(completed?" completed":"");
       span.innerHTML=parseMarkup(text);
 
-      const del   = mkBtn("x-lg",        ()=>deleteDoc(doc(tareasRef,id)));
-      const up    = mkBtn("chevron-up",  ()=>moveTask(id,null,"up"));
-      const down  = mkBtn("chevron-down",()=>moveTask(id,null,"down"));
+      if (!note) {
+        const cb   = mkCheckbox(id, completed);
+        const up   = mkBtn("chevron-up",  ()=>moveTask(id,null,"up"));
+        const down = mkBtn("chevron-down",()=>moveTask(id,null,"down"));
+        const del  = mkBtn("x-lg",        ()=>deleteDoc(doc(tareasRef,id)));
+        div.append(cb, span, up, down, del);
+      } else {
+        const up   = mkBtn("chevron-up",  ()=>moveTask(id,null,"up"));
+        const down = mkBtn("chevron-down",()=>moveTask(id,null,"down"));
+        const del  = mkBtn("x-lg",        ()=>deleteDoc(doc(tareasRef,id)));
+        div.append(span, up, down, del);
+      }
 
-      div.append(cb,span,up,down,del);
       li.append(div);
 
       const subUl = document.createElement("ul"); subUl.className="subtask-list";
