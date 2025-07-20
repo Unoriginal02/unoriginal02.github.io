@@ -124,6 +124,19 @@ function iniciarApp() {
           text, completed:false, ts:Date.now(), order:maxOrd+1
         });
         currentTaskId = ref.id;
+
+      } else {
+        /* Texto plano (ni "-" ni "--") */
+        const text = raw;
+        const topSiblings = (await getDocs(tareasRef)).docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(d => !d.parent);
+        const maxOrd = topSiblings.reduce((m, d) => d.order > m ? d.order : m, 0);
+
+        await addDoc(tareasRef, {
+          text, completed:false, ts:Date.now(), order:maxOrd+1
+        });
+        currentTaskId = null; // no parent link
       }
     }
 
