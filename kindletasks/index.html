@@ -146,11 +146,34 @@
     .le-margin {
       margin-left: -2px !important;
     }
+
+    @media (max-width: 768px) {
+      #form {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+      }
+
+      #form select,
+      #form input,
+      #form button {
+        width: 100% !important;
+        margin-left: 0 !important;
+      }
+
+      #form button.le-margin {
+        margin-left: 0 !important;
+      }
+
+      #form .btn + .btn {
+        margin-top: 0.25rem;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="containert py-5">
-    <form id="form" class="input-group mb-3">
+    <form id="form" class="d-flex flex-wrap flex-column flex-md-row mb-3 gap-2">
       <select id="type-selector" class="form-select w-auto">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
@@ -172,6 +195,7 @@
     <ul id="list" class="list-unstyled"></ul>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

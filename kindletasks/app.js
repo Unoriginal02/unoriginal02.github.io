@@ -51,7 +51,7 @@ function iniciarApp() {
   let lastTaskId = null;
 
   /** Parsea *word* → <strong>word</strong> */
-  const parseMarkup = (text) => text.replace(/\*(.+?)\*/g, '<strong>$1</strong>');
+  const parseMarkup = (text) => marked.parseInline(text);
 
   /* ---------- Añadir tarea individual ---------- */
   document.getElementById("form").addEventListener("submit", async (e) => {
