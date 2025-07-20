@@ -169,6 +169,10 @@
         margin-top: 0.25rem;
       }
     }
+    .comment-text {
+      font-size: 1.75rem;
+      font-weight: 500;   
+    }
   </style>
 </head>
 <body>
@@ -177,6 +181,7 @@
       <select id="type-selector" class="form-select w-auto">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
+        <option value="comment">Comentario</option>
       </select>
       <input name="text" class="form-control le-margin" placeholder="Escribe una tarea..." required />
       <button class="btn le-margin">Añadir</button>
