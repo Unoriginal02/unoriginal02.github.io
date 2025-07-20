@@ -46,6 +46,7 @@ onAuthStateChanged(auth, user => {
 function iniciarApp() {
   const tareasRef = collection(db, "tareas");
   let lastTaskId = null;
+  let activeEditorLi = null;   // ➕ Editor en línea activo (sólo 1 a la vez)
 
   const parseMarkup = (text) => marked.parseInline(text);
 
@@ -149,6 +150,7 @@ function iniciarApp() {
 
     if (tasks.length) lastTaskId = tasks[tasks.length - 1].id;
 
+    /* -------- Mover tarea arriba/abajo -------- */
     const moveTask = async (id, parentId, dir) => {
       const siblings = docs
         .filter(d => (d.parent || null) === parentId)
@@ -160,6 +162,7 @@ function iniciarApp() {
       await updateDoc(doc(tareasRef, siblings[j].id), { order: siblings[i].order });
     };
 
+    /* -------- Crear botón genérico -------- */
     const mkBtn = (icon, fn) => {
       const b = document.createElement("button");
       b.type = "button";
@@ -169,6 +172,7 @@ function iniciarApp() {
       return b;
     };
 
+    /* -------- Crear checkbox personalizado -------- */
     const mkCheckbox = (id, done) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -182,9 +186,105 @@ function iniciarApp() {
       return btn;
     };
 
+    /* -------- Editor inline (➕) -------- */
+    const openInlineEditor = (clickedLi, clickedDoc) => {
+      // Solo uno activo
+      if (activeEditorLi) activeEditorLi.remove();
+
+      const isSub = clickedLi.classList.contains("subtask-item");
+      const editorLi  = document.createElement("li");
+      editorLi.className = isSub ? "subtask-item" : "task-item";
+
+      const div = document.createElement("div");
+      div.className = "task-content";
+
+      const sel = document.createElement("select");
+      sel.className = "form-select w-auto me-2";
+      sel.innerHTML = `
+        <option value="task">Tarea</option>
+        <option value="subtask">Subtarea</option>
+        <option value="comment">Comentario</option>
+      `;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "form-control me-2";
+      input.placeholder = "Contenido…";
+
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "btn me-2";
+      addBtn.textContent = "Añadir";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.className = "btn";
+      cancelBtn.textContent = "Cancelar";
+
+      div.append(sel, input, addBtn, cancelBtn);
+      editorLi.append(div);
+      clickedLi.insertAdjacentElement("afterend", editorLi);
+      activeEditorLi = editorLi;
+
+      cancelBtn.addEventListener("click", () => {
+        editorLi.remove();
+        activeEditorLi = null;
+      });
+
+      addBtn.addEventListener("click", async () => {
+        const texto = input.value.trim();
+        if (!texto) return;
+        const tipo = sel.value;
+
+        /* --- Determinar parentId & siblings --- */
+        let parentId = null;
+
+        if (tipo === "subtask") {
+          parentId = clickedDoc.parent ? clickedDoc.parent : clickedDoc.id;
+        }
+
+        const siblings = docs
+          .filter(d => (d.parent || null) === parentId)
+          .sort((a, b) => a.order - b.order);
+
+        const idx = siblings.findIndex(d => d.id === clickedDoc.id);
+
+        let newOrder;
+        if (idx !== -1) {
+          // Insertar justo debajo del clicado
+          if (idx + 1 < siblings.length) {
+            newOrder = (siblings[idx].order + siblings[idx + 1].order) / 2;
+          } else {
+            newOrder = siblings[idx].order + 1;
+          }
+        } else {
+          // Clicado no está en siblings (subtarea sobre tarea padre, etc.)
+          newOrder = siblings.reduce((m, d) => d.order > m ? d.order : m, 0) + 1;
+        }
+
+        const data = {
+          text: texto,
+          ts: Date.now(),
+          order: newOrder,
+          ...(parentId ? { parent: parentId } : {})
+        };
+
+        if (tipo === "comment") {
+          data.note = true;
+        } else {
+          data.completed = false;
+        }
+
+        await addDoc(tareasRef, data);
+        editorLi.remove();
+        activeEditorLi = null;
+      });
+    };
+
     const containers = {};
 
-    tasks.forEach(({ id, text, completed, note }) => {
+    /* -------- Render tareas de nivel superior -------- */
+    tasks.forEach(({ id, text, completed, note, order }) => {
       const li = document.createElement("li");
       li.className = "task-item";
       const div = document.createElement("div");
@@ -196,16 +296,18 @@ function iniciarApp() {
       span.innerHTML = parseMarkup(text);
 
       if (!note) {
-        const cb = mkCheckbox(id, completed);
-        const up = mkBtn("chevron-up", () => moveTask(id, null, "up"));
+        const cb   = mkCheckbox(id, completed);
+        const plus = mkBtn("plus-lg", () => openInlineEditor(li, { id, parent: null, order }));
+        const up   = mkBtn("chevron-up",   () => moveTask(id, null, "up"));
         const down = mkBtn("chevron-down", () => moveTask(id, null, "down"));
-        const del = mkBtn("x-lg", () => deleteDoc(doc(tareasRef, id)));
-        div.append(cb, span, up, down, del);
+        const del  = mkBtn("x-lg",         () => deleteDoc(doc(tareasRef, id)));
+        div.append(cb, span, plus, up, down, del);
       } else {
-        const up = mkBtn("chevron-up", () => moveTask(id, null, "up"));
+        const plus = mkBtn("plus-lg", () => openInlineEditor(li, { id, parent: null, order }));
+        const up   = mkBtn("chevron-up",   () => moveTask(id, null, "up"));
         const down = mkBtn("chevron-down", () => moveTask(id, null, "down"));
-        const del = mkBtn("x-lg", () => deleteDoc(doc(tareasRef, id)));
-        div.append(span, up, down, del);
+        const del  = mkBtn("x-lg",         () => deleteDoc(doc(tareasRef, id)));
+        div.append(span, plus, up, down, del);
       }
 
       li.append(div);
@@ -218,26 +320,29 @@ function iniciarApp() {
       containers[id] = subUl;
     });
 
+    /* -------- Render subtareas -------- */
     tasks.forEach(task => {
       const subUl = containers[task.id];
       subtasks
         .filter(s => s.parent === task.id)
         .sort((a, b) => a.order - b.order)
-        .forEach(({ id, text, completed, parent }) => {
+        .forEach(({ id, text, completed, parent, order }) => {
           const li = document.createElement("li");
           li.className = "subtask-item";
           const div = document.createElement("div");
           div.className = "task-content";
-          const cb = mkCheckbox(id, completed);
+
+          const cb   = mkCheckbox(id, completed);
           const span = document.createElement("span");
           span.className = "task-text" + (completed ? " completed" : "");
           span.innerHTML = parseMarkup(text);
 
-          const del = mkBtn("x-lg", () => deleteDoc(doc(tareasRef, id)));
-          const up = mkBtn("chevron-up", () => moveTask(id, parent, "up"));
+          const plus = mkBtn("plus-lg",      () => openInlineEditor(li, { id, parent, order }));
+          const up   = mkBtn("chevron-up",   () => moveTask(id, parent, "up"));
           const down = mkBtn("chevron-down", () => moveTask(id, parent, "down"));
+          const del  = mkBtn("x-lg",         () => deleteDoc(doc(tareasRef, id)));
 
-          div.append(cb, span, up, down, del);
+          div.append(cb, span, plus, up, down, del);
           li.append(div);
           subUl.append(li);
         });
