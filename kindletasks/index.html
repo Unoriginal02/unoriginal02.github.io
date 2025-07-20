@@ -52,7 +52,7 @@
 
     /* — Checkbox personalizado — */
     .checkbox-btn {
-      width: 32px;
+      min-width: 32px;
       height: 32px;
       border: 2px solid #000;
       background: transparent;
@@ -79,7 +79,7 @@
 
     /* — Controles (eliminar y reorganizar) — */
     .icon-btn {
-      width: 48px;
+      min-width: 48px;
       height: 32px;
       border: 2px solid #000;
       background: transparent;
@@ -127,7 +127,7 @@
 
     .containert {
       width: 94%;
-      margin: 0 auto;
+      margin: 16px auto;
     }
 
     /* Limitar ancho máximo del dropdown */
@@ -172,8 +172,8 @@
   </style>
 </head>
 <body>
-  <div class="containert py-5">
-    <form id="form" class="d-flex flex-wrap flex-column flex-md-row mb-3 gap-2">
+  <div class="containert">
+    <form id="form" class="d-flex flex-column flex-md-row mb-3 gap-2">
       <select id="type-selector" class="form-select w-auto">
         <option value="task">Tarea</option>
         <option value="subtask">Subtarea</option>
