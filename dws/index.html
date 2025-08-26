@@ -539,10 +539,126 @@
             background-color: var(--background-color);
             border: 1px solid var(--main-color);
         }
+
+        /* === Prioritization Panel === */
+        #prioritizationPanel {
+            position: fixed;
+            top: 0;
+            left: -360px;
+            /* hidden off-screen initially */
+            width: 360px;
+            height: 100vh;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border-right: 1px solid var(--main-color);
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+            z-index: 6;
+            /* above time blocks & mode buttons */
+            transition: left 0.25s ease-in-out;
+            padding: 14px 14px 18px;
+            box-sizing: border-box;
+        }
+
+        #prioritizationPanel.open {
+            left: 0;
+        }
+
+        #prioritizationPanel .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 1rem;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--main-color);
+        }
+
+        #prioritizationPanel .panel-close {
+            border: 1px solid var(--main-color);
+            background: var(--background-color);
+            color: var(--main-color);
+            padding: 4px 8px;
+            border-radius: 0;
+            cursor: pointer;
+        }
+
+        #prioritizationPanel .panel-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        #prioritizationPanel .panel-field label {
+            font-size: 0.9rem;
+            color: var(--main-color);
+        }
+
+        #prioritizationPanel .panel-textarea {
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            padding: 8px;
+            outline: none;
+        }
+
+        #prioritizationPanel .panel-textarea:focus {
+            border-color: var(--button-selection-color);
+            box-shadow: none;
+        }
+
+        #prioritizationPanel .panel-hint {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        /* Keep theme consistency in light/demure via existing CSS variables */
+        /* === End Prioritization Panel === */
     </style>
 </head>
 
 <body>
+
+    <!-- Prioritization Slide-in Panel -->
+    <div id="prioritizationPanel" aria-hidden="true">
+        <div class="panel-header">
+            <span>Prioritization</span>
+            <button id="closePrioritizationPanel" class="panel-close" aria-label="Close">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+
+        <div class="panel-field">
+            <label for="prioTop3">Top 3 tasks</label>
+            <textarea id="prioTop3" class="panel-textarea" spellcheck="false"
+                placeholder="1) &#10;2) &#10;3) "></textarea>
+        </div>
+
+        <div class="panel-field">
+            <label for="prioOther">Other Tasks</label>
+            <textarea id="prioOther" class="panel-textarea" spellcheck="false" placeholder="- "></textarea>
+        </div>
+
+        <div class="panel-field">
+            <label for="prioIdeas">Ideas</label>
+            <textarea id="prioIdeas" class="panel-textarea" spellcheck="false" placeholder="• "></textarea>
+        </div>
+
+        <div class="panel-hint">
+            Tip: Use <kbd>Tab</kbd> to indent and <kbd>Shift</kbd>+<kbd>Tab</kbd> to de-indent.
+            (Newlines are free; nothing gets auto-submitted.)
+        </div>
+    </div>
+
+
     <!-- === Duplicate Instance Message === -->
     <div id="duplicate-instance-message">
         <p>The application is already open in another tab or window. Please use the existing instance.</p>
@@ -614,6 +730,10 @@
         </button>
         <button id="demureModeButton" class="mode-switcher">
             <i class="bi bi-stars"></i> Demure Mode
+        </button>
+
+        <button id="prioritizationButton" class="mode-switcher" style="margin-top: 14px;">
+            <i class="bi bi-list-task"></i> Prioritization
         </button>
 
     </div>
@@ -864,6 +984,20 @@
 
             const notifyToggle = document.getElementById('notifyToggle'); // Notify toggle checkbox
 
+            // Prioritization elements
+            const prioritizationButton = document.getElementById('prioritizationButton');
+            const prioritizationPanel = document.getElementById('prioritizationPanel');
+            const closePrioritizationPanel = document.getElementById('closePrioritizationPanel');
+            const prioTextareas = [
+                document.getElementById('prioTop3'),
+                document.getElementById('prioOther'),
+                document.getElementById('prioIdeas')
+            ];
+
+            // Individual refs for convenience
+            const prioTop3 = prioTextareas[0];
+            const prioOther = prioTextareas[1];
+            const prioIdeas = prioTextareas[2];
 
             let tooltipTimeout = null; // To handle delay
             let notificationsEnabled = false; // Notifications are disabled by default
@@ -916,6 +1050,12 @@
                             }
                         });
 
+                        // Load prioritization fields (default to empty strings if missing)
+                        const prio = data.prioritization || { top3: '', other: '', ideas: '' };
+                        if (prioTop3) prioTop3.value = prio.top3 || '';
+                        if (prioOther) prioOther.value = prio.other || '';
+                        if (prioIdeas) prioIdeas.value = prio.ideas || '';
+
                         saveSchedule(); // Save the updated schedule back to localStorage
                     } catch (err) {
                         console.error("Failed to parse schedule data:", err);
@@ -959,9 +1099,17 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-                    theme: currentTheme, // Save the current theme
-                    notificationsEnabled: notificationsEnabled // Save the notifications setting
+                    theme: currentTheme, // Include theme in export
+                    notificationsEnabled: notificationsEnabled, // Include notifications setting
+                    prioritization: {
+                        top3: prioTop3 ? prioTop3.value : '',
+                        other: prioOther ? prioOther.value : '',
+                        ideas: prioIdeas ? prioIdeas.value : ''
+                    },
+                    exportDate: new Date().toISOString().split('T')[0] // Added current date
                 };
+
+
                 localStorage.setItem('scheduleData', JSON.stringify(data));
                 // If notifications are enabled, reschedule notifications
                 if (notificationsEnabled) {
@@ -1439,6 +1587,11 @@
                     endTime: endTimeInput.value,
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
+                    prioritization: {
+                        top3: prioTop3 ? prioTop3.value : '',
+                        other: prioOther ? prioOther.value : '',
+                        ideas: prioIdeas ? prioIdeas.value : ''
+                    },
                     exportDate: new Date().toISOString().split('T')[0] // Added current date
                 };
                 const dataStr = JSON.stringify(data, null, 2);
@@ -1469,6 +1622,12 @@
                                     block.showDescription = true;
                                 }
                             });
+
+                            // Restore prioritization text areas if present
+                            const prio = importedData.prioritization || { top3: '', other: '', ideas: '' };
+                            if (prioTop3) prioTop3.value = prio.top3 || '';
+                            if (prioOther) prioOther.value = prio.other || '';
+                            if (prioIdeas) prioIdeas.value = prio.ideas || '';
 
                             saveSchedule();
                             populateColorOptions(); // Update color options based on imported theme
@@ -1513,6 +1672,11 @@
             function wipeSchedule() {
                 if (confirm("Are you sure you want to wipe the entire schedule?")) {
                     schedule = [];
+
+                    // Clear prioritization fields
+                    if (prioTop3) prioTop3.value = '';
+                    if (prioOther) prioOther.value = '';
+                    if (prioIdeas) prioIdeas.value = '';
                     saveSchedule();
                     renderTable();
                     renderSchedule();
@@ -1913,6 +2077,125 @@
             deleteButton.addEventListener('click', deleteBlock);
             copyButton.addEventListener('click', copyCard);
             importCardButton.addEventListener('click', importCardFromClipboard);
+
+            // Save prioritization as the user types
+            prioTextareas.forEach(t => {
+                t.addEventListener('input', () => {
+                    saveSchedule();
+                });
+            });
+
+            // --- Prioritization panel toggle ---
+            function openPrioPanel() {
+                prioritizationPanel.classList.add('open');
+                prioritizationPanel.setAttribute('aria-hidden', 'false');
+                // focus first textarea for convenience
+                const first = prioTextareas[0];
+                if (first) first.focus();
+            }
+
+            function closePrioPanel() {
+                prioritizationPanel.classList.remove('open');
+                prioritizationPanel.setAttribute('aria-hidden', 'true');
+            }
+
+            prioritizationButton.addEventListener('click', openPrioPanel);
+            closePrioritizationPanel.addEventListener('click', closePrioPanel);
+
+            // Close panel on Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && prioritizationPanel.classList.contains('open')) {
+                    closePrioPanel();
+                }
+            });
+
+            // --- Tab / Shift+Tab indentation in the panel textareas ---
+            function handleIndentKey(e) {
+                if (e.key !== 'Tab') return;
+
+                // Only manage Tab inside our three textareas
+                if (!prioTextareas.includes(e.currentTarget)) return;
+
+                e.preventDefault();
+                const textarea = e.currentTarget;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+
+                const value = textarea.value;
+                const before = value.substring(0, start);
+                const selected = value.substring(start, end);
+                const after = value.substring(end);
+
+                const INDENT = '  '; // two spaces (adjust if you prefer 4)
+
+                const isMultiLine = selected.includes('\n');
+                const hasShift = e.shiftKey;
+
+                if (!isMultiLine) {
+                    // Single-line caret or selection
+                    if (hasShift) {
+                        // de-indent: remove leading INDENT if present on the current line
+                        const lineStart = before.lastIndexOf('\n') + 1;
+                        if (value.substring(lineStart, lineStart + INDENT.length) === INDENT) {
+                            const newBefore = value.substring(0, lineStart) + value.substring(lineStart + INDENT.length, start);
+                            textarea.value = newBefore + selected + after;
+                            const delta = INDENT.length;
+                            textarea.selectionStart = start - delta;
+                            textarea.selectionEnd = end - delta;
+                        } else {
+                            // nothing to de-indent
+                            textarea.selectionStart = start;
+                            textarea.selectionEnd = end;
+                        }
+                    } else {
+                        // indent
+                        const lineStart = before.lastIndexOf('\n') + 1;
+                        const newBefore = value.substring(0, lineStart) + INDENT + value.substring(lineStart, start);
+                        textarea.value = newBefore + selected + after;
+                        const delta = INDENT.length;
+                        textarea.selectionStart = start + delta;
+                        textarea.selectionEnd = end + delta;
+                    }
+                } else {
+                    // Multi-line selection: indent/de-indent each selected line
+                    const selectionStartLine = before.lastIndexOf('\n') + 1;
+                    const selectionEndLineBreak = value.indexOf('\n', end);
+                    const selectionEndLine = selectionEndLineBreak === -1 ? value.length : selectionEndLineBreak;
+
+                    const block = value.substring(selectionStartLine, selectionEndLine);
+                    const lines = block.split('\n');
+
+                    if (hasShift) {
+                        // de-indent lines
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].startsWith(INDENT)) {
+                                lines[i] = lines[i].substring(INDENT.length);
+                            }
+                        }
+                    } else {
+                        // indent lines
+                        for (let i = 0; i < lines.length; i++) {
+                            lines[i] = INDENT + lines[i];
+                        }
+                    }
+
+                    const newBlock = lines.join('\n');
+                    const newValue = value.substring(0, selectionStartLine) + newBlock + value.substring(selectionEndLine);
+                    textarea.value = newValue;
+
+                    const lineDelta = INDENT.length * (hasShift ? -1 : 1);
+                    // Update selection to cover the same logical lines
+                    const newStart = Math.max(selectionStartLine, start + lineDelta);
+                    const newEnd = Math.max(newStart, end + lineDelta * lines.length);
+
+                    textarea.selectionStart = newStart;
+                    textarea.selectionEnd = newEnd;
+                }
+            }
+
+            // Attach indent handler to all three textareas
+            prioTextareas.forEach(t => t.addEventListener('keydown', handleIndentKey));
+
 
             // Handle JSON file import
             importFileInput.addEventListener('change', (event) => {
