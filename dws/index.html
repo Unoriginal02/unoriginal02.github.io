@@ -90,14 +90,16 @@
         }
 
         .mode-buttons {
+            padding: 20px;
             position: fixed;
             font-size: 0.75rem;
-            bottom: 20px;
-            right: 20px;
+            bottom: 0px;
+            right: 0px;
             display: flex;
             flex-direction: column;
             gap: 10px;
             z-index: 4;
+            background-color: var(--body-background-color);
             /* Ensure mode buttons are above time blocks */
         }
 
@@ -622,6 +624,16 @@
 
         /* Keep theme consistency in light/demure via existing CSS variables */
         /* === End Prioritization Panel === */
+        /* === Slide main content when Prioritization is open === */
+        #mainContent {
+            transition: margin-left 0.25s ease-in-out;
+            margin-left: 0;
+        }
+
+        #mainContent.shifted {
+            margin-left: 360px;
+            /* same width as prioritizationPanel */
+        }
     </style>
 </head>
 
@@ -664,61 +676,62 @@
         <p>The application is already open in another tab or window. Please use the existing instance.</p>
     </div>
     <!-- === End of Duplicate Instance Message === -->
-
-    <div class="maxwidth container text-center my-5">
-        <!-- Time Selectors -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-2">
-                <label for="startTime" class="form-label">Start Time</label>
-                <input type="time" id="startTime" class="form-control" value="08:00" step="900">
+    <div id="mainContent">
+        <div class="maxwidth container text-center my-5">
+            <!-- Time Selectors -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-2">
+                    <label for="startTime" class="form-label">Start Time</label>
+                    <input type="time" id="startTime" class="form-control" value="08:00" step="900">
+                </div>
+                <div class="col-md-6 mb-2">
+                    <label for="endTime" class="form-label">End Time</label>
+                    <input type="time" id="endTime" class="form-control" value="18:00" step="900">
+                </div>
             </div>
-            <div class="col-md-6 mb-2">
-                <label for="endTime" class="form-label">End Time</label>
-                <input type="time" id="endTime" class="form-control" value="18:00" step="900">
+
+            <!-- The timetable grid will be generated here -->
+            <div id="timetable-container" class="table-responsive" style="position: relative;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Monday</th>
+                            <th>Tuesday</th>
+                            <th>Wednesday</th>
+                            <th>Thursday</th>
+                            <th>Friday</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timetable-body">
+                        <!-- Time slots will be generated here -->
+                    </tbody>
+                </table>
+                <!-- Current Time Line -->
+                <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
             </div>
-        </div>
 
-        <!-- The timetable grid will be generated here -->
-        <div id="timetable-container" class="table-responsive" style="position: relative;">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Monday</th>
-                        <th>Tuesday</th>
-                        <th>Wednesday</th>
-                        <th>Thursday</th>
-                        <th>Friday</th>
-                    </tr>
-                </thead>
-                <tbody id="timetable-body">
-                    <!-- Time slots will be generated here -->
-                </tbody>
-            </table>
-            <!-- Current Time Line -->
-            <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="buttonGroup mt-3">
-            <button id="exportButton" class="brutalButton">
-                <i class="bi bi-download"></i> Export
-            </button>
-            <button id="importButton" class="brutalButton">
-                <i class="bi bi-upload"></i> Import
-            </button>
-            <button id="wipeButton" class="brutalButton">
-                <i class="bi bi-trash"></i> Wipe
-            </button>
-            <!-- Hidden file input for JSON import -->
-            <input type="file" id="importFileInput" accept="application/json">
+            <!-- Buttons -->
+            <div class="buttonGroup mt-3">
+                <button id="exportButton" class="brutalButton">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <button id="importButton" class="brutalButton">
+                    <i class="bi bi-upload"></i> Import
+                </button>
+                <button id="wipeButton" class="brutalButton">
+                    <i class="bi bi-trash"></i> Wipe
+                </button>
+                <!-- Hidden file input for JSON import -->
+                <input type="file" id="importFileInput" accept="application/json">
+            </div>
         </div>
     </div>
 
     <!-- Mode Switch Buttons -->
     <div class="mode-buttons">
         <!-- Notify Checkbox -->
-        <div class="form-check mt-2">
+        <div class="form-check">
             <input class="form-check-input" type="checkbox" id="notifyToggle">
             <label class="form-check-label" for="notifyToggle">Notify</label>
         </div>
@@ -2085,10 +2098,13 @@
                 });
             });
 
+            const mainContent = document.getElementById('mainContent');
+
             // --- Prioritization panel toggle ---
             function openPrioPanel() {
                 prioritizationPanel.classList.add('open');
                 prioritizationPanel.setAttribute('aria-hidden', 'false');
+                mainContent.classList.add('shifted'); // push grid right
                 // focus first textarea for convenience
                 const first = prioTextareas[0];
                 if (first) first.focus();
@@ -2097,6 +2113,7 @@
             function closePrioPanel() {
                 prioritizationPanel.classList.remove('open');
                 prioritizationPanel.setAttribute('aria-hidden', 'true');
+                mainContent.classList.remove('shifted'); // reset grid
             }
 
             prioritizationButton.addEventListener('click', openPrioPanel);
