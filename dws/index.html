@@ -546,14 +546,14 @@
         #prioritizationPanel {
             position: fixed;
             top: 0;
-            left: -360px;
+            left: -440px;
             /* hidden off-screen initially */
-            width: 360px;
+            width: 440px;
             height: 100vh;
             background-color: var(--background-color);
             color: var(--main-color);
             border-right: 1px solid var(--main-color);
-            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+            /* box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25); */
             z-index: 6;
             /* above time blocks & mode buttons */
             transition: left 0.25s ease-in-out;
@@ -631,7 +631,7 @@
         }
 
         #mainContent.shifted {
-            margin-left: 360px;
+            margin-left: 440px;
             /* same width as prioritizationPanel */
         }
     </style>
@@ -2116,7 +2116,15 @@
                 mainContent.classList.remove('shifted'); // reset grid
             }
 
-            prioritizationButton.addEventListener('click', openPrioPanel);
+            function togglePrioPanel() {
+                if (prioritizationPanel.classList.contains('open')) {
+                    closePrioPanel();
+                } else {
+                    openPrioPanel();
+                }
+            }
+
+            prioritizationButton.addEventListener('click', togglePrioPanel);
             closePrioritizationPanel.addEventListener('click', closePrioPanel);
 
             // Close panel on Escape
