@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MNRV Printer Canvas — Quill</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Quill -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.core.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+  <!-- html2canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- Fonts: place TTFs in ./fonts/ as per project -->
+   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Light.ttf") format("truetype");
+      font-weight: 300; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Regular.ttf") format("truetype");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Bold.ttf") format("truetype");
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    :root{
+      /* From project config: A=384 px, B=576 px (203 dpi). */
+      --printer-a: 384px;
+      --printer-b: 576px;
+      --printer-width-px: var(--printer-a);
+      --editor-base-font-px: 28;
+    }
+
+    body{background:#f6f7f9}
+
+    /* Sticky full-width header */
+    .app-header{
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1040;
+      background: #ffffff;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .header-inner{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .app-main{
+      max-width:980px;margin:16px auto;padding:16px;
+    }
+
+    .canvas-frame{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .paper-wrap{width:min(100%, var(--printer-width-px));margin:auto;overflow:hidden;border:1px dashed #cbd3da}
+
+    /* Quill editor area */
+    #editor{
+      min-height:580px;background:#fff;color:#000;
+      font-family:"MozillaText","Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
+    .ql-container{
+      font-size: calc(var(--editor-base-font-px) * 1px);
+    }
+    .ql-editor{
+      min-height:580px;
+      padding:16px;
+      line-height:1.35;
+      word-break:break-word;
+    }
+    .ql-editor.ql-blank::before{color:#9aa3ab}
+
+    /* Lists spacing similar to original */
+    .ql-editor ul, .ql-editor ol{padding-left:1.25rem;margin:.5rem 0}
+    .ql-editor li{margin:.2rem 0}
+    .ql-editor ul ul, .ql-editor ol ol, .ql-editor ul ol, .ql-editor ol ul{margin:.2rem 0 0 .9rem}
+
+    /* Images fill available width */
+    .ql-editor img{width:100%;height:auto;display:block}
+
+    .wpx-badge{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+    /* Make toolbar compact */
+    .ql-toolbar.ql-snow{
+      border: 0;
+      padding: 0;
+    }
+    .toolbar-wrap{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      width:100%;
+    }
+    .spacer{flex:1 1 auto}
+    .btn-primary, .btn-outline-primary, .btn-outline-danger{
+      color: var(--bs-btn-active-bg);
+      width: auto;
+    }
+
+    .ql-snow.ql-toolbar button, .ql-snow .ql-toolbar button {
+    padding: 3px 5px;
+    width: auto !important;
+    }
+    .ql-editor {
+    padding: 0 !important;
+    }
+
+    :root{
+      --list-base: 1.1em;   /* base left space for level-1 bullets/numbers */
+      --indent-step: 1.1em; /* extra space per nested level */
+    }
+
+    /* Base list spacing and bullet alignment */
+    .ql-editor ol,
+    .ql-editor ul {
+      padding-left: var(--list-base) !important;
+    }
+    .ql-editor li {
+      padding-left: var(--list-base) !important;
+    }
+    .ql-editor li > .ql-ui {
+      left: calc(-1 * var(--list-base)) !important;
+    }
+
+    /* Nested list levels add only the new step */
+    .ql-editor ul ul,
+    .ql-editor ol ol,
+    .ql-editor ul ol,
+    .ql-editor ol ul {
+      padding-left: var(--indent-step) !important;
+    }
+
+    /* Paragraph indents (non-lists) */
+    .ql-editor .ql-indent-1:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 1) !important; }
+    .ql-editor .ql-indent-2:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 2) !important; }
+    .ql-editor .ql-indent-3:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 3) !important; }
+    .ql-editor .ql-indent-4:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 4) !important; }
+    .ql-editor .ql-indent-5:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 5) !important; }
+    .ql-editor .ql-indent-6:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 6) !important; }
+    .ql-editor .ql-indent-7:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 7) !important; }
+    .ql-editor .ql-indent-8:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 8) !important; }
+    .ql-editor .ql-indent-9:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 9) !important; }
+
+    /* RTL alignment */
+    .ql-editor .ql-indent-1.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 1) !important; }
+    .ql-editor .ql-indent-2.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 2) !important; }
+    .ql-editor .ql-indent-3.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 3) !important; }
+    .ql-editor .ql-indent-4.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 4) !important; }
+    .ql-editor .ql-indent-5.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 5) !important; }
+    .ql-editor .ql-indent-6.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 6) !important; }
+    .ql-editor .ql-indent-7.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 7) !important; }
+    .ql-editor .ql-indent-8.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 8) !important; }
+    .ql-editor .ql-indent-9.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 9) !important; }
+
+
+
+  </style>
+</head>
+<body>
+  <!-- Sticky full-width header with tools inside -->
+  <header class="app-header">
+    <div class="header-inner">
+      <h1 class="h6 mb-0">MNRV Printer Editor</h1>
+
+      <!-- Quill toolbar lives in header -->
+      <div id="quill-toolbar" class="toolbar-wrap">
+        <span class="ql-formats">
+          <select class="ql-header">
+            <option selected></option>
+            <option value="1"></option>
+            <option value="2"></option>
+          </select>
+          <select class="ql-size">
+            <option value="small"></option>
+            <option selected></option>
+            <option value="large"></option>
+            <option value="huge"></option>
+          </select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-bold"></button>
+          <button class="ql-italic"></button>
+          <button class="ql-underline"></button>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-list" value="ordered"></button>
+          <button class="ql-list" value="bullet"></button>
+          <button class="ql-indent" value="-1"></button>
+          <button class="ql-indent" value="+1"></button>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-link"></button>
+          <button class="ql-image"></button>
+        </span>
+
+        <!-- Printer width selector: unchanged IDs and behavior -->
+        <div class="spacer"></div>
+        <div class="btn-group" role="group" aria-label="Printer width">
+          <input type="radio" class="btn-check" name="printerWidth" id="optA" autocomplete="off" checked>
+          <label class="btn btn-outline-primary" for="optA">Printer A (384)</label>
+          <input type="radio" class="btn-check" name="printerWidth" id="optB" autocomplete="off">
+          <label class="btn btn-outline-primary" for="optB">Printer B (576)</label>
+        </div>
+
+        <!-- Status badges -->
+        <div class="text-body-secondary small d-flex align-items-center gap-3 ms-2">
+          <span>203 dpi</span>
+          <span>Width: <span id="wpx" class="badge text-bg-light wpx-badge">—</span></span>
+          <span>Base font: <span id="fontBadge" class="badge text-bg-light">28px</span></span>
+        </div>
+
+        <!-- Keep Clear and Download buttons intact -->
+        <div class="ms-auto d-flex gap-2">
+          <button id="btn-clear" class="btn btn-outline-danger">Clear</button>
+          <button id="btn-download" class="btn btn-primary">Download @203 dpi</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="canvas-frame">
+      <div class="paper-wrap">
+        <!-- Quill mounts here -->
+        <div id="editor"></div>
+      </div>
+      <div class="small text-body-secondary mt-2">
+        Pasted or inserted images auto-fit width.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const DPI = 203;
+    const state = {
+      printer: 'A',
+      widths: { A: 384, B: 576 },
+      baseFontPx: 28
+    };
+
+    // Helpers for CSS vars and badges
+    function applyVars(){
+      const root = document.documentElement;
+      const w = state.widths[state.printer];
+      root.style.setProperty('--printer-width-px', w + 'px');
+      root.style.setProperty('--editor-base-font-px', state.baseFontPx);
+      document.getElementById('wpx').textContent = w + ' px';
+      document.getElementById('fontBadge').textContent = state.baseFontPx + 'px';
+    }
+
+    // Local storage draft
+    const STORAGE_KEY='mnrv_printer_editor_quill_v1';
+    function saveDraft(quill){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          html: quill.root.innerHTML,
+          delta: quill.getContents(), // not used on load if html exists
+          printer: state.printer,
+          baseFontPx: state.baseFontPx
+        }));
+      }catch{}
+    }
+    function loadDraft(){
+      try{
+        const o = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if(o.printer === 'B'){ state.printer='B'; document.getElementById('optB').checked=true; }
+        else { state.printer='A'; document.getElementById('optA').checked=true; }
+        if(o.baseFontPx){ state.baseFontPx = Math.max(8, Math.min(96, +o.baseFontPx||28)); }
+        return o;
+      }catch{
+        return {};
+      }
+    }
+
+    // Render and download using html2canvas on the .ql-editor
+    async function renderAndDownload(){
+      const editorEl = document.querySelector('#editor .ql-editor');
+      const widthPx = state.widths[state.printer];
+      const cssWidth = editorEl.clientWidth || widthPx;
+      const scale = widthPx / cssWidth;
+
+      const canvas = await html2canvas(editorEl, {
+        backgroundColor:'#ffffff',
+        scale,
+        allowTaint:true,
+        useCORS:true,
+        logging:false,
+        dpi:DPI
+      });
+
+      const ts=new Date().toISOString().replace(/[:.]/g,'-');
+      const fname=`mnrv-canvas-${state.printer}-${widthPx}px-${DPI}dpi-${ts}.png`;
+      canvas.toBlob(b=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download=fname;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      },'image/png');
+    }
+
+    // Init Quill
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const draft = loadDraft();
+
+      const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Type here…',
+        modules: {
+          toolbar: {
+            container: '#quill-toolbar'
+          },
+          clipboard: {
+            matchVisual: true
+          }
+        }
+      });
+
+      // Restore content if present
+      if(draft.html){
+        quill.root.innerHTML = draft.html;
+      }
+
+      applyVars();
+
+      // Update draft on any change
+      quill.on('text-change', ()=> saveDraft(quill));
+
+      // Printer width controls: unchanged IDs and behavior
+      document.getElementById('optA').addEventListener('change',()=>{
+        state.printer='A'; applyVars(); saveDraft(quill);
+      });
+      document.getElementById('optB').addEventListener('change',()=>{
+        state.printer='B'; applyVars(); saveDraft(quill);
+      });
+
+      // Keep Clear and Download behavior
+      document.getElementById('btn-download').addEventListener('click', renderAndDownload);
+      document.getElementById('btn-clear').addEventListener('click', ()=>{
+        if(confirm('Clear the canvas?')){
+          quill.setContents([]);
+          saveDraft(quill);
+        }
+      });
+
+      // Ensure pasted images scale to 100%
+      // Quill inserts <img>. CSS already forces width:100%.
+      // Extra: if user drags a huge image, ensure no width/height attrs remain inline.
+      quill.root.addEventListener('DOMNodeInserted', (e)=>{
+        if(e.target && e.target.tagName === 'IMG'){
+          e.target.removeAttribute('width');
+          e.target.removeAttribute('height');
+          e.target.style.width = '100%';
+          e.target.style.height = 'auto';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
