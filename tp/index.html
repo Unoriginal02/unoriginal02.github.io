@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MNRV Printer Canvas — Quill</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Quill -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.core.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+  <!-- html2canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- Fonts: place TTFs in ./fonts/ as per project -->
+   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Light.ttf") format("truetype");
+      font-weight: 300; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Regular.ttf") format("truetype");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "MozillaText";
+      src: url("./fonts/MozillaText-Bold.ttf") format("truetype");
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    :root{
+      /* From project config: A=384 px, B=576 px (203 dpi). */
+      --printer-a: 384px;
+      --printer-b: 576px;
+      --printer-width-px: var(--printer-a);
+      --editor-base-font-px: 28;
+    }
+
+    body{background:#f6f7f9}
+
+    /* Sticky full-width header */
+    .app-header{
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1040;
+      background: #ffffff;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .header-inner{
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .app-main{
+      max-width:980px;margin:16px auto;padding:16px;
+    }
+
+    .canvas-frame{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .paper-wrap{width:min(100%, var(--printer-width-px));margin:auto;overflow:hidden;border:1px dashed #cbd3da}
+
+    /* Quill editor area */
+    #editor{
+      background:#fff;color:#000;
+      font-family:"MozillaText","Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
+    .ql-container{
+      font-size: calc(var(--editor-base-font-px) * 1px);
+    }
+    .ql-editor{
+      /* min-height:580px; */
+      padding:16px;
+      line-height:1.35;
+      word-break:break-word;
+    }
+    .ql-editor.ql-blank::before{color:#9aa3ab}
+
+    /* Lists spacing similar to original */
+    .ql-editor ul, .ql-editor ol{padding-left:1.25rem;margin:.5rem 0}
+    .ql-editor li{margin:.2rem 0}
+    .ql-editor ul ul, .ql-editor ol ol, .ql-editor ul ol, .ql-editor ol ul{margin:.2rem 0 0 .9rem}
+
+    /* Images fill available width */
+    .ql-editor img{width:100%;height:auto;display:block}
+
+    .wpx-badge{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+    /* Make toolbar compact */
+    .ql-toolbar.ql-snow{
+      border: 0;
+      padding: 0;
+    }
+    .toolbar-wrap{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      width:100%;
+    }
+    .spacer{flex:1 1 auto}
+    .btn-primary, .btn-outline-primary, .btn-outline-danger{
+      color: var(--bs-btn-active-bg);
+      width: auto;
+    }
+
+    .ql-snow.ql-toolbar button, .ql-snow .ql-toolbar button {
+    padding: 3px 5px;
+    width: auto !important;
+    }
+    .ql-editor {
+    padding: 0 !important;
+    }
+
+    :root{
+      --list-base: 1.1em;   /* base left space for level-1 bullets/numbers */
+      --indent-step: 1.1em; /* extra space per nested level */
+    }
+
+    /* Base list spacing and bullet alignment */
+    .ql-editor ol,
+    .ql-editor ul {
+      padding-left: var(--list-base) !important;
+    }
+    .ql-editor li {
+      padding-left: var(--list-base) !important;
+    }
+    .ql-editor li > .ql-ui {
+      left: calc(-1 * var(--list-base)) !important;
+    }
+
+    /* Nested list levels add only the new step */
+    .ql-editor ul ul,
+    .ql-editor ol ol,
+    .ql-editor ul ol,
+    .ql-editor ol ul {
+      padding-left: var(--indent-step) !important;
+    }
+
+    /* Paragraph indents (non-lists) */
+    .ql-editor .ql-indent-1:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 1) !important; }
+    .ql-editor .ql-indent-2:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 2) !important; }
+    .ql-editor .ql-indent-3:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 3) !important; }
+    .ql-editor .ql-indent-4:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 4) !important; }
+    .ql-editor .ql-indent-5:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 5) !important; }
+    .ql-editor .ql-indent-6:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 6) !important; }
+    .ql-editor .ql-indent-7:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 7) !important; }
+    .ql-editor .ql-indent-8:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 8) !important; }
+    .ql-editor .ql-indent-9:not(.ql-direction-rtl){ padding-left: calc(var(--indent-step) * 9) !important; }
+
+    /* RTL alignment */
+    .ql-editor .ql-indent-1.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 1) !important; }
+    .ql-editor .ql-indent-2.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 2) !important; }
+    .ql-editor .ql-indent-3.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 3) !important; }
+    .ql-editor .ql-indent-4.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 4) !important; }
+    .ql-editor .ql-indent-5.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 5) !important; }
+    .ql-editor .ql-indent-6.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 6) !important; }
+    .ql-editor .ql-indent-7.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 7) !important; }
+    .ql-editor .ql-indent-8.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 8) !important; }
+    .ql-editor .ql-indent-9.ql-direction-rtl.ql-align-right{ padding-right: calc(var(--indent-step) * 9) !important; }
+
+
+    /* Symbol toolbar */
+    .symbol-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .symbol-btn{border:1px solid #ced4da;background:#fff;border-radius:.25rem;font-size:16px;line-height:1;padding:4px 8px;cursor:pointer}
+    .symbol-btn:hover{background:#f1f3f5}
+    .symbol-input{width:3.5rem}
+
+    .tpl-item{display:flex; gap:8px; align-items:center; padding:8px 12px}
+    .tpl-thumb{object-fit:cover; border:1px solid #dee2e6; border-radius:4px}
+    .tpl-name{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .tpl-del{border:0; background:transparent; color:#dc3545; font-weight:bold}
+
+    .d-flex {
+        display: flex !important;
+        align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Toast outlet -->
+  <div id="toasts" class="position-fixed top-0 end-0 p-3" style="z-index:1080"></div>
+  <!-- Sticky full-width header with tools inside -->
+  <header class="app-header">
+    <div class="header-inner">
+      <h1 class="h6 mb-0">MNRV Printer Editor</h1>
+
+      <!-- Quill toolbar lives in header -->
+      <div id="quill-toolbar" class="toolbar-wrap">
+        <span class="ql-formats">
+          <select class="ql-header">
+            <option selected></option>
+            <option value="1"></option>
+            <option value="2"></option>
+          </select>
+          <select class="ql-size">
+            <option value="small"></option>
+            <option selected></option>
+            <option value="large"></option>
+            <option value="huge"></option>
+          </select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-bold"></button>
+          <button class="ql-italic"></button>
+          <button class="ql-underline"></button>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-indent" value="-1"></button>
+          <button class="ql-indent" value="+1"></button>
+        </span>
+        <span class="ql-formats">
+          <select class="ql-align">
+            <option selected></option>
+            <option value="center"></option>
+            <option value="right"></option>
+            <option value="justify"></option>
+          </select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-link"></button>
+          <button class="ql-image"></button>
+        </span>
+
+        <!-- Symbols -->
+        <div class="symbol-tools" id="symbolTools">
+          <div id="symbolButtons" class="d-flex gap-1 flex-wrap"></div>
+          <!-- <input id="symbolInput" class="form-control form-control-sm symbol-input" placeholder="+" />
+          <button id="symbolAdd" class="btn btn-outline-primary btn-sm" type="button">Add</button> -->
+        </div>
+
+        <!-- Printer width selector: unchanged IDs and behavior -->
+        <div class="spacer"></div>
+        <div class="btn-group" role="group" aria-label="Printer width">
+          <input type="radio" class="btn-check" name="printerWidth" id="optA" autocomplete="off" checked>
+          <label class="btn btn-outline-primary" for="optA">Printer A (384)</label>
+          <input type="radio" class="btn-check" name="printerWidth" id="optB" autocomplete="off">
+          <label class="btn btn-outline-primary" for="optB">Printer B (576)</label>
+        </div>
+
+        <!-- Status badges -->
+        <div class="text-body-secondary small d-flex align-items-center gap-3 ms-2">
+          <span>203 dpi</span>
+          <span>Width: <span id="wpx" class="badge text-bg-light wpx-badge">—</span></span>
+          <span>Base font: <span id="fontBadge" class="badge text-bg-light">28px</span></span>
+        </div>
+
+        <!-- Keep Clear and Download buttons intact -->
+        <div class="ms-auto d-flex gap-2">
+          <button id="btn-clear" class="btn btn-outline-danger">Clear</button>
+          <button id="btn-download" class="btn btn-primary">Download @203 dpi</button>
+          <button id="btn-save-tpl" class="btn btn-outline-primary">Save template</button>
+          <button id="btn-export-tpl" class="btn btn-outline-primary">Export</button>
+          <label class="btn btn-outline-primary mb-0">
+            Import <input id="file-import-tpl" type="file" accept="application/json" hidden>
+          </label>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Templates drawer -->
+  <aside id="tpl-drawer" class="position-fixed top-50 translate-middle-y end-0 me-2"
+        style="width:260px; max-height:80vh; overflow:auto; display:none; z-index:1070;">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Templates</span>
+        <button id="btn-toggle-drawer" class="btn btn-sm btn-outline-secondary">Hide</button>
+      </div>
+      <div id="tpl-list" class="list-group list-group-flush small"></div>
+    </div>
+  </aside>
+
+
+  <main class="app-main">
+    <div class="canvas-frame">
+      <div class="paper-wrap">
+        <!-- Quill mounts here -->
+        <div id="editor"></div>
+      </div>
+      <div class="small text-body-secondary mt-2">
+        Pasted or inserted images auto-fit width.
+      </div>
+    </div>
+  </main>
+
+
+  <!-- Controls -->
+  <div style="position:fixed; right:16px; bottom:64px; display:flex; gap:8px;">
+    <button id="btn-open-drawer" class="btn btn-outline-secondary">
+      Templates
+    </button>
+  </div>
+
+    <!-- Controls -->
+  <div style="position:fixed; right:16px; bottom:16px; display:flex; gap:8px;">
+    <button id="btn-connect" class="btn btn-outline-primary">Connect M02</button>
+    <button id="btn-print" class="btn btn-primary">Print to M02</button>
+  </div>
+
+  <script>
+    (() => {
+      // --- BLE constants (M02 Pro = Fomemo) ---
+      const SVC = 0xff00;                 // printer service
+      const CHR = 0xff02;                 // data characteristic
+      // const MAX_WRITE = 180;               // safe MTU payload per write :contentReference[oaicite:3]{index=3}
+      const WIDTHS_203 = { A: 384, B: 576 };  // 48 mm, 72 mm @203
+      const WIDTHS_300 = { A: 567, B: 850 };  // 48 mm, 72 mm @300
+      const FEED_PX = 200;
+
+      let g = { device:null, server:null, chr:null, width: WIDTHS_300.A };
+
+      // track chosen printer width from your existing toggle
+      const optA = document.getElementById('optA');
+      const optB = document.getElementById('optB');
+      function currentWidth(){ return (optB && optB.checked) ? WIDTHS_300.B : WIDTHS_300.A; }
+
+      async function feedBlankRows(rows){
+        const w = g.width;
+        const bytesPerRow = (w + 7) >> 3;
+        const total = bytesPerRow * rows;
+        const blank = new Uint8Array(total); // all white
+        await sendRasterHeader(w, rows);      // GS v 0 m xL xH yL yH
+        await writeChunked(blank);
+      }
+
+      // Connect to M02 Pro
+      async function connectM02(){
+        g.width = currentWidth();
+        g.device = await navigator.bluetooth.requestDevice({
+          filters:[{ namePrefix:'M02 Pro' }],
+          optionalServices:[SVC]
+        });
+        g.server = await g.device.gatt.connect();
+        const svc = await g.server.getPrimaryService(SVC);
+        g.chr = await svc.getCharacteristic(CHR);
+        // Optional: send density control packet (same as your firmware)
+        const densityPkt = new Uint8Array([
+          0x02,0x08,0x00,0x1a,0x00,0x16,0x00,0x41,0x00,0x0b,0xff,0x23,0x01,0x1b,0x40,0x1f,
+          0x11,0x02,0x04,0x1f,0x11,0x37,0x72,0x1f,0x11,0x0b,0x1f,0x11,0x35,0x00,0x86
+        ]);
+        await g.chr.writeValue(densityPkt);
+        notify('Printer connected', 'success');
+      }
+
+      // Render editor to canvas at exact device width (you already use this for download)
+      async function renderEditorToCanvas(){
+        const editorEl = document.querySelector('#editor .ql-editor');
+        const widthPx = g.width = currentWidth();          // 300-dpi pixel width
+        const cssWidth = editorEl.clientWidth || widthPx;
+        const scale = widthPx / cssWidth;
+
+        // Render as before
+        const rawCanvas = await html2canvas(editorEl, {
+          backgroundColor: '#ffffff',
+          scale,
+          allowTaint: true,
+          useCORS: true,
+          logging: false,
+          dpi: 300
+        });
+
+        // --- added step: if width is 850 (B), scale down to 567 (A) ---
+        if (widthPx === 850) {
+          const t = document.createElement('canvas');
+          const ratio = 567 / rawCanvas.width;
+          t.width = 567;
+          t.height = Math.round(rawCanvas.height * ratio);
+          const ctx = t.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(rawCanvas, 0, 0, t.width, t.height);
+          return t; // scaled canvas
+        }
+
+        return rawCanvas; // unchanged if 567 width
+      }
+
+      // Floyd-Steinberg dithering to 1-bit, packed 8 pixels/byte
+      function toMonoPacked(imgData, w, h) {
+        const bytesPerRow = (w + 7) >> 3;
+        const out = new Uint8Array(bytesPerRow * h);
+        const d = imgData.data;
+        const err = new Float32Array(w * h);
+
+        function clamp(v) {
+          return v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            let old = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) + err[y * w + x];
+            const newColor = old < 128 ? 0 : 255;
+            const quantError = old - newColor;
+
+            if (newColor === 0) {
+              const byteIndex = (y * bytesPerRow) + (x >> 3);
+              out[byteIndex] |= (0x80 >> (x & 7));
+            }
+
+            if (x + 1 < w) err[y * w + x + 1] += quantError * 7 / 16;
+            if (y + 1 < h) {
+              if (x > 0) err[(y + 1) * w + x - 1] += quantError * 3 / 16;
+              err[(y + 1) * w + x] += quantError * 5 / 16;
+              if (x + 1 < w) err[(y + 1) * w + x + 1] += quantError * 1 / 16;
+            }
+          }
+        }
+        return { bytes: out, bytesPerRow };
+      }
+
+      // ESC/POS raster header for FOMEMO/M02: 1D 76 30 30 xL xH yL yH :contentReference[oaicite:4]{index=4}
+      async function sendRasterHeader(widthPx, heightPx){
+        const wBytes = (widthPx + 7) >> 3;
+        const hdr = new Uint8Array([0x1d, 0x76, 0x30, 0x30,
+                                    wBytes & 0xff, 0x00,
+                                    heightPx & 0xff, (heightPx >> 8) & 0xff]);
+        await g.chr.writeValue(hdr);
+      }
+
+      function lastNonWhiteRow(bytes, bpr, h){
+        for (let y = h - 1; y >= 0; y--){
+          const off = y * bpr;
+          for (let i = 0; i < bpr; i++) if (bytes[off + i] !== 0) return y;
+        }
+        return -1;
+      }
+
+      const BAND_ROWS = 32;                // was 64
+      const CHUNK = 160;                   // was 182
+      const BYTES_PER_SEC = 24000;         // was 35000
+
+
+      async function writeChunked(u8){
+        const wwr = g.chr.writeValueWithoutResponse && g.chr.properties?.writeWithoutResponse;
+        let sent = 0, t0 = performance.now();
+        for (let i = 0; i < u8.length; i += CHUNK){
+          const chunk = u8.subarray(i, i + CHUNK);
+          if (wwr) await g.chr.writeValueWithoutResponse(chunk); else await g.chr.writeValue(chunk);
+          sent += chunk.length;
+          // token-bucket pacing
+          const elapsed = performance.now() - t0;
+          const shouldMs = (sent / BYTES_PER_SEC) * 1000;
+          if (shouldMs > elapsed) await new Promise(r=>setTimeout(r, shouldMs - elapsed));
+        }
+      }
+
+      async function sendBand(w, rows, slice){
+        const xBytes = (w + 7) >> 3;
+        const hdr = new Uint8Array([0x1d,0x76,0x30,0x30, xBytes & 0xff, 0x00, rows & 0xff, (rows>>8)&0xff]);
+        await g.chr.writeValue(hdr);                 // header is small, response write is fine
+        await writeChunked(slice);
+      }
+
+      async function feedLinesEscD(n) {
+        while (n > 0) {
+          const step = Math.min(255, n);
+          await writeChunked(new Uint8Array([0x1B, 0x64, step]));
+          n -= step;
+          console.log('Feed', step);
+        }
+      }
+
+      // Main print flow
+      async function printM02(){
+        if(!g.chr){ notify('Not connected', 'warning'); return; }
+        const canvas = await renderEditorToCanvas();
+        // crop to width, keep height
+        const w = canvas.width, h = canvas.height;
+        const ctx = canvas.getContext('2d');
+        const img = ctx.getImageData(0,0,w,h);
+        const { bytes, bytesPerRow } = toMonoPacked(img, w, h);
+        let last = lastNonWhiteRow(bytes, bytesPerRow, h);
+        if (last < 0){ await feedLinesEscD(4); return; }     // nothing to print
+
+        for (let y = 0; y <= last; y += BAND_ROWS){
+          const rows = Math.min(BAND_ROWS, last - y + 1);
+          const start = y * bytesPerRow;
+          await sendBand(w, rows, bytes.subarray(start, start + rows * bytesPerRow));
+        }
+        // e.g., ~3–5 mm feed at 300 dpi vertical: start with 96–160 dots and tune
+        await feedLinesEscD(4);
+        notify('Sent to printer', 'success');
+      }
+
+      document.getElementById('btn-connect').addEventListener('click', () => connectM02().catch(e => notify(String(e), 'danger', 5000)));
+      document.getElementById('btn-print').addEventListener('click', () => printM02().catch(e => notify(String(e), 'danger', 5000)));
+    })();
+    
+    const DPI = 203;
+    const state = {
+      printer: 'A',
+      widths: { A: 384, B: 576 },
+      baseFontPx: 28
+    };
+
+    // Helpers for CSS vars and badges
+    function applyVars(){
+      const root = document.documentElement;
+      const w = state.widths[state.printer];
+      root.style.setProperty('--printer-width-px', w + 'px');
+      root.style.setProperty('--editor-base-font-px', state.baseFontPx);
+      document.getElementById('wpx').textContent = w + ' px';
+      document.getElementById('fontBadge').textContent = state.baseFontPx + 'px';
+    }
+
+    // Local storage draft
+    const STORAGE_KEY='mnrv_printer_editor_quill_v1';
+    function saveDraft(quill){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          html: quill.root.innerHTML,
+          delta: quill.getContents(), // not used on load if html exists
+          printer: state.printer,
+          baseFontPx: state.baseFontPx
+        }));
+      }catch{}
+    }
+    function loadDraft(){
+      try{
+        const o = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if(o.printer === 'B'){ state.printer='B'; document.getElementById('optB').checked=true; }
+        else { state.printer='A'; document.getElementById('optA').checked=true; }
+        if(o.baseFontPx){ state.baseFontPx = Math.max(8, Math.min(96, +o.baseFontPx||28)); }
+        return o;
+      }catch{
+        return {};
+      }
+    }
+
+    // Render and download using html2canvas on the .ql-editor
+    async function renderAndDownload(){
+      const editorEl = document.querySelector('#editor .ql-editor');
+      const widthPx = state.widths[state.printer];
+      const cssWidth = editorEl.clientWidth || widthPx;
+      const scale = widthPx / cssWidth;
+
+      const canvas = await html2canvas(editorEl, {
+        backgroundColor:'#ffffff',
+        scale,
+        allowTaint:true,
+        useCORS:true,
+        logging:false,
+        dpi:DPI
+      });
+
+      const ts=new Date().toISOString().replace(/[:.]/g,'-');
+      const fname=`mnrv-canvas-${state.printer}-${widthPx}px-${DPI}dpi-${ts}.png`;
+      canvas.toBlob(b=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download=fname;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      },'image/png');
+    }
+
+
+    // --- Templates ---
+    const TPL_KEY = 'mnrv_templates_v1';
+
+    function getTemplates(){
+      try{ return JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); }catch{ return []; }
+    }
+    function setTemplates(list){
+      try{ localStorage.setItem(TPL_KEY, JSON.stringify(list)); }catch{}
+    }
+    function uid(){ return 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,5); }
+
+    async function makePreviewPNG(quill, width=180){
+      // Render the visible editor at small scale using the same approach as download
+      // Your download already uses html2canvas on '#editor .ql-editor' with scale factor. :contentReference[oaicite:2]{index=2}
+      const el = document.querySelector('#editor .ql-editor');
+      const cssW = el.clientWidth || 384;
+      const scale = width / cssW;
+      const canvas = await html2canvas(el, {
+        backgroundColor:'#ffffff', scale, allowTaint:true, useCORS:true, logging:false, dpi:96
+      });
+      return canvas.toDataURL('image/png');
+    }
+
+    async function saveTemplate(quill, state){
+      const t = {
+        id: uid(),
+        name: (quill.getText().trim().split('\n')[0] || 'Untitled').slice(0, 40),
+        html: quill.root.innerHTML,
+        delta: quill.getContents(),
+        meta: { printer: state.printer, baseFontPx: state.baseFontPx },
+        preview: await makePreviewPNG(quill, 180),
+        createdAt: Date.now()
+      };
+      const list = getTemplates();
+      list.unshift(t);
+      setTemplates(list);
+      renderTemplateList(quill, state);
+      notify('Template saved','success',1400);
+    }
+
+    function applyTemplate(quill, state, t){
+      quill.setContents(t.delta, 'user');
+      // printer + font
+      state.printer = (t.meta?.printer === 'B') ? 'B' : 'A';
+      document.getElementById(state.printer === 'B' ? 'optB' : 'optA').checked = true;
+      if (t.meta?.baseFontPx){
+        state.baseFontPx = Math.max(8, Math.min(96, +t.meta.baseFontPx||28));
+      }
+      // apply CSS vars and persist draft using your existing helpers
+      applyVars();
+      // reuse your draft save method
+      (function saveDraftNow(){
+        try{
+          localStorage.setItem('mnrv_printer_editor_quill_v1', JSON.stringify({
+            html: quill.root.innerHTML,
+            delta: quill.getContents(),
+            printer: state.printer,
+            baseFontPx: state.baseFontPx
+          }));
+        }catch{}
+      })();
+    }
+
+    function deleteTemplate(id){
+      const list = getTemplates().filter(t => t.id !== id);
+      setTemplates(list);
+    }
+
+    function renderTemplateList(quill, state){
+      const list = getTemplates();
+      const wrap = document.getElementById('tpl-list');
+      wrap.innerHTML = '';
+      if (!list.length){
+        wrap.innerHTML = '<div class="p-3 text-body-secondary">No templates yet</div>';
+        return;
+      }
+      list.forEach(t=>{
+        const row = document.createElement('div');
+        row.className = 'tpl-item list-group-item';
+        row.innerHTML = `
+          <img class="tpl-thumb" src="${t.preview || ''}" alt="">
+          <button class="tpl-del" title="Delete">×</button>
+        `;
+        // load on click anywhere except delete
+        row.addEventListener('click', (e)=>{
+          if (e.target.closest('.tpl-del')) return;
+          applyTemplate(quill, state, t);
+          notify('Template loaded','info',1000);
+        });
+        // delete
+        row.querySelector('.tpl-del').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          deleteTemplate(t.id);
+          row.remove(); // instant
+        });
+        wrap.appendChild(row);
+      });
+    }
+
+    function exportTemplates(){
+      const blob = new Blob([JSON.stringify(getTemplates(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mnrv-templates.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function importTemplatesFromFile(file, {merge=true}={}){
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const incoming = JSON.parse(reader.result || '[]');
+          if(!Array.isArray(incoming)) throw new Error('Invalid format');
+          const sanitized = incoming.map(o=>({
+            id: uid(),
+            name: String(o.name||'Imported'),
+            html: String(o.html||''),
+            delta: o.delta || null,
+            meta: { printer: (o.meta&&o.meta.printer)==='B'?'B':'A', baseFontPx: +((o.meta&&o.meta.baseFontPx)||28) },
+            preview: (typeof o.preview==='string' && o.preview.startsWith('data:image/png')) ? o.preview : '',
+            createdAt: Date.now()
+          }));
+          setTemplates( merge ? [...sanitized, ...getTemplates()] : sanitized );
+          notify('Templates imported','success',1400);
+        }catch(e){
+          notify('Import failed: ' + e.message, 'danger', 3000);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Init Quill
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const draft = loadDraft();
+
+      const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Type here…',
+        modules: {
+          toolbar: {
+            container: '#quill-toolbar'
+          },
+          clipboard: {
+            matchVisual: true
+          }
+        }
+      });
+
+      // Buttons
+      document.getElementById('btn-save-tpl').addEventListener('click', ()=> saveTemplate(quill, state));
+      document.getElementById('btn-export-tpl').addEventListener('click', exportTemplates);
+      document.getElementById('file-import-tpl').addEventListener('change', (e)=>{
+        const f = e.target.files && e.target.files[0];
+        if (f) importTemplatesFromFile(f);
+        e.target.value = '';
+        renderTemplateList(quill, state);
+      });
+
+      // Drawer
+      const drawer = document.getElementById('tpl-drawer');
+      const openBtn = document.getElementById('btn-open-drawer');
+      const toggleBtn = document.getElementById('btn-toggle-drawer');
+      function showDrawer(v){ drawer.style.display = v ? 'block' : 'none'; }
+      openBtn.addEventListener('click', ()=> showDrawer(true));
+      toggleBtn.addEventListener('click', ()=> showDrawer(false));
+
+      renderTemplateList(quill, state);
+
+      // Restore content if present
+      if(draft.html){
+        quill.root.innerHTML = draft.html;
+      }
+
+      applyVars();
+
+      // Update draft on any change
+      quill.on('text-change', ()=> saveDraft(quill));
+
+      // Printer width controls: unchanged IDs and behavior
+      document.getElementById('optA').addEventListener('change',()=>{
+        state.printer='A'; applyVars(); saveDraft(quill);
+      });
+      document.getElementById('optB').addEventListener('change',()=>{
+        state.printer='B'; applyVars(); saveDraft(quill);
+      });
+
+      // Keep Clear and Download behavior
+      document.getElementById('btn-download').addEventListener('click', renderAndDownload);
+      document.getElementById('btn-clear').addEventListener('click', ()=>{
+        if(confirm('Clear the canvas?')){
+          quill.setContents([]);
+          saveDraft(quill);
+        }
+      });
+
+      // Ensure pasted images scale to 100%
+      // Quill inserts <img>. CSS already forces width:100%.
+      // Extra: if user drags a huge image, ensure no width/height attrs remain inline.
+      quill.root.addEventListener('DOMNodeInserted', (e)=>{
+        if(e.target && e.target.tagName === 'IMG'){
+          e.target.removeAttribute('width');
+          e.target.removeAttribute('height');
+          e.target.style.width = '100%';
+          e.target.style.height = 'auto';
+        }
+      });
+
+      // --- Symbol toolbar ---
+      const SYMBOLS_KEY = 'mnrv_symbol_buttons_v1';
+      const DEFAULT_SYMBOLS = ['□','○','✓','✗','☆','•','■','●','★','→','←','↑','↓'];
+
+      function getSymbols(){
+        try{
+          const raw = localStorage.getItem(SYMBOLS_KEY);
+          const list = raw ? JSON.parse(raw) : DEFAULT_SYMBOLS;
+          return Array.isArray(list) ? list : DEFAULT_SYMBOLS;
+        }catch{ return DEFAULT_SYMBOLS; }
+      }
+      function setSymbols(list){
+        try{ localStorage.setItem(SYMBOLS_KEY, JSON.stringify(list.slice(0,64))); }catch{}
+      }
+      function renderSymbolButtons(quill){
+        const wrap = document.getElementById('symbolButtons');
+        wrap.innerHTML = '';
+        getSymbols().forEach(sym=>{
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'symbol-btn';
+          b.textContent = sym;
+          b.title = 'Insert ' + sym;
+          b.addEventListener('click', ()=>{
+            const r = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+            quill.insertText(r.index, sym, 'user');
+            quill.setSelection(r.index + sym.length, 0, 'user');
+          });
+          wrap.appendChild(b);
+        });
+      }
+
+      function addSymbol(quill, sym){
+        sym = (sym||'').trim();
+        if(!sym){ return; }
+        const list = getSymbols();
+        if(!list.includes(sym)){
+          list.push(sym);
+          setSymbols(list);
+          renderSymbolButtons(quill);
+          notify('Added symbol "'+sym+'"','success',1600);
+        }else{
+          notify('Symbol already exists','info',1400);
+        }
+      }
+
+      const symInput = document.getElementById('symbolInput');
+      const symAdd = document.getElementById('symbolAdd');
+      renderSymbolButtons(quill);
+      symAdd.addEventListener('click', ()=> addSymbol(quill, symInput.value));
+      symInput.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ addSymbol(quill, symInput.value); }
+      });
+
+
+      // Disable automatic list creation shortcuts
+      const bindings = quill.keyboard.bindings;
+      delete bindings['list autofill']; // precaution
+      delete bindings['list'];          // removes Enter-based list continuation
+      delete Quill.import('formats/list');
+
+    });
+
+    
+
+    function notify(msg, type = 'info', delay = 2400, html = false){
+    const wrap = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = `toast align-items-center text-bg-${type} border-0`;
+    el.setAttribute('role','status');
+    el.setAttribute('aria-live','polite');
+    el.setAttribute('aria-atomic','true');
+    const body = html ? msg : `<div class="toast-body">${msg}</div>`;
+    el.innerHTML = `
+      <div class="d-flex">
+        ${html ? msg : `<div class="toast-body">${msg}</div>`}
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>`;
+    wrap.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay, autohide: true });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+    return el; // for wiring actions like Undo
+    }
+  </script>
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
