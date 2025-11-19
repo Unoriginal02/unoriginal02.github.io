@@ -306,27 +306,44 @@
   </div>
 
     <!-- Controls -->
-  <div style="position:fixed; right:16px; bottom:16px; display:flex; gap:8px;">
-    <button id="btn-connect" class="btn btn-outline-primary">Connect M02</button>
-    <button id="btn-print" class="btn btn-primary">Print to M02</button>
-  </div>
+    <div style="position:fixed; right:16px; bottom:16px; display:flex; gap:8px;">
+      <button id="btn-connect" class="btn btn-outline-primary">Connect printer</button>
+      <button id="btn-print" class="btn btn-primary">Print</button>
+    </div>
 
   <script>
     (() => {
       // --- BLE constants (M02 Pro = Fomemo) ---
       const SVC = 0xff00;                 // printer service
       const CHR = 0xff02;                 // data characteristic
-      // const MAX_WRITE = 180;               // safe MTU payload per write :contentReference[oaicite:3]{index=3}
+      // const MAX_WRITE = 180;               // safe MTU payload per write
       const WIDTHS_203 = { A: 384, B: 576 };  // 48 mm, 72 mm @203
       const WIDTHS_300 = { A: 567, B: 850 };  // 48 mm, 72 mm @300
       const FEED_PX = 200;
 
-      let g = { device:null, server:null, chr:null, width: WIDTHS_300.A };
+      // Known printer models
+      const PRINTER_MODEL = {
+        M02: 'M02_PRO',
+        MPT: 'MPT_II'
+      };
+
+      let g = {
+        device: null,
+        server: null,
+        chr: null,
+        width: WIDTHS_300.A,
+        model: null       // will hold PRINTER_MODEL.M02 or PRINTER_MODEL.MPT
+      };
 
       // track chosen printer width from your existing toggle
       const optA = document.getElementById('optA');
       const optB = document.getElementById('optB');
-      function currentWidth(){ return (optB && optB.checked) ? WIDTHS_300.B : WIDTHS_300.A; }
+      function currentWidth(){
+        if (g.model === PRINTER_MODEL.MPT) {
+          return (optB && optB.checked) ? WIDTHS_203.B : WIDTHS_203.A;   // MPT-II = 203 dpi
+        }
+        return (optB && optB.checked) ? WIDTHS_300.B : WIDTHS_300.A;     // M02 = 300 dpi
+      }
 
       async function feedBlankRows(rows){
         const w = g.width;
@@ -337,23 +354,52 @@
         await writeChunked(blank);
       }
 
-      // Connect to M02 Pro
-      async function connectM02(){
+      // Connect to printer (M02 Pro or MPT-II)
+      async function connectPrinter(){
         g.width = currentWidth();
+
+        // Ask browser to show a chooser with both printers if present
         g.device = await navigator.bluetooth.requestDevice({
-          filters:[{ namePrefix:'M02 Pro' }],
-          optionalServices:[SVC]
+          filters: [
+            { namePrefix: 'M02 Pro' },
+            { namePrefix: 'MPT-II' }
+          ],
+          optionalServices: [SVC]
         });
+
         g.server = await g.device.gatt.connect();
         const svc = await g.server.getPrimaryService(SVC);
         g.chr = await svc.getCharacteristic(CHR);
-        // Optional: send density control packet (same as your firmware)
-        const densityPkt = new Uint8Array([
-          0x02,0x08,0x00,0x1a,0x00,0x16,0x00,0x41,0x00,0x0b,0xff,0x23,0x01,0x1b,0x40,0x1f,
-          0x11,0x02,0x04,0x1f,0x11,0x37,0x72,0x1f,0x11,0x0b,0x1f,0x11,0x35,0x00,0x86
-        ]);
-        await g.chr.writeValue(densityPkt);
-        notify('Printer connected', 'success');
+
+        // Detect model from name
+        const name = g.device.name || '';
+        if (name.startsWith('M02')) {
+          g.model = PRINTER_MODEL.M02;
+        } else if (name.startsWith('MPT')) {
+          g.model = PRINTER_MODEL.MPT;
+        } else {
+          g.model = null; // unknown / fallback
+        }
+        // Set pixel width according to model dpi
+        if (g.model === PRINTER_MODEL.MPT) {
+          g.width = (optB && optB.checked) ? WIDTHS_203.B : WIDTHS_203.A;
+        } else {
+          g.width = (optB && optB.checked) ? WIDTHS_300.B : WIDTHS_300.A;
+        }
+
+        // Model-specific setup
+        if (g.model === PRINTER_MODEL.M02) {
+          // M02 Pro density packet (same as before)
+          const densityPktM02 = new Uint8Array([
+            0x02,0x08,0x00,0x1a,0x00,0x16,0x00,0x41,0x00,0x0b,0xff,0x23,0x01,0x1b,0x40,0x1f,
+            0x11,0x02,0x04,0x1f,0x11,0x37,0x72,0x1f,0x11,0x0b,0x1f,0x11,0x35,0x00,0x86
+          ]);
+          await g.chr.writeValue(densityPktM02);
+        }
+        // If MPT-II needs a special init packet, you can add it here:
+        // else if (g.model === PRINTER_MODEL.MPT) { ... }
+
+        notify(`Connected to ${name || 'printer'}`, 'success');
       }
 
       // Render editor to canvas at exact device width (you already use this for download)
@@ -370,7 +416,7 @@
           allowTaint: true,
           useCORS: true,
           logging: false,
-          dpi: 300
+          dpi: (g.model === PRINTER_MODEL.MPT ? 203 : 300)
         });
 
         // --- added step: if width is 850 (B), scale down to 567 (A) ---
@@ -440,23 +486,45 @@
         return -1;
       }
 
-      const BAND_ROWS = 32;                // was 64
-      const CHUNK = 160;                   // was 182
-      const BYTES_PER_SEC = 24000;         // was 35000
+      const BAND_ROWS = 32;                // safe default band height
+      const CHUNK_SAFE = 160;             // used for normal mode
+      const BYTES_PER_SEC_SAFE = 24000;   // safe throttle
 
+      const CHUNK_TURBO = 244;            // larger chunk for MPT-II (faster)
 
-      async function writeChunked(u8){
+      async function writeChunkedSafe(u8){
         const wwr = g.chr.writeValueWithoutResponse && g.chr.properties?.writeWithoutResponse;
         let sent = 0, t0 = performance.now();
+        const CHUNK = CHUNK_SAFE;
+        const BYTES_PER_SEC = BYTES_PER_SEC_SAFE;
         for (let i = 0; i < u8.length; i += CHUNK){
           const chunk = u8.subarray(i, i + CHUNK);
           if (wwr) await g.chr.writeValueWithoutResponse(chunk); else await g.chr.writeValue(chunk);
           sent += chunk.length;
-          // token-bucket pacing
           const elapsed = performance.now() - t0;
           const shouldMs = (sent / BYTES_PER_SEC) * 1000;
           if (shouldMs > elapsed) await new Promise(r=>setTimeout(r, shouldMs - elapsed));
         }
+      }
+
+      // Turbo version: no artificial delay, larger chunks
+      async function writeChunkedTurbo(u8){
+        const wwr = g.chr.writeValueWithoutResponse && g.chr.properties?.writeWithoutResponse;
+        const CHUNK = CHUNK_TURBO;
+        for (let i = 0; i < u8.length; i += CHUNK){
+          const chunk = u8.subarray(i, i + CHUNK);
+          if (wwr) await g.chr.writeValueWithoutResponse(chunk); else await g.chr.writeValue(chunk);
+        }
+      }
+
+      // Choose which writer to use based on printer model
+      async function writeChunked(u8){
+        if (g.model === PRINTER_MODEL.MPT) {
+          // MPT-II: crazy fast mode
+          return writeChunkedTurbo(u8);
+        }
+        // Default (safer) mode for other printers
+        return writeChunkedSafe(u8);
       }
 
       async function sendBand(w, rows, slice){
@@ -475,30 +543,70 @@
         }
       }
 
-      // Main print flow
-      async function printM02(){
-        if(!g.chr){ notify('Not connected', 'warning'); return; }
+      // Main print flow (works for both models for now)
+      async function printPrinter(){
+        if (!g.chr) {
+          notify('Not connected', 'warning');
+          return;
+        }
+
         const canvas = await renderEditorToCanvas();
-        // crop to width, keep height
-        const w = canvas.width, h = canvas.height;
+        const w = canvas.width;
+        const h = canvas.height;
         const ctx = canvas.getContext('2d');
-        const img = ctx.getImageData(0,0,w,h);
+        const img = ctx.getImageData(0, 0, w, h);
         const { bytes, bytesPerRow } = toMonoPacked(img, w, h);
         let last = lastNonWhiteRow(bytes, bytesPerRow, h);
-        if (last < 0){ await feedLinesEscD(4); return; }     // nothing to print
 
-        for (let y = 0; y <= last; y += BAND_ROWS){
-          const rows = Math.min(BAND_ROWS, last - y + 1);
-          const start = y * bytesPerRow;
-          await sendBand(w, rows, bytes.subarray(start, start + rows * bytesPerRow));
+        if (last < 0) {
+          // nothing to print, just a small feed
+          await feedLinesEscD(4);
+          return;
         }
-        // e.g., ~3–5 mm feed at 300 dpi vertical: start with 96–160 dots and tune
+
+        // Here you could branch per model if needed
+        // if (g.model === PRINTER_MODEL.MPT) { ...special MPT-II sending... }
+        // else { ...default... }
+
+        const rowsToPrint = last + 1;
+
+        if (g.model === PRINTER_MODEL.MPT) {
+          // MPT-II turbo path: one big raster, streamed as fast as possible
+          const xBytes = (w + 7) >> 3;
+          const hdr = new Uint8Array([
+            0x1d, 0x76, 0x30, 0x30,
+            xBytes & 0xff, 0x00,
+            rowsToPrint & 0xff, (rowsToPrint >> 8) & 0xff
+          ]);
+          // Send header once
+          await g.chr.writeValue(hdr);
+          // Send all rows in one go
+          await writeChunked(bytes.subarray(0, rowsToPrint * bytesPerRow));
+        } else {
+          // Default path: send image in bands (safer for other models)
+          for (let y = 0; y < rowsToPrint; y += BAND_ROWS) {
+            const rows = Math.min(BAND_ROWS, rowsToPrint - y);
+            const startOffset = y * bytesPerRow;
+            await sendBand(
+              w,
+              rows,
+              bytes.subarray(startOffset, startOffset + rows * bytesPerRow)
+            );
+          }
+        }
+
+        // ~3–5 mm feed at 300 dpi vertical
         await feedLinesEscD(4);
         notify('Sent to printer', 'success');
       }
 
-      document.getElementById('btn-connect').addEventListener('click', () => connectM02().catch(e => notify(String(e), 'danger', 5000)));
-      document.getElementById('btn-print').addEventListener('click', () => printM02().catch(e => notify(String(e), 'danger', 5000)));
+      document.getElementById('btn-connect').addEventListener('click', () =>
+        connectPrinter().catch(e => notify(String(e), 'danger', 5000))
+      );
+
+      document.getElementById('btn-print').addEventListener('click', () =>
+        printPrinter().catch(e => notify(String(e), 'danger', 5000))
+      );
     })();
     
     const DPI = 203;
