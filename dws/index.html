@@ -634,6 +634,20 @@
             margin-left: 440px;
             /* same width as prioritizationPanel */
         }
+
+        /* Disable text selection while dragging cards */
+        .dragging,
+        .dragging * {
+            user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .time-slot.drag-target {
+            outline: 2px solid #4a90e2;
+            outline-offset: -2px;
+            background-color: rgba(74, 144, 226, 0.08);
+        }
     </style>
 </head>
 
@@ -680,11 +694,17 @@
         <div class="maxwidth container text-center my-5">
             <!-- Time Selectors -->
             <div class="row mb-4">
-                <div class="col-md-6 mb-2">
+                <div class="col-md-4 mb-2">
+                    <label for="weekMonday" class="form-label">Week (Monday)</label>
+                    <input type="date" id="weekMonday" class="form-control">
+                </div>
+
+                <div class="col-md-4 mb-2">
                     <label for="startTime" class="form-label">Start Time</label>
                     <input type="time" id="startTime" class="form-control" value="08:00" step="900">
                 </div>
-                <div class="col-md-6 mb-2">
+
+                <div class="col-md-4 mb-2">
                     <label for="endTime" class="form-label">End Time</label>
                     <input type="time" id="endTime" class="form-control" value="18:00" step="900">
                 </div>
@@ -696,11 +716,11 @@
                     <thead>
                         <tr>
                             <th>Time</th>
-                            <th>Monday</th>
-                            <th>Tuesday</th>
-                            <th>Wednesday</th>
-                            <th>Thursday</th>
-                            <th>Friday</th>
+                            <th id="thMonday">Monday</th>
+                            <th id="thTuesday">Tuesday</th>
+                            <th id="thWednesday">Wednesday</th>
+                            <th id="thThursday">Thursday</th>
+                            <th id="thFriday">Friday</th>
                         </tr>
                     </thead>
                     <tbody id="timetable-body">
@@ -875,6 +895,14 @@
             setHeartbeat();
             const heartbeatInterval = setInterval(setHeartbeat, HEARTBEAT_INTERVAL);
 
+            function onDragEnd() {
+                draggedBlock = null;
+                document.body.classList.remove('dragging'); // ← ADD
+                document.removeEventListener('mouseup', onDragEnd);
+                document.querySelectorAll('.drag-target')
+                    .forEach(el => el.classList.remove('drag-target'));
+            }
+
             // Listen for storage events to detect new heartbeats
             window.addEventListener('storage', function (e) {
                 if (e.key === HEARTBEAT_KEY) {
@@ -895,6 +923,31 @@
                     }
                 }
             });
+
+            function getNextBlockStart(day, afterMinutes, ignoreId) {
+                return schedule
+                    .filter(b =>
+                        b.day === day &&
+                        b.id !== ignoreId &&
+                        timeToMinutes(b.start) > afterMinutes
+                    )
+                    .map(b => timeToMinutes(b.start))
+                    .sort((a, b) => a - b)[0] ?? Infinity;
+            }
+
+            function formatDateDMY(dateObj) {
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const yyyy = dateObj.getFullYear();
+                return `${dd}/${mm}/${yyyy}`;
+            }
+
+            // ===============================
+            // Drag & Drop state
+            // ===============================
+            let draggedBlock = null;
+            let dragStartOffsetMinutes = 0;
+            let isCopyDrag = false;
 
             // Remove heartbeat on unload
             window.addEventListener('beforeunload', function () {
@@ -921,6 +974,7 @@
             let timerInterval = null;
             let selectedDay = null; // Track the selected day
             let currentTheme = 'dark'; // Default theme
+            let weekMondayISO = null; // "YYYY-MM-DD" for the selected Monday
 
             // Variables for drag selection
             let isSelecting = false;
@@ -966,6 +1020,15 @@
             const timetableBody = document.getElementById('timetable-body');
             const startTimeInput = document.getElementById('startTime');
             const endTimeInput = document.getElementById('endTime');
+
+            const weekMondayInput = document.getElementById('weekMonday');
+
+            const thMonday = document.getElementById('thMonday');
+            const thTuesday = document.getElementById('thTuesday');
+            const thWednesday = document.getElementById('thWednesday');
+            const thThursday = document.getElementById('thThursday');
+            const thFriday = document.getElementById('thFriday');
+
             const exportButton = document.getElementById('exportButton');
             const importButton = document.getElementById('importButton');
             const wipeButton = document.getElementById('wipeButton');
@@ -1017,6 +1080,69 @@
             let notificationTimeout = null; // Holds the timeout ID for scheduled notification
 
             // Utility Functions
+
+            function isoTodayLocal() {
+                const d = new Date();
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+
+            function toISODateLocal(dateObj) {
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+
+            function parseISOToLocalDate(isoStr) {
+                // Avoid timezone shifting by building a local date
+                const [y, m, d] = isoStr.split('-').map(Number);
+                return new Date(y, m - 1, d);
+            }
+
+            function startOfWeekMonday(dateObj) {
+                // JS: Sunday=0, Monday=1 ... Saturday=6
+                const day = dateObj.getDay();
+                const diffToMonday = (day === 0) ? -6 : (1 - day);
+                const monday = new Date(dateObj);
+                monday.setDate(dateObj.getDate() + diffToMonday);
+                monday.setHours(0, 0, 0, 0);
+                return monday;
+            }
+
+            function addDays(dateObj, daysToAdd) {
+                const d = new Date(dateObj);
+                d.setDate(d.getDate() + daysToAdd);
+                return d;
+            }
+
+            function updateWeekHeaderLabels() {
+                // If no monday chosen, keep plain names
+                if (!weekMondayISO) {
+                    if (thMonday) thMonday.textContent = 'Monday';
+                    if (thTuesday) thTuesday.textContent = 'Tuesday';
+                    if (thWednesday) thWednesday.textContent = 'Wednesday';
+                    if (thThursday) thThursday.textContent = 'Thursday';
+                    if (thFriday) thFriday.textContent = 'Friday';
+                    return;
+                }
+
+                const monday = parseISOToLocalDate(weekMondayISO);
+                const tue = addDays(monday, 1);
+                const wed = addDays(monday, 2);
+                const thu = addDays(monday, 3);
+                const fri = addDays(monday, 4);
+
+                // Display like "Monday 12"
+                if (thMonday) thMonday.textContent = `Monday ${monday.getDate()}`;
+                if (thTuesday) thTuesday.textContent = `Tuesday ${tue.getDate()}`;
+                if (thWednesday) thWednesday.textContent = `Wednesday ${wed.getDate()}`;
+                if (thThursday) thThursday.textContent = `Thursday ${thu.getDate()}`;
+                if (thFriday) thFriday.textContent = `Friday ${fri.getDate()}`;
+            }
+
             function timeToMinutes(timeStr) {
                 const [hours, minutes] = timeStr.split(':').map(Number);
                 return hours * 60 + minutes;
@@ -1054,6 +1180,17 @@
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
                         currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
+                        weekMondayISO = data.weekMondayISO || null;
+
+                        // If nothing saved yet, default to THIS week's Monday
+                        if (!weekMondayISO) {
+                            const monday = startOfWeekMonday(new Date());
+                            weekMondayISO = toISODateLocal(monday);
+                        }
+                        if (weekMondayInput) weekMondayInput.value = weekMondayISO;
+
+
+
                         notificationsEnabled = data.notificationsEnabled || false; // Load notifications setting
 
                         // Initialize showDescription to true for existing tasks if undefined
@@ -1078,6 +1215,9 @@
                     }
                 } else {
                     currentTheme = 'dark'; // Default theme if no data is stored
+                    const monday = startOfWeekMonday(new Date());
+                    weekMondayISO = toISODateLocal(monday);
+                    if (weekMondayInput) weekMondayInput.value = weekMondayISO;
                     notificationsEnabled = false; // Notifications disabled by default
                 }
 
@@ -1105,6 +1245,7 @@
                         saveSchedule();
                     }
                 }
+                updateWeekHeaderLabels();
             }
 
             function saveSchedule() {
@@ -1112,6 +1253,7 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
+                    weekMondayISO: weekMondayISO,
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
                     prioritization: {
@@ -1153,6 +1295,53 @@
                     days.forEach((day, index) => {
                         const td = document.createElement('td');
                         td.classList.add('time-slot');
+                        td.addEventListener('mouseup', () => {
+                            if (!draggedBlock) return;
+
+                            const day = td.dataset.day;
+                            const startMinutes =
+                                timeToMinutes(td.dataset.time) + dragStartOffsetMinutes;
+
+                            const originalDuration =
+                                timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
+
+                            const scheduleEnd = timeToMinutes(endTimeInput.value);
+
+                            const nextBlockStart = getNextBlockStart(
+                                day,
+                                startMinutes,
+                                isCopyDrag ? null : draggedBlock.id
+                            );
+
+                            const maxEnd = Math.min(
+                                startMinutes + originalDuration,
+                                nextBlockStart,
+                                scheduleEnd
+                            );
+
+                            if (maxEnd <= startMinutes) {
+                                draggedBlock = null;
+                                return;
+                            }
+
+                            const newBlock = isCopyDrag
+                                ? { ...draggedBlock, id: Date.now() }
+                                : draggedBlock;
+
+                            newBlock.day = day;
+                            newBlock.start = minutesToTime(startMinutes);
+                            newBlock.end = minutesToTime(maxEnd);
+
+                            if (isCopyDrag) {
+                                schedule.push(newBlock);
+                            }
+
+                            saveSchedule();
+                            renderSchedule();
+
+                            draggedBlock = null;
+                        });
+
                         td.dataset.day = day;
                         td.dataset.time = time;
                         if (isCurrentDayInSchedule && index + 1 === currentDayIndex) {
@@ -1163,6 +1352,16 @@
                         td.addEventListener('mousedown', onCellMouseDown);
                         td.addEventListener('mouseover', onCellMouseOver);
                         td.addEventListener('click', onCellClick);
+
+                        td.addEventListener('mouseenter', () => {
+                            if (draggedBlock) {
+                                td.classList.add('drag-target');
+                            }
+                        });
+
+                        td.addEventListener('mouseleave', () => {
+                            td.classList.remove('drag-target');
+                        });
 
                         tr.appendChild(td);
                     });
@@ -1178,7 +1377,7 @@
                         th.classList.remove('current-day');
                     }
                 });
-
+                updateWeekHeaderLabels();
                 renderSchedule();
                 updateCurrentTimeLine();
             }
@@ -1234,6 +1433,27 @@
                     // Create time block element
                     const blockDiv = document.createElement('div');
                     blockDiv.classList.add('time-block');
+                    // Enable dragging
+                    blockDiv.addEventListener('mousedown', (e) => {
+                        // Ignore resize handles
+                        if (e.target.classList.contains('resize-handle')) return;
+
+                        draggedBlock = block;
+                        isCopyDrag = e.shiftKey;
+                        document.body.classList.add('dragging'); // ← ADD
+                        const scheduleStart = timeToMinutes(startTimeInput.value);
+                        const blockTopMinutes =
+                            scheduleStart +
+                            ((parseFloat(blockDiv.style.top) - document.querySelector('.table thead').offsetHeight)
+                                / parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-height')))
+                            * timeSlotInterval;
+
+                        dragStartOffsetMinutes =
+                            timeToMinutes(block.start) - Math.round(blockTopMinutes / timeSlotInterval) * timeSlotInterval;
+
+                        document.addEventListener('mouseup', onDragEnd);
+                    });
+
                     blockDiv.style.top = `${topPixels}px`;
                     blockDiv.style.left = `${leftPercentage}%`;
                     blockDiv.style.width = `${dayColumnWidth}%`;
@@ -1515,6 +1735,22 @@
                 }
             }
 
+            weekMondayInput.addEventListener('change', () => {
+                if (!weekMondayInput.value) return;
+
+                // Snap any chosen date to its Monday
+                const chosen = parseISOToLocalDate(weekMondayInput.value);
+                const monday = startOfWeekMonday(chosen);
+                weekMondayISO = toISODateLocal(monday);
+
+                // Write snapped monday back to the input so it's obvious
+                weekMondayInput.value = weekMondayISO;
+
+                saveSchedule();
+                updateWeekHeaderLabels();
+            });
+
+
             function deleteBlock() {
                 if (currentEditingBlock) {
                     if (confirm("Are you sure you want to delete this time block?")) {
@@ -1598,6 +1834,7 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
+                    weekMondayISO: weekMondayISO,
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
                     prioritization: {
@@ -1612,7 +1849,18 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `schedule_${data.exportDate}.json`; // Optional: Include date in filename
+                let mondayStr = '??/??/????';
+                let fridayStr = '??/??/????';
+
+                if (weekMondayISO) {
+                    const monday = parseISOToLocalDate(weekMondayISO);
+                    const friday = addDays(monday, 4);
+
+                    mondayStr = formatDateDMY(monday);
+                    fridayStr = formatDateDMY(friday);
+                }
+
+                a.download = `DWS WEEK ${mondayStr} - ${fridayStr}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
             }
@@ -1645,7 +1893,16 @@
                             saveSchedule();
                             populateColorOptions(); // Update color options based on imported theme
                             renderTable();
+                            updateWeekHeaderLabels();
                             switchTheme(currentTheme); // Apply imported theme
+                            weekMondayISO = importedData.weekMondayISO || null;
+
+                            if (!weekMondayISO) {
+                                const monday = startOfWeekMonday(new Date());
+                                weekMondayISO = toISODateLocal(monday);
+                            }
+
+                            if (weekMondayInput) weekMondayInput.value = weekMondayISO;
 
                             // Set the notifyToggle checkbox state
                             notifyToggle.checked = notificationsEnabled;
