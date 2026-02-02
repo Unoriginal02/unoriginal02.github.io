@@ -465,7 +465,7 @@
             pointer-events: none;
             z-index: 10;
             white-space: normal;
-            width: 200px;
+            width: 240px;
             font-size: 0.75rem;
             display: none;
             /* Initially hidden */
@@ -1517,46 +1517,74 @@
 
             function showTooltip(event, block) {
                 const tooltip = customTooltip;
-                const projectName = block.projectName || '';
-                const description = block.description || '';
-                const start = block.start;
-                const end = block.end;
-                const totalHours = parseFloat(((timeToMinutes(end) - timeToMinutes(start)) / 60).toFixed(2)); // Removed trailing zeros
 
-                // Build tooltip content conditionally
+                // --- Identify what "same task" means (same day + same name + same desc + same color) ---
+                const projectName = (block.projectName || '').trim();
+                const description = (block.description || '').trim();
+                const colorName = (block.colorName || '').trim();
+                const day = block.day;
+
+                // Collect all matching blocks in the same day
+                const matches = schedule
+                    .filter(b =>
+                        b.day === day &&
+                        (b.projectName || '').trim() === projectName &&
+                        (b.description || '').trim() === description &&
+                        (b.colorName || '').trim() === colorName
+                    )
+                    .slice()
+                    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+                // If for some reason nothing matched, fallback to just the hovered block
+                const blocksToShow = matches.length ? matches : [block];
+
+                // Build tooltip lines
                 let lines = [];
 
+                // Title
                 if (projectName) {
                     lines.push(`<strong>${projectName}</strong>`);
                 }
 
+                // Description (only once)
                 if (description) {
-                    // Replace newline characters with <br> to preserve line breaks
                     const formattedDescription = description.replace(/\n/g, '<br>');
                     lines.push(formattedDescription);
+                    lines.push(''); // blank line spacer
                 }
 
-                if (description) {
-                    lines.push(''); // Adds an extra <br> for spacing
-                }
+                // Time ranges + per-range totals
+                let grandTotalMinutes = 0;
 
-                lines.push(`${start} - ${end}`);
-                lines.push(`${totalHours} hours`);
+                blocksToShow.forEach(b => {
+                    const startM = timeToMinutes(b.start);
+                    const endM = timeToMinutes(b.end);
+                    const durMinutes = Math.max(0, endM - startM);
+                    grandTotalMinutes += durMinutes;
+
+                    const durHours = parseFloat((durMinutes / 60).toFixed(2));
+                    lines.push(`${b.start} - ${b.end} <span style="opacity:0.9">(${durHours} hours)</span>`);
+                });
+
+                // Grand total
+                const grandTotalHours = parseFloat((grandTotalMinutes / 60).toFixed(2));
+                lines.push('');
+                lines.push(`<strong>Total: ${grandTotalHours} hours</strong>`);
 
                 tooltip.innerHTML = lines.join('<br>');
 
-                // Set left border color to match the block's color
-                const colorHex = colorThemes[currentTheme][block.colorName] || '#FFFFFF';
+                // Keep your existing color border behavior
+                const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
                 tooltip.style.borderLeftColor = colorHex;
 
-                // Set fixed position at top-left with margin
+                // Keep your existing fixed position
                 tooltip.style.bottom = '20px';
                 tooltip.style.left = '20px';
 
-                // Show the tooltip with fade-in effect
                 tooltip.classList.add('fade-in');
                 tooltip.style.display = 'block';
             }
+
 
             function hideTooltip() {
                 const tooltip = customTooltip;
