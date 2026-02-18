@@ -1180,7 +1180,12 @@
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
                         currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
-                        weekMondayISO = data.weekMondayISO || null;
+
+                        // Always default to THIS week's Monday on page load/reload
+                        const monday = startOfWeekMonday(new Date());
+                        weekMondayISO = toISODateLocal(monday);
+                        if (weekMondayInput) weekMondayInput.value = weekMondayISO;
+
 
                         // If nothing saved yet, default to THIS week's Monday
                         if (!weekMondayISO) {
@@ -1215,10 +1220,13 @@
                     }
                 } else {
                     currentTheme = 'dark'; // Default theme if no data is stored
+                    // Always default to THIS week's Monday on page load/reload
                     const monday = startOfWeekMonday(new Date());
                     weekMondayISO = toISODateLocal(monday);
                     if (weekMondayInput) weekMondayInput.value = weekMondayISO;
+
                     notificationsEnabled = false; // Notifications disabled by default
+
                 }
 
                 // Set the initial state of the notifyToggle checkbox
@@ -1253,7 +1261,7 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-                    weekMondayISO: weekMondayISO,
+
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
                     prioritization: {
@@ -1774,7 +1782,7 @@
                 // Write snapped monday back to the input so it's obvious
                 weekMondayInput.value = weekMondayISO;
 
-                saveSchedule();
+                // Do NOT save to localStorage
                 updateWeekHeaderLabels();
             });
 
@@ -1862,7 +1870,7 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-                    weekMondayISO: weekMondayISO,
+
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
                     prioritization: {
@@ -1870,7 +1878,7 @@
                         other: prioOther ? prioOther.value : '',
                         ideas: prioIdeas ? prioIdeas.value : ''
                     },
-                    exportDate: new Date().toISOString().split('T')[0] // Added current date
+                    weekMondayISO: weekMondayISO
                 };
                 const dataStr = JSON.stringify(data, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
