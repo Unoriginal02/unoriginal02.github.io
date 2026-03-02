@@ -648,6 +648,22 @@
             outline-offset: -2px;
             background-color: rgba(74, 144, 226, 0.08);
         }
+
+        .modal-copy-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .modal-copy-row .brutalButton {
+            flex: 1 1 0;
+            /* each button takes equal share */
+            width: 0;
+            /* allows flexbox to shrink/grow evenly */
+            white-space: nowrap;
+            /* keep labels on one line */
+        }
     </style>
 </head>
 
@@ -781,17 +797,25 @@
                 </div>
                 <div class="modal-body">
                     <form id="timeBlockForm">
-                        <div class="mb-3">
-                            <label for="modalStartTime" class="form-label">Start Time</label>
-                            <input type="time" id="modalStartTime" class="form-control" required step="900">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="modalStartTime" class="form-label">Start Time</label>
+                                <input type="time" id="modalStartTime" class="form-control">
+                            </div>
+                            <div class="col-6">
+                                <label for="modalEndTime" class="form-label">End Time</label>
+                                <input type="time" id="modalEndTime" class="form-control">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="modalEndTime" class="form-label">End Time</label>
-                            <input type="time" id="modalEndTime" class="form-control" required step="900">
-                        </div>
-                        <div class="mb-3">
-                            <label for="modalProjectName" class="form-label">Project Name</label>
-                            <input type="text" id="modalProjectName" class="form-control" required>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="modalProjectName" class="form-label">Project Name</label>
+                                <input type="text" id="modalProjectName" class="form-control">
+                            </div>
+                            <div class="col-6">
+                                <label for="modalTaskId" class="form-label">Task ID</label>
+                                <input type="text" id="modalTaskId" class="form-control">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="modalDescription" class="form-label">Task Description</label>
@@ -811,6 +835,19 @@
                     </form>
                 </div>
                 <div class="modal-footer">
+                    <div class="modal-copy-row">
+                        <button id="copyTaskIdButton" type="button" class="brutalButton">
+                            Copy Task ID
+                        </button>
+                        <button id="copyDescriptionButton" type="button" class="brutalButton">
+                            Copy Description
+                        </button>
+                        <button id="copyTotalTimeButton" type="button" class="brutalButton">
+                            Copy Total Time
+                        </button>
+                    </div>
+
+
                     <button id="deleteButton" type="button" class="brutalButton" style="display: none;">
                         <i class="bi bi-trash"></i> Delete
                     </button>
@@ -1070,6 +1107,12 @@
                 document.getElementById('prioIdeas')
             ];
 
+            const modalTaskId = document.getElementById('modalTaskId');
+
+            const copyTaskIdButton = document.getElementById('copyTaskIdButton');
+            const copyDescriptionButton = document.getElementById('copyDescriptionButton');
+            const copyTotalTimeButton = document.getElementById('copyTotalTimeButton');
+
             // Individual refs for convenience
             const prioTop3 = prioTextareas[0];
             const prioOther = prioTextareas[1];
@@ -1158,6 +1201,13 @@
                 let total = timeToMinutes(timeStr) + mins;
                 total = total % (24 * 60);
                 return minutesToTime(total);
+            }
+
+            function minutesToHMMh(totalMinutes) {
+                const mins = Math.max(0, Math.round(totalMinutes));
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                return `${h}:${String(m).padStart(2, '0')}h`;
             }
 
             function generateTimeSlots(start, end, interval) {
@@ -1684,6 +1734,7 @@
                     modalEndTime.value = block.end;
                     modalProjectName.value = block.projectName;
                     modalDescription.value = block.description;
+                    modalTaskId.value = block.taskId || '';
                     modalColor.value = block.colorName;
                     modalShowDescription.checked = block.showDescription !== false; // Default to true if undefined
                     deleteButton.style.display = 'inline-block';
@@ -1693,6 +1744,7 @@
                     modalEndTime.value = endTime || addMinutes(startTime || "08:00", timeSlotInterval);
                     modalProjectName.value = '';
                     modalDescription.value = '';
+                    modalTaskId.value = '';
                     modalColor.value = availableColors[0]; // Default to first color
                     modalShowDescription.checked = true; // Default to checked
                     deleteButton.style.display = 'none';
@@ -1724,6 +1776,7 @@
                 const start = modalStartTime.value;
                 const end = modalEndTime.value;
                 const projectName = modalProjectName.value.trim();
+                const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value; // Store color name
                 const showDescription = modalShowDescription.checked; // New checkbox value
@@ -1743,6 +1796,7 @@
                     currentEditingBlock.start = start;
                     currentEditingBlock.end = end;
                     currentEditingBlock.projectName = projectName;
+                    currentEditingBlock.taskId = taskId;
                     currentEditingBlock.description = description;
                     currentEditingBlock.colorName = colorName; // Update color name
                     currentEditingBlock.showDescription = showDescription; // Update showDescription
@@ -1754,6 +1808,7 @@
                         start,
                         end,
                         projectName,
+                        taskId,
                         description,
                         colorName, // Store color name
                         showDescription // Store showDescription
@@ -1805,18 +1860,63 @@
 
             function copyCard() {
                 if (currentEditingBlock) {
-                    const { projectName, description, colorName, showDescription } = currentEditingBlock;
+                    const { projectName, description, taskId, colorName, showDescription } = currentEditingBlock;
+
                     // Retrieve color hex based on current theme
                     const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
-                    // Ensure proper CSV formatting
-                    const csvData = `"${projectName.replace(/"/g, '""')}","${description.replace(/"/g, '""')}","${colorHex}","${showDescription}"`;
-                    navigator.clipboard.writeText(csvData).then(() => {
-                        // Optionally, you can add a temporary visual indicator here
-                        // alert("Card copied to clipboard!");
-                    }).catch(err => {
+
+                    // Ensure proper CSV formatting (5 fields now)
+                    const csvData =
+                        `"${(projectName || '').replace(/"/g, '""')}","${(description || '').replace(/"/g, '""')}","${(taskId || '').replace(/"/g, '""')}","${colorHex}","${showDescription}"`;
+
+                    navigator.clipboard.writeText(csvData).catch(err => {
                         alert("Failed to copy: " + err);
                     });
                 }
+            }
+
+            function copyTaskId() {
+                if (!currentEditingBlock) return;
+                const v = (currentEditingBlock.taskId || '').trim();
+                if (!v) {
+                    alert("This task has no Task ID.");
+                    return;
+                }
+                navigator.clipboard.writeText(v).catch(err => alert("Failed to copy: " + err));
+            }
+
+            function copyDescriptionOnly() {
+                if (!currentEditingBlock) return;
+                const v = (currentEditingBlock.description || '').trim();
+                if (!v) {
+                    alert("This task has no description.");
+                    return;
+                }
+                navigator.clipboard.writeText(v).catch(err => alert("Failed to copy: " + err));
+            }
+
+            function copyTotalTimeForSameTaskSameDay() {
+                if (!currentEditingBlock) return;
+
+                const day = currentEditingBlock.day;
+                const projectName = (currentEditingBlock.projectName || '').trim();
+                const description = (currentEditingBlock.description || '').trim();
+
+                const totalMinutes = schedule
+                    .filter(b =>
+                        b.day === day &&
+                        (b.projectName || '').trim() === projectName &&
+                        (b.description || '').trim() === description
+                    )
+                    .reduce((sum, b) => {
+                        const startM = timeToMinutes(b.start);
+                        const endM = timeToMinutes(b.end);
+                        return sum + Math.max(0, endM - startM);
+                    }, 0);
+
+                const decimalHours = totalMinutes / 60;
+                const text = decimalHours.toFixed(2).replace(/\.00$/, '');
+                navigator.clipboard.writeText(text).catch(err => alert("Failed to copy: " + err));
             }
 
             function importCardFromClipboard() {
@@ -1828,38 +1928,52 @@
                     }
 
                     // Simple CSV parsing
-                    const regex = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-                    const match = csvText.match(regex);
+                    // Try NEW 5-field format first
+                    const regex5 = /^"([^"]*)","([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+                    // Fallback to OLD 4-field format (no Task ID)
+                    const regex4 = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+
+                    let match = csvText.match(regex5);
+
+                    let projectName, description, taskId, colorHex, showDescriptionStr;
+
                     if (match) {
-                        const [_, projectName, description, colorHex, showDescriptionStr] = match;
-                        const showDescription = showDescriptionStr.toLowerCase() === 'true';
-
-                        // Find the color name that matches the colorHex in the current theme
-                        let matchedColorName = null;
-                        for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
-                            if (hex.toLowerCase() === colorHex.toLowerCase()) {
-                                matchedColorName = name;
-                                break;
-                            }
-                        }
-
-                        if (!matchedColorName) {
-                            alert("Color hex does not match any available colors in the current theme.");
+                        // 5 fields
+                        [_, projectName, description, taskId, colorHex, showDescriptionStr] = match;
+                    } else {
+                        match = csvText.match(regex4);
+                        if (!match) {
+                            alert('Invalid CSV format. Use: "Project Name","Description","Task ID","#ColorCode","true/false"');
                             return;
                         }
-
-                        // Populate the form fields
-                        modalProjectName.value = projectName;
-                        modalDescription.value = description;
-                        modalColor.value = matchedColorName;
-                        modalShowDescription.checked = showDescription;
-
-                        // Optionally, focus on the next field
-                        modalProjectName.focus();
-
-                    } else {
-                        alert("Invalid CSV format. Please ensure it follows: \"Project Name\",\"Description\",\"#ColorCode\",\"true/false\"");
+                        // 4 fields (old)
+                        [_, projectName, description, colorHex, showDescriptionStr] = match;
+                        taskId = '';
                     }
+
+                    const showDescription = showDescriptionStr.toLowerCase() === 'true';
+
+                    // Find the color name that matches the colorHex in the current theme
+                    let matchedColorName = null;
+                    for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
+                        if (hex.toLowerCase() === colorHex.toLowerCase()) {
+                            matchedColorName = name;
+                            break;
+                        }
+                    }
+                    if (!matchedColorName) {
+                        alert("Color hex does not match any available colors in the current theme.");
+                        return;
+                    }
+
+                    // Populate the form fields
+                    modalProjectName.value = projectName;
+                    modalDescription.value = description;
+                    modalTaskId.value = taskId;        // <-- THIS is the missing piece
+                    modalColor.value = matchedColorName;
+                    modalShowDescription.checked = showDescription;
+
+                    modalProjectName.focus();
                 }).catch(err => {
                     alert("Failed to read from clipboard: " + err);
                 });
@@ -2382,6 +2496,9 @@
             acceptButton.addEventListener('click', saveBlock);
             deleteButton.addEventListener('click', deleteBlock);
             copyButton.addEventListener('click', copyCard);
+            copyTaskIdButton.addEventListener('click', copyTaskId);
+            copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
+            copyTotalTimeButton.addEventListener('click', copyTotalTimeForSameTaskSameDay);
             importCardButton.addEventListener('click', importCardFromClipboard);
 
             // Save prioritization as the user types
