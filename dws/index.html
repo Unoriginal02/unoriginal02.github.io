@@ -1913,7 +1913,6 @@
                 const day = currentEditingBlock.day;
                 const projectName = (currentEditingBlock.projectName || '').trim();
                 const description = (currentEditingBlock.description || '').trim();
-                const colorName = currentEditingBlock.colorName;
 
                 const totalMinutes = schedule
                     .filter(b =>
@@ -1927,15 +1926,13 @@
                         return sum + Math.max(0, endM - startM);
                     }, 0);
 
-                const decimalHours = (totalMinutes / 60).toFixed(2).replace(/\.00$/, '');
+                const decimalHours = (totalMinutes / 60)
+                    .toFixed(2)
+                    .replace(/\.00$/, '');
 
-                const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
-
-                const csvData = `"${decimalHours}","${colorHex}"`;
-
-                navigator.clipboard.writeText(csvData).catch(err => {
-                    alert("Failed to copy: " + err);
-                });
+                // Copy ONLY the time value
+                navigator.clipboard.writeText(decimalHours)
+                    .catch(err => alert("Failed to copy: " + err));
             }
 
             function importCardFromClipboard() {
