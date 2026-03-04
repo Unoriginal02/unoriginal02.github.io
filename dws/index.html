@@ -427,7 +427,7 @@
         }
 
         .modal-dialog {
-            max-width: 580px;
+            max-width: 667px;
             margin: 1.75rem auto;
         }
 
@@ -856,11 +856,11 @@
                     <button id="importCardButton" type="button" class="brutalButton">
                         <i class="bi bi-clipboard-plus"></i> Import
                     </button>
-                    <button type="button" class="brutalButton" data-bs-dismiss="modal">
-                        Cancel
+                    <button id="syncCardButton" type="button" class="brutalButton" style="display:none;">
+                        <i class="bi bi-arrow-repeat"></i> Sync Cards
                     </button>
                     <button id="acceptButton" type="button" class="brutalButton">
-                        Accept
+                         <i class="bi bi-patch-check"></i> Accept
                     </button>
                 </div>
             </div>
@@ -1007,6 +1007,7 @@
             const timeSlotInterval = 15; // minutes
             let schedule = []; // Array to hold time blocks
             let currentEditingBlock = null; // Currently editing block
+            let originalCardSignature = null; // Remember what this card used to be, for syncing “sisters”
             let timerInterval = null;
             let selectedDay = null; // Track the selected day
             let currentTheme = 'dark'; // Default theme
@@ -1021,30 +1022,45 @@
             // Define color themes with color names and their corresponding hex values
             const colorThemes = {
                 dark: {
-                    red: '#E36666',
-                    orange: '#F5AB73',
-                    yellow: '#F5D667',
-                    green: '#85C788',
-                    blue: '#5D8DDE',
-                    purple: '#AD84DB',
+                    red: '#FF4D4D',
+                    orange: '#FF8A3D',
+                    yellow: '#FFD400',
+                    green: '#3DFF7A',
+                    blue: '#3D8BFF',
+                    purple: '#B44DFF',
+                    pink: '#FF4DB8',
+                    cyan: '#00D5FF',
+                    teal: '#00C2A8',
+                    lime: '#B6FF00',
+                    magenta: '#D500FF',
                     gray: '#3B3B3C'
                 },
                 light: {
-                    red: '#E36666',
-                    orange: '#F5AB73',
-                    yellow: '#F5D667',
-                    green: '#85C788',
-                    blue: '#5D8DDE',
-                    purple: '#AD84DB',
+                    red: '#FF4D4D',
+                    orange: '#FF8A3D',
+                    yellow: '#FFD400',
+                    green: '#12C95A',
+                    blue: '#1F6FFF',
+                    purple: '#8D3DFF',
+                    pink: '#FF2EA6',
+                    cyan: '#00BFE6',
+                    teal: '#00A892',
+                    lime: '#86D600',
+                    magenta: '#B800E6',
                     gray: '#DBDBDD'
                 },
                 demure: {
-                    red: '#EE9B9B',
-                    orange: '#FFC993',
-                    yellow: '#FFE08C',
-                    green: '#99C79B',
-                    blue: '#739BDE',
-                    purple: '#B18CDB',
+                    red: '#FF9A9A',
+                    orange: '#FFC08A',
+                    yellow: '#FFE07A',
+                    green: '#9CFFB8',
+                    blue: '#9CBFFF',
+                    purple: '#D2A8FF',
+                    pink: '#FF9AD3',
+                    cyan: '#9AF0FF',
+                    teal: '#8EEBDD',
+                    lime: '#D8FF9A',
+                    magenta: '#F0A0FF',
                     gray: '#C9C9CB'
                 }
             };
@@ -1085,6 +1101,7 @@
             const acceptButton = document.getElementById('acceptButton');
             const deleteButton = document.getElementById('deleteButton');
             const copyButton = document.getElementById('copyButton');
+            const syncCardButton = document.getElementById('syncCardButton');
             const importCardButton = document.getElementById('importCardButton');
 
             const importFileInput = document.getElementById('importFileInput');
@@ -1737,6 +1754,14 @@
                     modalColor.value = block.colorName;
                     modalShowDescription.checked = block.showDescription !== false; // Default to true if undefined
                     deleteButton.style.display = 'inline-block';
+
+                    originalCardSignature = {
+                        projectName: block.projectName || '',
+                        description: block.description || '',
+                        taskId: block.taskId || '',
+                        colorName: block.colorName
+                    };
+                    syncCardButton.style.display = 'inline-block';
                 } else {
                     // Creating new block
                     modalStartTime.value = startTime || "08:00";
@@ -1747,6 +1772,9 @@
                     modalColor.value = availableColors[0]; // Default to first color
                     modalShowDescription.checked = true; // Default to checked
                     deleteButton.style.display = 'none';
+
+                    originalCardSignature = null;
+                    syncCardButton.style.display = 'none';
                 }
                 timeBlockModal.show();
             }
@@ -1791,24 +1819,12 @@
                 }
 
                 if (currentEditingBlock) {
-                    const oldProjectName = (currentEditingBlock.projectName || '').trim();
-                    const oldDescription = (currentEditingBlock.description || '').trim();
-                    const oldTaskId = (currentEditingBlock.taskId || '').trim();
-                    const oldColorName = currentEditingBlock.colorName;
-                    schedule.forEach(block => {
-                        const matchesOld =
-                            (block.projectName || '').trim() === oldProjectName &&
-                            (block.description || '').trim() === oldDescription &&
-                            (block.taskId || '').trim() === oldTaskId &&
-                            block.colorName === oldColorName;
-                        if (matchesOld) {
-                            block.projectName = projectName;
-                            block.taskId = taskId;
-                            block.description = description;
-                            block.colorName = colorName;
-                            block.showDescription = showDescription;
-                        }
-                    });
+                    // ✅ Edit ONLY this block (no auto-sync)
+                    currentEditingBlock.projectName = projectName;
+                    currentEditingBlock.taskId = taskId;
+                    currentEditingBlock.description = description;
+                    currentEditingBlock.colorName = colorName;
+                    currentEditingBlock.showDescription = showDescription;
                     currentEditingBlock.start = start;
                     currentEditingBlock.end = end;
                 } else {
@@ -1821,8 +1837,8 @@
                         projectName,
                         taskId,
                         description,
-                        colorName, // Store color name
-                        showDescription // Store showDescription
+                        colorName,
+                        showDescription
                     };
                     schedule.push(newBlock);
                 }
@@ -1835,6 +1851,54 @@
                 if (notificationsEnabled) {
                     scheduleNextNotification();
                 }
+            }
+
+            function syncCard() {
+                if (!currentEditingBlock || !originalCardSignature) {
+                    alert("Open an existing card first to sync.");
+                    return;
+                }
+
+                // The NEW values currently in the modal
+                const projectName = modalProjectName.value.trim();
+                const taskId = modalTaskId.value.trim();
+                const description = modalDescription.value.trim();
+                const colorName = modalColor.value;
+                const showDescription = modalShowDescription.checked;
+
+                const oldProjectName = (originalCardSignature.projectName || '').trim();
+                const oldDescription = (originalCardSignature.description || '').trim();
+                const oldTaskId = (originalCardSignature.taskId || '').trim();
+                const oldColorName = originalCardSignature.colorName;
+
+                // Update all “sister” cards that still match the OLD identity
+                schedule.forEach(block => {
+                    const matchesOld =
+                        (block.projectName || '').trim() === oldProjectName &&
+                        (block.description || '').trim() === oldDescription &&
+                        (block.taskId || '').trim() === oldTaskId &&
+                        block.colorName === oldColorName;
+
+                    if (matchesOld) {
+                        block.projectName = projectName;
+                        block.taskId = taskId;
+                        block.description = description;
+                        block.colorName = colorName;
+                        block.showDescription = showDescription;
+                    }
+                });
+
+                // After syncing, the "old identity" becomes the new one (so you can sync again later)
+                originalCardSignature = {
+                    projectName,
+                    description,
+                    taskId,
+                    colorName
+                };
+
+                saveSchedule();
+                renderTable();
+                renderSchedule();
             }
 
             weekMondayInput.addEventListener('change', () => {
@@ -2203,18 +2267,35 @@
                 }
             }
 
-            // Function to populate color options in the modal
             function populateColorOptions() {
                 const modalColorSelect = document.getElementById('modalColor');
                 modalColorSelect.innerHTML = ''; // Clear existing options
 
-                availableColors.forEach(colorName => {
-                    const option = document.createElement('option');
-                    option.value = colorName;
-                    option.textContent = colorName.charAt(0).toUpperCase() + colorName.slice(1); // Capitalize first letter
+                // Friendly names shown to you in the dropdown
+                const colorDisplayNames = {
+                    blazeRed: 'Blaze Red',
+                    tangerine: 'Tangerine',
+                    sunYellow: 'Sun Yellow',
+                    acidLime: 'Acid Lime',
+                    neonGreen: 'Neon Green',
+                    mintFlash: 'Mint Flash',
+                    electricCyan: 'Electric Cyan',
+                    azureBlue: 'Azure Blue',
+                    ultraViolet: 'Ultra Violet',
+                    neonMagenta: 'Neon Magenta'
+                };
 
-                    // Since styling <option> with ::before is not widely supported, use a simple approach
-                    // Display color names, and rely on the color border in the time blocks for visual cues
+                availableColors.forEach(colorKey => {
+                    const option = document.createElement('option');
+                    option.value = colorKey;
+
+                    const hex = colorThemes[currentTheme][colorKey];
+                    const label = colorDisplayNames[colorKey] || colorKey;
+
+                    // Tiny square + name (square is colored by setting option text color)
+                    option.textContent = `■ ${label}`;
+                    option.style.color = hex;       // makes the square (and text) match the color
+                    option.style.fontWeight = '700';
 
                     modalColorSelect.appendChild(option);
                 });
@@ -2510,6 +2591,7 @@
 
             acceptButton.addEventListener('click', saveBlock);
             deleteButton.addEventListener('click', deleteBlock);
+            syncCardButton.addEventListener('click', syncCard);
             copyButton.addEventListener('click', copyCard);
             copyTaskIdButton.addEventListener('click', copyTaskId);
             copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
