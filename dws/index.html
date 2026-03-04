@@ -1578,7 +1578,9 @@
 
                         // If Task ID is empty, add * and italicize the title
                         const hasTaskId = (block.taskId || '').trim().length > 0;
-                        projectNameEl.textContent = hasTaskId ? block.projectName : `${block.projectName} *`;
+                        projectNameEl.textContent = hasTaskId
+                            ? block.projectName.toUpperCase()
+                            : `${block.projectName.toUpperCase()} *`;
 
                         if (!hasTaskId) {
                             projectNameEl.style.fontStyle = 'italic';
