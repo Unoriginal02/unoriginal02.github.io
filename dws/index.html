@@ -63,6 +63,7 @@
             flex-direction: column;
         }
 
+
         .brutalButton {
             border: 1px solid var(--main-color);
             background-color: var(--background-color);
@@ -101,6 +102,23 @@
             z-index: 4;
             background-color: var(--body-background-color);
             /* Ensure mode buttons are above time blocks */
+        }
+
+
+        /* Icon button with label underneath */
+        .iconBtn {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 12px;
+            /* tweak as you like */
+            line-height: 1;
+        }
+
+        .iconBtn .btnLabel {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            white-space: nowrap;
         }
 
         .mode-switcher {
@@ -427,7 +445,7 @@
         }
 
         .modal-dialog {
-            max-width: 667px;
+            max-width: 520px;
             margin: 1.75rem auto;
         }
 
@@ -836,32 +854,41 @@
                 </div>
                 <div class="modal-footer">
                     <div class="modal-copy-row">
-                        <button id="copyDescriptionButton" type="button" class="brutalButton">
-                            Copy Description
+                        <button id="copyDescriptionButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-chat-left-text"></i>
+                            <span class="btnLabel">Copy Description</span>
                         </button>
-                        <button id="copyTaskIdButton" type="button" class="brutalButton">
-                            Copy Task ID
+                        <button id="copyTaskIdButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-upc-scan"></i>
+                            <span class="btnLabel">Copy Task ID</span>
                         </button>
-                        <button id="copyTotalTimeButton" type="button" class="brutalButton">
-                            Copy Total Time
+                        <button id="copyTotalTimeButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-stopwatch"></i>
+                            <span class="btnLabel">Copy Total Time</span>
                         </button>
                     </div>
-
-                    <button id="deleteButton" type="button" class="brutalButton" style="display: none;">
-                        <i class="bi bi-trash"></i> Delete
-                    </button>
-                    <button id="copyButton" type="button" class="brutalButton">
-                        <i class="bi bi-clipboard"></i> Copy
-                    </button>
-                    <button id="importCardButton" type="button" class="brutalButton">
-                        <i class="bi bi-clipboard-plus"></i> Import
-                    </button>
-                    <button id="syncCardButton" type="button" class="brutalButton" style="display:none;">
-                        <i class="bi bi-arrow-repeat"></i> Sync Cards
-                    </button>
-                    <button id="acceptButton" type="button" class="brutalButton">
-                         <i class="bi bi-patch-check"></i> Accept
-                    </button>
+                    <div class="modal-copy-row">
+                        <button id="deleteButton" type="button" class="brutalButton iconBtn" style="display: one;">
+                            <i class="bi bi-trash"></i>
+                            <span class="btnLabel">Delete</span>
+                        </button>
+                        <button id="copyButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-clipboard"></i>
+                            <span class="btnLabel">Copy</span>
+                        </button>
+                        <button id="importCardButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-clipboard-plus"></i>
+                            <span class="btnLabel">Import</span>
+                        </button>
+                        <button id="syncCardButton" type="button" class="brutalButton iconBtn" style="display:none;">
+                            <i class="bi bi-arrow-repeat"></i>
+                            <span class="btnLabel">Sync</span>
+                        </button>
+                        <button id="acceptButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-patch-check"></i>
+                            <span class="btnLabel">Accept</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1753,7 +1780,7 @@
                     modalTaskId.value = block.taskId || '';
                     modalColor.value = block.colorName;
                     modalShowDescription.checked = block.showDescription !== false; // Default to true if undefined
-                    deleteButton.style.display = 'inline-block';
+                    deleteButton.style.display = 'inline-flex';
 
                     originalCardSignature = {
                         projectName: block.projectName || '',
@@ -1761,7 +1788,7 @@
                         taskId: block.taskId || '',
                         colorName: block.colorName
                     };
-                    syncCardButton.style.display = 'inline-block';
+                    syncCardButton.style.display = 'inline-flex';
                 } else {
                     // Creating new block
                     modalStartTime.value = startTime || "08:00";
