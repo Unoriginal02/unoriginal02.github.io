@@ -1575,7 +1575,15 @@
                     if (block.projectName) {
                         const projectNameEl = document.createElement('div');
                         projectNameEl.style.fontWeight = 'bold';
-                        projectNameEl.textContent = block.projectName;
+
+                        // If Task ID is empty, add * and italicize the title
+                        const hasTaskId = (block.taskId || '').trim().length > 0;
+                        projectNameEl.textContent = hasTaskId ? block.projectName : `${block.projectName} *`;
+
+                        if (!hasTaskId) {
+                            projectNameEl.style.fontStyle = 'italic';
+                        }
+
                         blockDiv.appendChild(projectNameEl);
                     }
 
