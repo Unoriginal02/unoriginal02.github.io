@@ -1653,7 +1653,7 @@
                     // Add event listeners for resizing
                     addResizeListeners(blockDiv, block);
                 });
-                
+
             }
 
             function showTooltip(event, block) {
@@ -1984,6 +1984,7 @@
             }
 
             function toggleLoggedState() {
+                const colorName = modalColor.value;
                 modalLoggedState = !modalLoggedState;
 
                 if (modalLoggedState) {
@@ -1992,7 +1993,6 @@
                     loggedToggleButton.classList.remove('logged-active');
                 }
 
-                // If editing an existing block, sync immediately to all sister tasks
                 if (currentEditingBlock) {
                     const projectName = (currentEditingBlock.projectName || '').trim();
                     const description = (currentEditingBlock.description || '').trim();
@@ -2002,7 +2002,8 @@
                         const isSister =
                             (block.projectName || '').trim() === projectName &&
                             (block.description || '').trim() === description &&
-                            (block.taskId || '').trim() === taskId;
+                            (block.taskId || '').trim() === taskId &&
+                            block.colorName === colorName;
 
                         if (isSister) {
                             block.logged = modalLoggedState;
