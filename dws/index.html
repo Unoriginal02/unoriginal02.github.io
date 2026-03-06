@@ -1994,12 +1994,14 @@
                 }
 
                 if (currentEditingBlock) {
+                    const day = currentEditingBlock.day;
                     const projectName = (currentEditingBlock.projectName || '').trim();
                     const description = (currentEditingBlock.description || '').trim();
                     const taskId = (currentEditingBlock.taskId || '').trim();
 
                     schedule.forEach(block => {
                         const isSister =
+                            block.day === day &&
                             (block.projectName || '').trim() === projectName &&
                             (block.description || '').trim() === description &&
                             (block.taskId || '').trim() === taskId &&
