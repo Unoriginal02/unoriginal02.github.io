@@ -682,6 +682,23 @@
             white-space: nowrap;
             /* keep labels on one line */
         }
+
+        .logged-active {
+            background-color: #198754;
+            border-color: #198754;
+            color: #ffffff;
+        }
+
+        .logged-active i,
+        .logged-active span {
+            color: #ffffff;
+        }
+
+        .logged-active:hover {
+            background-color: #198754;
+            border-color: #198754;
+            color: #ffffff;
+        }
     </style>
 </head>
 
@@ -840,9 +857,16 @@
                             <textarea id="modalDescription" class="form-control" rows="3"></textarea>
                         </div>
                         <!-- Added Show Description Checkbox -->
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="modalShowDescription" checked>
-                            <label class="form-check-label" for="modalShowDescription">Show description</label>
+                        <div class="mb-3 d-flex align-items-center justify-content-between gap-3">
+                            <div class="form-check m-0">
+                                <input type="checkbox" class="form-check-input" id="modalShowDescription" checked>
+                                <label class="form-check-label" for="modalShowDescription">Show description</label>
+                            </div>
+
+                            <button id="loggedToggleButton" type="button" class="brutalButton">
+                                <i class="bi bi-check-circle"></i>
+                                <span>Logged</span>
+                            </button>
                         </div>
                         <div class="mb-3">
                             <label for="modalColor" class="form-label">Color</label>
@@ -1125,6 +1149,7 @@
             const modalDescription = document.getElementById('modalDescription');
             const modalColor = document.getElementById('modalColor');
             const modalShowDescription = document.getElementById('modalShowDescription'); // New checkbox element
+            const loggedToggleButton = document.getElementById('loggedToggleButton');
             const acceptButton = document.getElementById('acceptButton');
             const deleteButton = document.getElementById('deleteButton');
             const copyButton = document.getElementById('copyButton');
@@ -1163,6 +1188,7 @@
 
             let tooltipTimeout = null; // To handle delay
             let notificationsEnabled = false; // Notifications are disabled by default
+            let modalLoggedState = false;
             let notificationTimeout = null; // Holds the timeout ID for scheduled notification
 
             // Utility Functions
@@ -1295,6 +1321,9 @@
                         schedule.forEach(block => {
                             if (block.showDescription === undefined) {
                                 block.showDescription = true;
+                            }
+                            if (block.logged === undefined) {
+                                block.logged = false;
                             }
                         });
 
@@ -1624,6 +1653,7 @@
                     // Add event listeners for resizing
                     addResizeListeners(blockDiv, block);
                 });
+                
             }
 
             function showTooltip(event, block) {
@@ -1789,7 +1819,15 @@
                     modalDescription.value = block.description;
                     modalTaskId.value = block.taskId || '';
                     modalColor.value = block.colorName;
-                    modalShowDescription.checked = block.showDescription !== false; // Default to true if undefined
+                    modalShowDescription.checked = block.showDescription !== false;
+                    modalLoggedState = block.logged === true;
+
+                    if (modalLoggedState) {
+                        loggedToggleButton.classList.add('logged-active');
+                    } else {
+                        loggedToggleButton.classList.remove('logged-active');
+                    }
+
                     deleteButton.style.display = 'inline-flex';
 
                     originalCardSignature = {
@@ -1806,8 +1844,10 @@
                     modalProjectName.value = '';
                     modalDescription.value = '';
                     modalTaskId.value = '';
-                    modalColor.value = availableColors[0]; // Default to first color
-                    modalShowDescription.checked = true; // Default to checked
+                    modalColor.value = availableColors[0];
+                    modalShowDescription.checked = true;
+                    modalLoggedState = false;
+                    loggedToggleButton.classList.remove('logged-active');
                     deleteButton.style.display = 'none';
 
                     originalCardSignature = null;
@@ -1842,8 +1882,9 @@
                 const projectName = modalProjectName.value.trim();
                 const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
-                const colorName = modalColor.value; // Store color name
-                const showDescription = modalShowDescription.checked; // New checkbox value
+                const colorName = modalColor.value;
+                const showDescription = modalShowDescription.checked;
+                const logged = modalLoggedState;
 
                 if (timeToMinutes(end) <= timeToMinutes(start)) {
                     alert("End time must be after start time.");
@@ -1862,6 +1903,7 @@
                     currentEditingBlock.description = description;
                     currentEditingBlock.colorName = colorName;
                     currentEditingBlock.showDescription = showDescription;
+                    currentEditingBlock.logged = logged;
                     currentEditingBlock.start = start;
                     currentEditingBlock.end = end;
                 } else {
@@ -1875,7 +1917,8 @@
                         taskId,
                         description,
                         colorName,
-                        showDescription
+                        showDescription,
+                        logged
                     };
                     schedule.push(newBlock);
                 }
@@ -1902,6 +1945,7 @@
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value;
                 const showDescription = modalShowDescription.checked;
+                const logged = modalLoggedState;
 
                 const oldProjectName = (originalCardSignature.projectName || '').trim();
                 const oldDescription = (originalCardSignature.description || '').trim();
@@ -1922,6 +1966,7 @@
                         block.description = description;
                         block.colorName = colorName;
                         block.showDescription = showDescription;
+                        block.logged = logged;
                     }
                 });
 
@@ -1936,6 +1981,38 @@
                 saveSchedule();
                 renderTable();
                 renderSchedule();
+            }
+
+            function toggleLoggedState() {
+                modalLoggedState = !modalLoggedState;
+
+                if (modalLoggedState) {
+                    loggedToggleButton.classList.add('logged-active');
+                } else {
+                    loggedToggleButton.classList.remove('logged-active');
+                }
+
+                // If editing an existing block, sync immediately to all sister tasks
+                if (currentEditingBlock) {
+                    const projectName = (currentEditingBlock.projectName || '').trim();
+                    const description = (currentEditingBlock.description || '').trim();
+                    const taskId = (currentEditingBlock.taskId || '').trim();
+
+                    schedule.forEach(block => {
+                        const isSister =
+                            (block.projectName || '').trim() === projectName &&
+                            (block.description || '').trim() === description &&
+                            (block.taskId || '').trim() === taskId;
+
+                        if (isSister) {
+                            block.logged = modalLoggedState;
+                        }
+                    });
+
+                    currentEditingBlock.logged = modalLoggedState;
+                    saveSchedule();
+                    renderSchedule();
+                }
             }
 
             weekMondayInput.addEventListener('change', () => {
@@ -1972,15 +2049,13 @@
 
             function copyCard() {
                 if (currentEditingBlock) {
-                    const { projectName, description, taskId, colorName, showDescription } = currentEditingBlock;
-
+                    const { projectName, description, taskId, colorName, showDescription, logged } = currentEditingBlock;
                     // Retrieve color hex based on current theme
                     const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
 
                     // Ensure proper CSV formatting (5 fields now)
                     const csvData =
-                        `"${(projectName || '').replace(/"/g, '""')}","${(description || '').replace(/"/g, '""')}","${(taskId || '').replace(/"/g, '""')}","${colorHex}","${showDescription}"`;
-
+                        `"${(projectName || '').replace(/"/g, '""')}","${(description || '').replace(/"/g, '""')}","${(taskId || '').replace(/"/g, '""')}","${colorHex}","${showDescription}","${logged === true}"`;
                     navigator.clipboard.writeText(csvData).catch(err => {
                         alert("Failed to copy: " + err);
                     });
@@ -2043,31 +2118,38 @@
                         return;
                     }
 
-                    // Simple CSV parsing
-                    // Try NEW 5-field format first
+                    // NEW 6-field format
+                    const regex6 = /^"([^"]*)","([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)","(true|false)"$/;
+                    // OLD 5-field format
                     const regex5 = /^"([^"]*)","([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-                    // Fallback to OLD 4-field format (no Task ID)
+                    // OLDER 4-field format
                     const regex4 = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
 
-                    let match = csvText.match(regex5);
+                    let match = csvText.match(regex6);
 
-                    let projectName, description, taskId, colorHex, showDescriptionStr;
+                    let projectName, description, taskId, colorHex, showDescriptionStr, loggedStr;
 
                     if (match) {
-                        // 5 fields
-                        [_, projectName, description, taskId, colorHex, showDescriptionStr] = match;
+                        [_, projectName, description, taskId, colorHex, showDescriptionStr, loggedStr] = match;
                     } else {
-                        match = csvText.match(regex4);
-                        if (!match) {
-                            alert('Invalid CSV format. Use: "Project Name","Description","Task ID","#ColorCode","true/false"');
-                            return;
+                        match = csvText.match(regex5);
+                        if (match) {
+                            [_, projectName, description, taskId, colorHex, showDescriptionStr] = match;
+                            loggedStr = 'false';
+                        } else {
+                            match = csvText.match(regex4);
+                            if (!match) {
+                                alert('Invalid CSV format.');
+                                return;
+                            }
+                            [_, projectName, description, colorHex, showDescriptionStr] = match;
+                            taskId = '';
+                            loggedStr = 'false';
                         }
-                        // 4 fields (old)
-                        [_, projectName, description, colorHex, showDescriptionStr] = match;
-                        taskId = '';
                     }
 
                     const showDescription = showDescriptionStr.toLowerCase() === 'true';
+                    const logged = loggedStr.toLowerCase() === 'true';
 
                     // Find the color name that matches the colorHex in the current theme
                     let matchedColorName = null;
@@ -2088,6 +2170,13 @@
                     modalTaskId.value = taskId;        // <-- THIS is the missing piece
                     modalColor.value = matchedColorName;
                     modalShowDescription.checked = showDescription;
+                    modalLoggedState = logged;
+
+                    if (modalLoggedState) {
+                        loggedToggleButton.classList.add('logged-active');
+                    } else {
+                        loggedToggleButton.classList.remove('logged-active');
+                    }
 
                     modalProjectName.focus();
                 }).catch(err => {
@@ -2147,6 +2236,9 @@
                             schedule.forEach(block => {
                                 if (block.showDescription === undefined) {
                                     block.showDescription = true;
+                                }
+                                if (block.logged === undefined) {
+                                    block.logged = false;
                                 }
                             });
 
@@ -2629,6 +2721,7 @@
             acceptButton.addEventListener('click', saveBlock);
             deleteButton.addEventListener('click', deleteBlock);
             syncCardButton.addEventListener('click', syncCard);
+            loggedToggleButton.addEventListener('click', toggleLoggedState);
             copyButton.addEventListener('click', copyCard);
             copyTaskIdButton.addEventListener('click', copyTaskId);
             copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
