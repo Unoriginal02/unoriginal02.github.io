@@ -390,7 +390,7 @@
             box-shadow: 0 0 0 1px var(--main-color);
 
             border-radius: 0px;
-            padding: 0px 8px;
+            padding: 0px 8px 16px 8px;
             /* Left padding for the colored strip */
             box-sizing: border-box;
             color: var(--primary-text-color);
@@ -414,6 +414,17 @@
 
             /* Preserve line breaks and spaces */
             white-space: pre-wrap;
+        }
+
+        .time-block .logged-indicator {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            width: 8px;
+            height: 8px;
+            background-color: #198754;
+            border-radius: 50%;
+            pointer-events: none;
         }
 
         .time-block:hover {
@@ -1563,6 +1574,14 @@
                     // Create time block element
                     const blockDiv = document.createElement('div');
                     blockDiv.classList.add('time-block');
+
+                    if (block.logged === true) {
+                        const loggedIndicator = document.createElement('div');
+                        loggedIndicator.className = 'logged-indicator';
+                        loggedIndicator.title = 'Already logged';
+                        blockDiv.appendChild(loggedIndicator);
+                    }
+
                     // Enable dragging
                     blockDiv.addEventListener('mousedown', (e) => {
                         // Ignore resize handles
@@ -1623,6 +1642,13 @@
                         const descriptionEl = document.createElement('div');
                         descriptionEl.textContent = block.description;
                         blockDiv.appendChild(descriptionEl);
+                    }
+
+                    if (block.logged === true) {
+                        const loggedIndicator = document.createElement('div');
+                        loggedIndicator.className = 'logged-indicator';
+                        loggedIndicator.title = 'Already logged';
+                        blockDiv.appendChild(loggedIndicator);
                     }
 
                     // Event listener for editing
@@ -2218,7 +2244,23 @@
                     fridayStr = formatDateDMY(friday);
                 }
 
-                a.download = `DWS WEEK ${mondayStr} - ${fridayStr}.json`;
+                const now = new Date();
+
+                const savedOnDate = [
+                    now.getFullYear(),
+                    String(now.getMonth() + 1).padStart(2, '0'),
+                    String(now.getDate()).padStart(2, '0')
+                ].join('-');
+
+                const savedOnTime = [
+                    String(now.getHours()).padStart(2, '0'),
+                    String(now.getMinutes()).padStart(2, '0'),
+                    String(now.getSeconds()).padStart(2, '0')
+                ].join('-');
+
+                const mondayForFilename = weekMondayISO || 'unknown-monday';
+
+                a.download = `DWS WEEK ${mondayForFilename} - Saved on ${savedOnDate}_${savedOnTime}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
             }
