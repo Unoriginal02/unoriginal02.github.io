@@ -1283,6 +1283,66 @@
                 return minutesToTime(total);
             }
 
+            function getRandomArrayItem(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
+            function getAutoColorForNewBlock(day, startTime) {
+                const startMinutes = timeToMinutes(startTime);
+                const autoColors = availableColors.filter(color => color !== 'gray');
+
+                // All blocks on this day up to the new card's start time
+                const previousBlocks = schedule
+                    .filter(block =>
+                        block.day === day &&
+                        timeToMinutes(block.start) <= startMinutes
+                    )
+                    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+                // No previous cards on that row/day -> random color
+                if (previousBlocks.length === 0) {
+                    return getRandomArrayItem(autoColors);
+                }
+
+                // Exclude the last 2 used colors
+                const lastTwoColors = previousBlocks
+                    .slice(-2)
+                    .map(block => block.colorName)
+                    .filter(Boolean);
+
+                let candidateColors = autoColors.filter(
+                    color => !lastTwoColors.includes(color)
+                );
+
+                // If all or almost all are excluded, fall back to full palette
+                if (candidateColors.length === 0) {
+                    candidateColors = [...availableColors];
+                }
+
+                // Count usage across the whole day, but only within candidate colors
+                const colorCounts = {};
+                candidateColors.forEach(color => {
+                    colorCounts[color] = 0;
+                });
+
+                previousBlocks.forEach(block => {
+                    if (colorCounts.hasOwnProperty(block.colorName)) {
+                        colorCounts[block.colorName]++;
+                    }
+                });
+
+                // Find least-used count
+                const minCount = Math.min(...Object.values(colorCounts));
+
+                // Keep only least-used candidate colors
+                const leastUsedColors = candidateColors.filter(
+                    color => colorCounts[color] === minCount
+                );
+
+                // Break ties randomly
+                return getRandomArrayItem(leastUsedColors);
+            }
+
             function minutesToHMMh(totalMinutes) {
                 const mins = Math.max(0, Math.round(totalMinutes));
                 const h = Math.floor(mins / 60);
@@ -1870,7 +1930,7 @@
                     modalProjectName.value = '';
                     modalDescription.value = '';
                     modalTaskId.value = '';
-                    modalColor.value = availableColors[0];
+                    modalColor.value = getAutoColorForNewBlock(day, modalStartTime.value);
                     modalShowDescription.checked = true;
                     modalLoggedState = false;
                     loggedToggleButton.classList.remove('logged-active');
