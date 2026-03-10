@@ -1578,6 +1578,33 @@
                         th.classList.remove('current-day');
                     }
                 });
+
+                const dayHeaderMap = {
+                    thMonday: 'Monday',
+                    thTuesday: 'Tuesday',
+                    thWednesday: 'Wednesday',
+                    thThursday: 'Thursday',
+                    thFriday: 'Friday'
+                };
+
+                Object.entries(dayHeaderMap).forEach(([id, day]) => {
+                    const th = document.getElementById(id);
+                    if (!th) return;
+
+                    th.style.cursor = 'pointer';
+
+                    th.onmouseenter = () => {
+                        tooltipTimeout = setTimeout(() => {
+                            showDayTooltip(day);
+                        }, 125);
+                    };
+
+                    th.onmouseleave = () => {
+                        clearTimeout(tooltipTimeout);
+                        hideTooltip();
+                    };
+                });
+
                 updateWeekHeaderLabels();
                 renderSchedule();
                 updateCurrentTimeLine();
@@ -1812,6 +1839,65 @@
                 tooltip.style.display = 'block';
             }
 
+            function showDayTooltip(day) {
+                const tooltip = customTooltip;
+
+                const dayBlocks = schedule
+                    .filter(b => b.day === day)
+                    .slice()
+                    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+                let lines = [`<strong>${day}</strong>`, ''];
+
+                if (dayBlocks.length === 0) {
+                    lines.push('No tasks');
+                    lines.push('');
+                    lines.push('<strong>Hours total: 0</strong>');
+                } else {
+                    const groupedTasks = new Map();
+                    let totalMinutesAll = 0;
+
+                    dayBlocks.forEach(block => {
+                        const startM = timeToMinutes(block.start);
+                        const endM = timeToMinutes(block.end);
+                        const durMinutes = Math.max(0, endM - startM);
+
+                        totalMinutesAll += durMinutes;
+
+                        const projectName = (block.projectName || '').trim();
+                        const description = (block.description || '').trim();
+                        const colorName = (block.colorName || '').trim();
+
+                        // same definition you already use elsewhere for "same card"
+                        const key = `${projectName}|||${description}|||${colorName}`;
+
+                        if (!groupedTasks.has(key)) {
+                            groupedTasks.set(key, {
+                                title: projectName || 'Untitled task',
+                                totalMinutes: 0
+                            });
+                        }
+
+                        groupedTasks.get(key).totalMinutes += durMinutes;
+                    });
+
+                    groupedTasks.forEach(task => {
+                        const hours = parseFloat((task.totalMinutes / 60).toFixed(2));
+                        lines.push(`${task.title}: ${hours}`);
+                    });
+
+                    const totalHours = parseFloat((totalMinutesAll / 60).toFixed(2));
+                    lines.push('');
+                    lines.push(`<strong>Hours total: ${totalHours}</strong>`);
+                }
+
+                tooltip.innerHTML = lines.join('<br>');
+                tooltip.style.borderLeftColor = 'var(--main-color)';
+                tooltip.style.bottom = '20px';
+                tooltip.style.left = '20px';
+                tooltip.classList.add('fade-in');
+                tooltip.style.display = 'block';
+            }
 
             function hideTooltip() {
                 const tooltip = customTooltip;
