@@ -2055,7 +2055,16 @@
                 const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value;
-                const showDescription = modalShowDescription.checked;
+
+                const durationMinutes = timeToMinutes(end) - timeToMinutes(start);
+
+                // Auto-hide description for 15-minute tasks
+                // unless the user explicitly unchecked/checked it themselves before saving
+                let showDescription = modalShowDescription.checked;
+                if (durationMinutes === 15 && modalShowDescription.checked === true) {
+                    showDescription = false;
+                }
+
                 const logged = modalLoggedState;
 
                 if (timeToMinutes(end) <= timeToMinutes(start)) {
