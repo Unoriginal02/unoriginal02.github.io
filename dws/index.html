@@ -1204,6 +1204,78 @@
 
             // Utility Functions
 
+            // ===============================
+            // IndexedDB helpers
+            // ===============================
+            const DB_NAME = 'deepWorkScheduleDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'appState';
+
+            function openDatabase() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                    request.onupgradeneeded = function (event) {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        }
+                    };
+
+                    request.onsuccess = function () {
+                        resolve(request.result);
+                    };
+
+                    request.onerror = function () {
+                        reject(request.error);
+                    };
+                });
+            }
+
+            async function getAppState() {
+                const db = await openDatabase();
+
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.get('scheduleData');
+
+                    request.onsuccess = function () {
+                        resolve(request.result ? request.result.value : null);
+                    };
+
+                    request.onerror = function () {
+                        reject(request.error);
+                    };
+                });
+            }
+
+            async function saveAppState(data) {
+                const db = await openDatabase();
+
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+
+                    store.put({
+                        id: 'scheduleData',
+                        value: data
+                    });
+
+                    tx.oncomplete = function () {
+                        resolve();
+                    };
+
+                    tx.onerror = function () {
+                        reject(tx.error);
+                    };
+
+                    tx.onabort = function () {
+                        reject(tx.error);
+                    };
+                });
+            }
+
             function isoTodayLocal() {
                 const d = new Date();
                 const yyyy = d.getFullYear();
@@ -1361,34 +1433,28 @@
                 return slots;
             }
 
-            function loadSchedule() {
-                const stored = localStorage.getItem('scheduleData');
-                if (stored) {
-                    try {
-                        const data = JSON.parse(stored);
+            async function loadSchedule() {
+                try {
+                    const data = await getAppState();
+
+                    if (data) {
                         schedule = data.schedule || [];
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
-                        currentTheme = data.theme || 'dark'; // Load saved theme or default to 'dark'
+                        currentTheme = data.theme || 'dark';
 
-                        // Always default to THIS week's Monday on page load/reload
                         const monday = startOfWeekMonday(new Date());
                         weekMondayISO = toISODateLocal(monday);
                         if (weekMondayInput) weekMondayInput.value = weekMondayISO;
 
-
-                        // If nothing saved yet, default to THIS week's Monday
                         if (!weekMondayISO) {
-                            const monday = startOfWeekMonday(new Date());
-                            weekMondayISO = toISODateLocal(monday);
+                            const monday2 = startOfWeekMonday(new Date());
+                            weekMondayISO = toISODateLocal(monday2);
                         }
                         if (weekMondayInput) weekMondayInput.value = weekMondayISO;
 
+                        notificationsEnabled = data.notificationsEnabled || false;
 
-
-                        notificationsEnabled = data.notificationsEnabled || false; // Load notifications setting
-
-                        // Initialize showDescription to true for existing tasks if undefined
                         schedule.forEach(block => {
                             if (block.showDescription === undefined) {
                                 block.showDescription = true;
@@ -1398,76 +1464,75 @@
                             }
                         });
 
-                        // Load prioritization fields (default to empty strings if missing)
                         const prio = data.prioritization || { top3: '', other: '', ideas: '' };
                         if (prioTop3) prioTop3.value = prio.top3 || '';
                         if (prioOther) prioOther.value = prio.other || '';
                         if (prioIdeas) prioIdeas.value = prio.ideas || '';
 
-                        saveSchedule(); // Save the updated schedule back to localStorage
-                    } catch (err) {
-                        console.error("Failed to parse schedule data:", err);
-                        schedule = [];
-                        currentTheme = 'dark'; // Default theme in case of error
-                        notificationsEnabled = false; // Notifications disabled in case of error
-                    }
-                } else {
-                    currentTheme = 'dark'; // Default theme if no data is stored
-                    // Always default to THIS week's Monday on page load/reload
-                    const monday = startOfWeekMonday(new Date());
-                    weekMondayISO = toISODateLocal(monday);
-                    if (weekMondayInput) weekMondayInput.value = weekMondayISO;
-
-                    notificationsEnabled = false; // Notifications disabled by default
-
-                }
-
-                // Set the initial state of the notifyToggle checkbox
-                notifyToggle.checked = notificationsEnabled;
-
-                // If notifications are enabled, check permission and schedule notifications
-                if (notificationsEnabled) {
-                    if (Notification.permission === 'granted') {
-                        scheduleNextNotification();
-                    } else if (Notification.permission !== 'denied') {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === 'granted') {
-                                scheduleNextNotification();
-                            } else {
-                                notificationsEnabled = false;
-                                notifyToggle.checked = false;
-                                saveSchedule();
-                            }
-                        });
+                        await saveSchedule();
                     } else {
-                        // Permission denied
+                        currentTheme = 'dark';
+
+                        const monday = startOfWeekMonday(new Date());
+                        weekMondayISO = toISODateLocal(monday);
+                        if (weekMondayInput) weekMondayInput.value = weekMondayISO;
+
                         notificationsEnabled = false;
-                        notifyToggle.checked = false;
-                        saveSchedule();
                     }
+
+                    notifyToggle.checked = notificationsEnabled;
+
+                    if (notificationsEnabled) {
+                        if (Notification.permission === 'granted') {
+                            scheduleNextNotification();
+                        } else if (Notification.permission !== 'denied') {
+                            Notification.requestPermission().then(permission => {
+                                if (permission === 'granted') {
+                                    scheduleNextNotification();
+                                } else {
+                                    notificationsEnabled = false;
+                                    notifyToggle.checked = false;
+                                    saveSchedule();
+                                }
+                            });
+                        } else {
+                            notificationsEnabled = false;
+                            notifyToggle.checked = false;
+                            saveSchedule();
+                        }
+                    }
+
+                    updateWeekHeaderLabels();
+                } catch (err) {
+                    console.error("Failed to load IndexedDB data:", err);
+                    schedule = [];
+                    currentTheme = 'dark';
+                    notificationsEnabled = false;
+                    updateWeekHeaderLabels();
                 }
-                updateWeekHeaderLabels();
             }
 
-            function saveSchedule() {
+            async function saveSchedule() {
                 const data = {
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-
-                    theme: currentTheme, // Include theme in export
-                    notificationsEnabled: notificationsEnabled, // Include notifications setting
+                    theme: currentTheme,
+                    notificationsEnabled: notificationsEnabled,
                     prioritization: {
                         top3: prioTop3 ? prioTop3.value : '',
                         other: prioOther ? prioOther.value : '',
                         ideas: prioIdeas ? prioIdeas.value : ''
                     },
-                    exportDate: new Date().toISOString().split('T')[0] // Added current date
+                    exportDate: new Date().toISOString().split('T')[0]
                 };
 
+                try {
+                    await saveAppState(data);
+                } catch (err) {
+                    console.error("Failed to save IndexedDB data:", err);
+                }
 
-                localStorage.setItem('scheduleData', JSON.stringify(data));
-                // If notifications are enabled, reschedule notifications
                 if (notificationsEnabled) {
                     scheduleNextNotification();
                 }
@@ -3083,11 +3148,16 @@
 
 
             // Initialize
-            loadSchedule();
-            populateColorOptions(); // Populate color options based on loaded theme
-            renderTable();
-            renderSchedule();
-            switchTheme(currentTheme); // Apply the loaded or default theme
+            (async function initApp() {
+                await loadSchedule();
+                populateColorOptions();
+                renderTable();
+                renderSchedule();
+                switchTheme(currentTheme);
+
+                timerInterval = setInterval(refreshCurrentTimeLine, 60000);
+                refreshCurrentTimeLine();
+            })();
 
             // Update current time line every minute
             timerInterval = setInterval(refreshCurrentTimeLine, 60000);
