@@ -380,6 +380,11 @@
             box-shadow: none;
         }
 
+        .form-control {
+            padding: .48rem .75rem;
+            border-radius: 0;
+        }
+
         /* Time Block Styling */
         .time-block {
             position: absolute;
@@ -425,6 +430,10 @@
             background-color: #198754;
             border-radius: 50%;
             pointer-events: none;
+        }
+
+        .list-group {
+            border-radius: 0rem;
         }
 
         .time-block:hover {
@@ -710,6 +719,30 @@
             border-color: #198754;
             color: #ffffff;
         }
+
+        #presetList .project-group-header {
+            font-size: .75rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        #presetList .list-group-item {
+            background-color: var(--background-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            margin-bottom: -1px;
+        }
+
+        #presetList .btn {
+            background-color: transparent;
+            color: var(--main-color);
+            border: none;
+            box-shadow: none;
+        }
+
+        #presetList .btn:hover {
+            background-color: var(--main-color-hover);
+        }
     </style>
 </head>
 
@@ -854,26 +887,50 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-6">
+                            <div class="col-12">
                                 <label for="modalProjectName" class="form-label">Project Name</label>
-                                <input type="text" id="modalProjectName" class="form-control">
+                                <div class="d-flex gap-2">
+                                    <input type="text" id="modalProjectName" class="form-control">
+                                    <button type="button" id="openPresetListButton" class="brutalButton"
+                                        title="Open saved project/task pairs">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div id="presetListContainer" class="mb-3" style="display:none;">
+                            <label class="form-label">Saved project/task pairs</label>
+                            <div id="presetList" class="list-group"></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="modalTaskName" class="form-label">Task Name</label>
+                                <input type="text" id="modalTaskName" class="form-control">
                             </div>
                             <div class="col-6">
                                 <label for="modalTaskId" class="form-label">Task ID</label>
-                                <input type="text" id="modalTaskId" class="form-control">
+                                <div class="d-flex gap-2">
+                                    <input type="text" id="modalTaskId" class="form-control">
+                                    <button type="button" id="openTaskLinkButton" class="brutalButton"
+                                        title="Open task in ClickUp" aria-label="Open task in ClickUp">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
                         <div class="mb-3">
-                            <label for="modalDescription" class="form-label">Task Description</label>
+                            <label for="modalDescription" class="form-label">Description</label>
                             <textarea id="modalDescription" class="form-control" rows="3"></textarea>
                         </div>
+
+
                         <!-- Added Show Description Checkbox -->
                         <div class="mb-3 d-flex align-items-center justify-content-between gap-3">
-                            <div class="form-check m-0">
-                                <input type="checkbox" class="form-check-input" id="modalShowDescription" checked>
-                                <label class="form-check-label" for="modalShowDescription">Show description</label>
-                            </div>
-
                             <button id="loggedToggleButton" type="button" class="brutalButton">
                                 <i class="bi bi-check-circle"></i>
                                 <span>Logged</span>
@@ -1022,6 +1079,8 @@
                 }
             });
 
+
+
             function getNextBlockStart(day, afterMinutes, ignoreId) {
                 return schedule
                     .filter(b =>
@@ -1159,7 +1218,6 @@
             const modalProjectName = document.getElementById('modalProjectName');
             const modalDescription = document.getElementById('modalDescription');
             const modalColor = document.getElementById('modalColor');
-            const modalShowDescription = document.getElementById('modalShowDescription'); // New checkbox element
             const loggedToggleButton = document.getElementById('loggedToggleButton');
             const acceptButton = document.getElementById('acceptButton');
             const deleteButton = document.getElementById('deleteButton');
@@ -1187,23 +1245,33 @@
             ];
 
             const modalTaskId = document.getElementById('modalTaskId');
+            const openTaskLinkButton = document.getElementById('openTaskLinkButton');
 
             const copyTaskIdButton = document.getElementById('copyTaskIdButton');
             const copyDescriptionButton = document.getElementById('copyDescriptionButton');
             const copyTotalTimeButton = document.getElementById('copyTotalTimeButton');
+
+
 
             // Individual refs for convenience
             const prioTop3 = prioTextareas[0];
             const prioOther = prioTextareas[1];
             const prioIdeas = prioTextareas[2];
 
+            const modalTaskName = document.getElementById('modalTaskName');
+            const openPresetListButton = document.getElementById('openPresetListButton');
+            const presetListContainer = document.getElementById('presetListContainer');
+            const presetList = document.getElementById('presetList');
+
             let tooltipTimeout = null; // To handle delay
             let notificationsEnabled = false; // Notifications are disabled by default
             let modalLoggedState = false;
             let notificationTimeout = null; // Holds the timeout ID for scheduled notification
-
+            let projectTaskPresets = [];
             // Utility Functions
 
+
+            openPresetListButton.addEventListener('click', togglePresetList);
             // ===============================
             // IndexedDB helpers
             // ===============================
@@ -1274,6 +1342,45 @@
                         reject(tx.error);
                     };
                 });
+            }
+
+            function normalizePreset(preset) {
+                return {
+                    projectName: (preset.projectName || '').trim(),
+                    taskName: (preset.taskName || '').trim(),
+                    taskId: (preset.taskId || '').trim()
+                };
+            }
+
+            function presetEquals(a, b) {
+                return a.projectName === b.projectName &&
+                    a.taskName === b.taskName &&
+                    a.taskId === b.taskId;
+            }
+
+            function saveProjectTaskPreset(preset) {
+                const normalized = normalizePreset(preset);
+
+                const isEmpty =
+                    !normalized.projectName &&
+                    !normalized.taskName &&
+                    !normalized.taskId;
+
+                if (isEmpty) return;
+
+                const alreadyExists = projectTaskPresets.some(existing =>
+                    presetEquals(normalizePreset(existing), normalized)
+                );
+
+                if (!alreadyExists) {
+                    projectTaskPresets.unshift(normalized);
+                }
+            }
+
+            function deleteProjectTaskPreset(index) {
+                projectTaskPresets.splice(index, 1);
+                saveSchedule();
+                renderPresetList();
             }
 
             function isoTodayLocal() {
@@ -1433,12 +1540,131 @@
                 return slots;
             }
 
+            function alphaCompare(a, b) {
+                return (a || '').localeCompare((b || ''), undefined, {
+                    sensitivity: 'base',
+                    numeric: true
+                });
+            }
+
+            function getGroupedSortedPresets() {
+                const normalized = projectTaskPresets.map((preset, index) => ({
+                    ...normalizePreset(preset),
+                    originalIndex: index
+                }));
+
+                // Sort first by project name, then project id, then task name, then task id
+                normalized.sort((a, b) => {
+                    return (
+                        alphaCompare(a.projectName, b.projectName) ||
+                        alphaCompare(a.taskName, b.taskName) ||
+                        alphaCompare(a.taskId, b.taskId)
+                    );
+                });
+
+                const groups = [];
+                const groupMap = new Map();
+
+                normalized.forEach(preset => {
+                    const key = `${preset.projectName}`;
+
+                    if (!groupMap.has(key)) {
+                        const group = {
+                            projectName: preset.projectName,
+                            tasks: []
+                        };
+                        groupMap.set(key, group);
+                        groups.push(group);
+                    }
+
+                    groupMap.get(key).tasks.push(preset);
+                });
+
+                return groups;
+            }
+
+
+
+            function renderPresetList() {
+                presetList.innerHTML = '';
+
+                if (!projectTaskPresets.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'list-group-item';
+                    empty.textContent = 'No saved project/task pairs yet.';
+                    presetList.appendChild(empty);
+                    return;
+                }
+
+                const groupedPresets = getGroupedSortedPresets();
+
+                groupedPresets.forEach(group => {
+                    const projectWrapper = document.createElement('div');
+                    projectWrapper.className = 'list-group-item';
+
+                    const projectHeader = document.createElement('div');
+                    projectHeader.className = 'fw-bold mb-2';
+                    projectHeader.textContent =
+                        `${group.projectName || '(No Project Name)'}`;
+
+                    projectWrapper.appendChild(projectHeader);
+
+                    group.tasks.forEach(taskPreset => {
+                        const row = document.createElement('div');
+                        projectHeader.className = 'project-group-header';
+                        row.className = 'project-task-row d-flex justify-content-between align-items-center gap-2 py-1';
+
+                        const fillButton = document.createElement('button');
+                        fillButton.type = 'button';
+                        fillButton.className = 'btn btn-sm flex-grow-1 text-start';
+                        fillButton.textContent =
+                            `${taskPreset.taskName || '(No Task Name)'} (${taskPreset.taskId || 'No Task ID'})`;
+
+                        fillButton.addEventListener('click', () => {
+                            modalProjectName.value = taskPreset.projectName || '';
+                            modalTaskName.value = taskPreset.taskName || '';
+                            modalTaskId.value = taskPreset.taskId || '';
+                            presetListContainer.style.display = 'none';
+                        });
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.className = 'btn btn-sm';
+                        deleteBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+                        deleteBtn.title = 'Delete saved entry';
+
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            deleteProjectTaskPreset(taskPreset.originalIndex);
+                        });
+
+                        row.appendChild(fillButton);
+                        row.appendChild(deleteBtn);
+                        projectWrapper.appendChild(row);
+                    });
+
+                    presetList.appendChild(projectWrapper);
+                });
+            }
+
+            function togglePresetList() {
+                const isOpen = presetListContainer.style.display === 'block';
+                if (isOpen) {
+                    presetListContainer.style.display = 'none';
+                } else {
+                    renderPresetList();
+                    presetListContainer.style.display = 'block';
+                }
+            }
+
+
             async function loadSchedule() {
                 try {
                     const data = await getAppState();
 
                     if (data) {
                         schedule = data.schedule || [];
+                        projectTaskPresets = data.projectTaskPresets || [];
                         startTimeInput.value = data.startTime || "08:00";
                         endTimeInput.value = data.endTime || "18:00";
                         currentTheme = data.theme || 'dark';
@@ -1456,12 +1682,10 @@
                         notificationsEnabled = data.notificationsEnabled || false;
 
                         schedule.forEach(block => {
-                            if (block.showDescription === undefined) {
-                                block.showDescription = true;
-                            }
-                            if (block.logged === undefined) {
-                                block.logged = false;
-                            }
+                            if (block.taskName === undefined) block.taskName = '';
+                            if (block.taskId === undefined) block.taskId = '';
+                            if (block.description === undefined) block.description = '';
+                            if (block.logged === undefined) block.logged = false;
                         });
 
                         const prio = data.prioritization || { top3: '', other: '', ideas: '' };
@@ -1524,6 +1748,7 @@
                         other: prioOther ? prioOther.value : '',
                         ideas: prioIdeas ? prioIdeas.value : ''
                     },
+                    projectTaskPresets: projectTaskPresets,
                     exportDate: new Date().toISOString().split('T')[0]
                 };
 
@@ -1771,29 +1996,19 @@
                     bottomHandle.classList.add('resize-handle', 'bottom');
                     blockDiv.appendChild(bottomHandle);
 
-                    // Create content elements
                     if (block.projectName) {
                         const projectNameEl = document.createElement('div');
                         projectNameEl.style.fontWeight = 'bold';
-
-                        // If Task ID is empty, add * and italicize the title
-                        const hasTaskId = (block.taskId || '').trim().length > 0;
-                        projectNameEl.textContent = hasTaskId
-                            ? block.projectName.toUpperCase()
-                            : `${block.projectName.toUpperCase()} *`;
-
-                        if (!hasTaskId) {
-                            projectNameEl.style.fontStyle = 'italic';
-                        }
-
+                        projectNameEl.textContent = block.projectName;
                         blockDiv.appendChild(projectNameEl);
                     }
 
-                    // **Updated Rendering Condition**
-                    if ((block.showDescription !== false) && block.description) {
-                        const descriptionEl = document.createElement('div');
-                        descriptionEl.textContent = block.description;
-                        blockDiv.appendChild(descriptionEl);
+                    const durationMinutes = timeToMinutes(block.end) - timeToMinutes(block.start);
+
+                    if (durationMinutes > 15 && block.taskName) {
+                        const taskNameEl = document.createElement('div');
+                        taskNameEl.textContent = block.taskName;
+                        blockDiv.appendChild(taskNameEl);
                     }
 
                     if (block.logged === true) {
@@ -1839,16 +2054,17 @@
 
                 // --- Identify what "same task" means (same day + same name + same desc + same color) ---
                 const projectName = (block.projectName || '').trim();
-                const description = (block.description || '').trim();
+                const taskName = (block.taskName || '').trim();
+                const taskId = (block.taskId || '').trim();
                 const colorName = (block.colorName || '').trim();
                 const day = block.day;
 
-                // Collect all matching blocks in the same day
                 const matches = schedule
                     .filter(b =>
                         b.day === day &&
                         (b.projectName || '').trim() === projectName &&
-                        (b.description || '').trim() === description &&
+                        (b.taskName || '').trim() === taskName &&
+                        (b.taskId || '').trim() === taskId &&
                         (b.colorName || '').trim() === colorName
                     )
                     .slice()
@@ -1860,16 +2076,13 @@
                 // Build tooltip lines
                 let lines = [];
 
-                // Title
-                if (projectName) {
-                    lines.push(`<strong>${projectName}</strong>`);
-                }
-
-                // Description (only once)
-                if (description) {
-                    const formattedDescription = description.replace(/\n/g, '<br>');
-                    lines.push(formattedDescription);
-                    lines.push(''); // blank line spacer
+                if (projectName) lines.push(`<strong>${projectName}</strong>`);
+                if (taskName) lines.push(taskName);
+                if (taskId) lines.push(`Task ID: ${taskId}`);
+                if (block.description) {
+                    lines.push('');
+                    lines.push(block.description.replace(/\n/g, '<br>'));
+                    lines.push('');
                 }
 
                 // Time ranges + per-range totals
@@ -1930,15 +2143,14 @@
                         totalMinutesAll += durMinutes;
 
                         const projectName = (block.projectName || '').trim();
-                        const description = (block.description || '').trim();
+                        const taskName = (block.taskName || '').trim();
                         const colorName = (block.colorName || '').trim();
 
-                        // same definition you already use elsewhere for "same card"
-                        const key = `${projectName}|||${description}|||${colorName}`;
+                        const key = `${projectName}|||${taskName}|||${colorName}`;
 
                         if (!groupedTasks.has(key)) {
                             groupedTasks.set(key, {
-                                title: projectName || 'Untitled task',
+                                title: [projectName, taskName].filter(Boolean).join(' - ') || 'Untitled task',
                                 totalMinutes: 0
                             });
                         }
@@ -2052,12 +2264,13 @@
                     // Editing existing block
                     modalStartTime.value = block.start;
                     modalEndTime.value = block.end;
-                    modalProjectName.value = block.projectName;
-                    modalDescription.value = block.description;
+                    modalProjectName.value = block.projectName || '';
+                    modalTaskName.value = block.taskName || '';
                     modalTaskId.value = block.taskId || '';
+                    modalDescription.value = block.description || '';
                     modalColor.value = block.colorName;
-                    modalShowDescription.checked = block.showDescription !== false;
                     modalLoggedState = block.logged === true;
+                    presetListContainer.style.display = 'none';
 
                     if (modalLoggedState) {
                         loggedToggleButton.classList.add('logged-active');
@@ -2079,13 +2292,12 @@
                     modalStartTime.value = startTime || "08:00";
                     modalEndTime.value = endTime || addMinutes(startTime || "08:00", timeSlotInterval);
                     modalProjectName.value = '';
-                    modalDescription.value = '';
+                    modalTaskName.value = '';
                     modalTaskId.value = '';
+                    modalDescription.value = '';
                     modalColor.value = getAutoColorForNewBlock(day, modalStartTime.value);
-                    modalShowDescription.checked = true;
                     modalLoggedState = false;
-                    loggedToggleButton.classList.remove('logged-active');
-                    deleteButton.style.display = 'none';
+                    presetListContainer.style.display = 'none';
 
                     originalCardSignature = null;
                     syncCardButton.style.display = 'none';
@@ -2116,20 +2328,12 @@
                 const day = currentEditingBlock ? currentEditingBlock.day : selectedDay;
                 const start = modalStartTime.value;
                 const end = modalEndTime.value;
+
                 const projectName = modalProjectName.value.trim();
+                const taskName = modalTaskName.value.trim();
                 const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value;
-
-                const durationMinutes = timeToMinutes(end) - timeToMinutes(start);
-
-                // Auto-hide description for 15-minute tasks
-                // unless the user explicitly unchecked/checked it themselves before saving
-                let showDescription = modalShowDescription.checked;
-                if (durationMinutes === 15 && modalShowDescription.checked === true) {
-                    showDescription = false;
-                }
-
                 const logged = modalLoggedState;
 
                 if (timeToMinutes(end) <= timeToMinutes(start)) {
@@ -2143,31 +2347,35 @@
                 }
 
                 if (currentEditingBlock) {
-                    // ✅ Edit ONLY this block (no auto-sync)
                     currentEditingBlock.projectName = projectName;
+                    currentEditingBlock.taskName = taskName;
                     currentEditingBlock.taskId = taskId;
                     currentEditingBlock.description = description;
                     currentEditingBlock.colorName = colorName;
-                    currentEditingBlock.showDescription = showDescription;
                     currentEditingBlock.logged = logged;
                     currentEditingBlock.start = start;
                     currentEditingBlock.end = end;
                 } else {
-                    // Create new block
                     const newBlock = {
                         id: Date.now(),
                         day,
                         start,
                         end,
                         projectName,
+                        taskName,
                         taskId,
                         description,
                         colorName,
-                        showDescription,
                         logged
                     };
                     schedule.push(newBlock);
                 }
+
+                saveProjectTaskPreset({
+                    projectName,
+                    taskName,
+                    taskId
+                });
 
                 saveSchedule();
                 renderTable();
@@ -2190,7 +2398,6 @@
                 const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value;
-                const showDescription = modalShowDescription.checked;
                 const logged = modalLoggedState;
 
                 const oldProjectName = (originalCardSignature.projectName || '').trim();
@@ -2211,7 +2418,6 @@
                         block.taskId = taskId;
                         block.description = description;
                         block.colorName = colorName;
-                        block.showDescription = showDescription;
                         block.logged = logged;
                     }
                 });
@@ -2298,13 +2504,20 @@
 
             function copyCard() {
                 if (currentEditingBlock) {
-                    const { projectName, description, taskId, colorName, showDescription, logged } = currentEditingBlock;
-                    // Retrieve color hex based on current theme
+                    const {
+                        projectName,
+                        taskName,
+                        taskId,
+                        description,
+                        colorName,
+                        logged
+                    } = currentEditingBlock;
+
                     const colorHex = colorThemes[currentTheme][colorName] || '#FFFFFF';
 
-                    // Ensure proper CSV formatting (5 fields now)
                     const csvData =
-                        `"${(projectName || '').replace(/"/g, '""')}","${(description || '').replace(/"/g, '""')}","${(taskId || '').replace(/"/g, '""')}","${colorHex}","${showDescription}","${logged === true}"`;
+                        `"${(projectName || '').replace(/"/g, '""')}","${(taskName || '').replace(/"/g, '""')}","${(taskId || '').replace(/"/g, '""')}","${(description || '').replace(/"/g, '""')}","${colorHex}","${logged === true}"`;
+
                     navigator.clipboard.writeText(csvData).catch(err => {
                         alert("Failed to copy: " + err);
                     });
@@ -2319,6 +2532,18 @@
                     return;
                 }
                 navigator.clipboard.writeText(v).catch(err => alert("Failed to copy: " + err));
+            }
+
+            function openTaskLink() {
+                const taskId = (modalTaskId.value || '').trim();
+
+                if (!taskId) {
+                    alert("Please enter a Task ID first.");
+                    return;
+                }
+
+                const url = `https://app.clickup.com/t/${encodeURIComponent(taskId)}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
             }
 
             function copyDescriptionOnly() {
@@ -2376,14 +2601,14 @@
 
                     let match = csvText.match(regex6);
 
-                    let projectName, description, taskId, colorHex, showDescriptionStr, loggedStr;
+                    let projectName, description, taskId, colorHex, loggedStr;
 
                     if (match) {
-                        [_, projectName, description, taskId, colorHex, showDescriptionStr, loggedStr] = match;
+                        [_, projectName, description, taskId, colorHex, loggedStr] = match;
                     } else {
                         match = csvText.match(regex5);
                         if (match) {
-                            [_, projectName, description, taskId, colorHex, showDescriptionStr] = match;
+                            [_, projectName, description, taskId, colorHex] = match;
                             loggedStr = 'false';
                         } else {
                             match = csvText.match(regex4);
@@ -2391,13 +2616,13 @@
                                 alert('Invalid CSV format.');
                                 return;
                             }
-                            [_, projectName, description, colorHex, showDescriptionStr] = match;
+                            [_, projectName, description, colorHex] = match;
                             taskId = '';
                             loggedStr = 'false';
                         }
                     }
 
-                    const showDescription = showDescriptionStr.toLowerCase() === 'true';
+
                     const logged = loggedStr.toLowerCase() === 'true';
 
                     // Find the color name that matches the colorHex in the current theme
@@ -2418,7 +2643,6 @@
                     modalDescription.value = description;
                     modalTaskId.value = taskId;        // <-- THIS is the missing piece
                     modalColor.value = matchedColorName;
-                    modalShowDescription.checked = showDescription;
                     modalLoggedState = logged;
 
                     if (modalLoggedState) {
@@ -2438,7 +2662,7 @@
                     schedule: schedule,
                     startTime: startTimeInput.value,
                     endTime: endTimeInput.value,
-
+                    projectTaskPresets: projectTaskPresets,
                     theme: currentTheme, // Include theme in export
                     notificationsEnabled: notificationsEnabled, // Include notifications setting
                     prioritization: {
@@ -2496,15 +2720,13 @@
                             endTimeInput.value = importedData.endTime || "18:00";
                             currentTheme = importedData.theme || 'dark'; // Load imported theme
                             notificationsEnabled = importedData.notificationsEnabled || false; // Load notifications setting
-
+                            projectTaskPresets = importedData.projectTaskPresets || [];
                             // Initialize showDescription to true for imported tasks if undefined
                             schedule.forEach(block => {
-                                if (block.showDescription === undefined) {
-                                    block.showDescription = true;
-                                }
-                                if (block.logged === undefined) {
-                                    block.logged = false;
-                                }
+                                if (block.taskName === undefined) block.taskName = '';
+                                if (block.taskId === undefined) block.taskId = '';
+                                if (block.description === undefined) block.description = '';
+                                if (block.logged === undefined) block.logged = false;
                             });
 
                             // Restore prioritization text areas if present
@@ -2992,6 +3214,7 @@
             copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
             copyTotalTimeButton.addEventListener('click', copyTotalTimeForSameTaskSameDay);
             importCardButton.addEventListener('click', importCardFromClipboard);
+            openTaskLinkButton.addEventListener('click', openTaskLink);
 
             // Save prioritization as the user types
             prioTextareas.forEach(t => {
