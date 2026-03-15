@@ -2282,6 +2282,7 @@
 
                     originalCardSignature = {
                         projectName: block.projectName || '',
+                        taskName: block.taskName || '',
                         description: block.description || '',
                         taskId: block.taskId || '',
                         colorName: block.colorName
@@ -2393,14 +2394,16 @@
                     return;
                 }
 
-                // The NEW values currently in the modal
+                // NEW values currently in the modal
                 const projectName = modalProjectName.value.trim();
+                const taskName = modalTaskName.value.trim();
                 const taskId = modalTaskId.value.trim();
                 const description = modalDescription.value.trim();
                 const colorName = modalColor.value;
                 const logged = modalLoggedState;
 
                 const oldProjectName = (originalCardSignature.projectName || '').trim();
+                const oldTaskName = (originalCardSignature.taskName || '').trim();
                 const oldDescription = (originalCardSignature.description || '').trim();
                 const oldTaskId = (originalCardSignature.taskId || '').trim();
                 const oldColorName = originalCardSignature.colorName;
@@ -2409,12 +2412,14 @@
                 schedule.forEach(block => {
                     const matchesOld =
                         (block.projectName || '').trim() === oldProjectName &&
+                        (block.taskName || '').trim() === oldTaskName &&
                         (block.description || '').trim() === oldDescription &&
                         (block.taskId || '').trim() === oldTaskId &&
                         block.colorName === oldColorName;
 
                     if (matchesOld) {
                         block.projectName = projectName;
+                        block.taskName = taskName;
                         block.taskId = taskId;
                         block.description = description;
                         block.colorName = colorName;
@@ -2422,9 +2427,10 @@
                     }
                 });
 
-                // After syncing, the "old identity" becomes the new one (so you can sync again later)
+                // Update signature so later syncs keep working
                 originalCardSignature = {
                     projectName,
+                    taskName,
                     description,
                     taskId,
                     colorName
@@ -2448,6 +2454,7 @@
                 if (currentEditingBlock) {
                     const day = currentEditingBlock.day;
                     const projectName = (currentEditingBlock.projectName || '').trim();
+                    const taskName = (currentEditingBlock.taskName || '').trim();
                     const description = (currentEditingBlock.description || '').trim();
                     const taskId = (currentEditingBlock.taskId || '').trim();
 
@@ -2455,6 +2462,7 @@
                         const isSister =
                             block.day === day &&
                             (block.projectName || '').trim() === projectName &&
+                            (block.taskName || '').trim() === taskName &&
                             (block.description || '').trim() === description &&
                             (block.taskId || '').trim() === taskId &&
                             block.colorName === colorName;
@@ -2592,40 +2600,54 @@
                         return;
                     }
 
-                    // NEW 6-field format
-                    const regex6 = /^"([^"]*)","([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)","(true|false)"$/;
-                    // OLD 5-field format
-                    const regex5 = /^"([^"]*)","([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-                    // OLDER 4-field format
-                    const regex4 = /^"([^"]*)","([^"]*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+                    // Match 6 quoted CSV fields:
+                    // projectName, taskName, taskId, description, colorHex, logged
+                    const regex6 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+
+                    // Backward compatibility:
+                    // projectName, taskId, description, colorHex, logged
+                    const regex5 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
+
+                    // Older format:
+                    // projectName, description, colorHex, logged
+                    const regex4 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
 
                     let match = csvText.match(regex6);
 
-                    let projectName, description, taskId, colorHex, loggedStr;
+                    let projectName = '';
+                    let taskName = '';
+                    let taskId = '';
+                    let description = '';
+                    let colorHex = '';
+                    let loggedStr = 'false';
 
                     if (match) {
-                        [_, projectName, description, taskId, colorHex, loggedStr] = match;
+                        [_, projectName, taskName, taskId, description, colorHex, loggedStr] = match;
                     } else {
                         match = csvText.match(regex5);
                         if (match) {
-                            [_, projectName, description, taskId, colorHex] = match;
-                            loggedStr = 'false';
+                            [_, projectName, taskId, description, colorHex, loggedStr] = match;
+                            taskName = '';
                         } else {
                             match = csvText.match(regex4);
                             if (!match) {
                                 alert('Invalid CSV format.');
                                 return;
                             }
-                            [_, projectName, description, colorHex] = match;
+                            [_, projectName, description, colorHex, loggedStr] = match;
+                            taskName = '';
                             taskId = '';
-                            loggedStr = 'false';
                         }
                     }
 
+                    // Unescape doubled quotes
+                    projectName = projectName.replace(/""/g, '"');
+                    taskName = taskName.replace(/""/g, '"');
+                    taskId = taskId.replace(/""/g, '"');
+                    description = description.replace(/""/g, '"');
 
                     const logged = loggedStr.toLowerCase() === 'true';
 
-                    // Find the color name that matches the colorHex in the current theme
                     let matchedColorName = null;
                     for (const [name, hex] of Object.entries(colorThemes[currentTheme])) {
                         if (hex.toLowerCase() === colorHex.toLowerCase()) {
@@ -2633,15 +2655,16 @@
                             break;
                         }
                     }
+
                     if (!matchedColorName) {
                         alert("Color hex does not match any available colors in the current theme.");
                         return;
                     }
 
-                    // Populate the form fields
                     modalProjectName.value = projectName;
+                    modalTaskName.value = taskName;
+                    modalTaskId.value = taskId;
                     modalDescription.value = description;
-                    modalTaskId.value = taskId;        // <-- THIS is the missing piece
                     modalColor.value = matchedColorName;
                     modalLoggedState = logged;
 
