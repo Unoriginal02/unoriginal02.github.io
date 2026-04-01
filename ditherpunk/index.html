@@ -104,12 +104,22 @@
 
           <div class="slider-row">
             <div class="slider-header">
-              <label for="ditherThresholdSlider" class="slider-label">DITHER THRESHOLD
-                <span class="info-tip" data-tip="Controls how aggressively dithering is applied. At 0% everything is dithered. Higher values snap similar colors flat and only dither at color transitions — giving solid regions with dithered edges.">?</span>
+              <label for="ditherThresholdSlider" class="slider-label">DITHER STRENGTH
+                <span class="info-tip" data-tip="For ordered dithering: controls how strongly the Bayer threshold perturbs each pixel before quantization — higher = more visible pattern. For error diffusion: pixels close to a palette color snap flat without diffusion.">?</span>
               </label>
-              <span class="slider-value" id="ditherThresholdValue">0.20</span>
+              <span class="slider-value" id="ditherThresholdValue">0.50</span>
             </div>
-            <input type="range" id="ditherThresholdSlider" class="custom-range" min="0" max="1" step="0.01" value="0.20" />
+            <input type="range" id="ditherThresholdSlider" class="custom-range" min="0" max="1" step="0.01" value="0.50" />
+          </div>
+
+          <div class="slider-row" id="halftoneCellRow" style="display:none">
+            <div class="slider-header">
+              <label for="halftoneCellSlider" class="slider-label">HALFTONE CELL SIZE
+                <span class="info-tip" data-tip="Controls the dot size in halftone mode. Larger values = bigger, more visible dots.">?</span>
+              </label>
+              <span class="slider-value" id="halftoneCellValue">8</span>
+            </div>
+            <input type="range" id="halftoneCellSlider" class="custom-range" min="2" max="24" step="1" value="8" />
           </div>
 
           <div class="slider-row">
@@ -175,6 +185,13 @@
             <button class="view-btn" id="viewSplit" data-view="split">SPLIT</button>
           </div>
           <div class="preview-meta" id="previewMeta"></div>
+          <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomOut" title="Zoom out">−</button>
+            <span class="zoom-level" id="zoomLevel">FIT</span>
+            <button class="zoom-btn" id="zoomIn" title="Zoom in">+</button>
+            <button class="zoom-btn zoom-fit" id="zoomFit" title="Fit to screen">FIT</button>
+            <button class="zoom-btn zoom-100" id="zoom100" title="100% zoom">1:1</button>
+          </div>
         </div>
 
         <div class="canvas-container" id="canvasContainer">

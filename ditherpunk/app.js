@@ -13,7 +13,7 @@ const state = {
   ditherType: 'floyd-steinberg',
   pixelation: 0.25,
   bias: 0.50,
-  ditherThreshold: 0.20,
+  ditherThreshold: 0.50,
   filmPalettes: {},        // name → [{r,g,b}]
   selectedFilm: null,
   favorites: new Set(),
@@ -28,10 +28,10 @@ const DEFAULTS = {
   ditherType: 'floyd-steinberg',
   pixelation: 0.25,
   bias: 0.50,
-  ditherThreshold: 0.20,
+  ditherThreshold: 0.50,
+  halftoneCellSize: 8,
   selectedFilm: null,
 };
-
 const MAX_DIM = 1920;
 
 // ── DOM refs ────────────────────────────────────────────────
@@ -51,6 +51,9 @@ const els = {
   pixelationValue:   $('pixelationValue'),
   ditherThresholdSlider: $('ditherThresholdSlider'),
   ditherThresholdValue:  $('ditherThresholdValue'),
+  halftoneCellRow:       $('halftoneCellRow'),
+  halftoneCellSlider:    $('halftoneCellSlider'),
+  halftoneCellValue:     $('halftoneCellValue'),
   biasSlider:        $('biasSlider'),
   biasValue:         $('biasValue'),
   filmSection:       $('filmSection'),
@@ -141,6 +144,7 @@ function runPipeline() {
       colorMode: state.colorMode,
       ditherType: state.ditherType,
       ditherThreshold: state.ditherThreshold,
+      halftoneCellSize: state.halftoneCellSize,
     },
     filmPalette,
   }, [srcCopy.buffer]);
@@ -154,19 +158,16 @@ function renderOutput(imageData) {
   const ctx = els.outputCanvas.getContext('2d');
   els.outputCanvas.width = width;
   els.outputCanvas.height = height;
-  els.outputCanvas.style.width = '';
-  els.outputCanvas.style.height = '';
   ctx.putImageData(imageData, 0, 0);
 
   const sCtx = els.splitOutputCanvas.getContext('2d');
   els.splitOutputCanvas.width = width;
   els.splitOutputCanvas.height = height;
-  els.splitOutputCanvas.style.width = '';
-  els.splitOutputCanvas.style.height = '';
   sCtx.putImageData(imageData, 0, 0);
 
   els.downloadBtn.disabled = false;
   updatePreviewMeta(width, height);
+  applyZoom();
 }
 
 function updatePreviewMeta(w, h) {
@@ -235,6 +236,7 @@ function drawOriginalCanvases(img, w, h) {
     canvas.style.height = '';
     canvas.getContext('2d').drawImage(img, 0, 0);
   }
+  applyZoom();
 }
 
 // ── View toggle ──────────────────────────────────────────────
@@ -258,7 +260,102 @@ function setView(view) {
   }
 }
 
-// ── Film simulation system ───────────────────────────────────
+// ── Zoom system ──────────────────────────────────────────────
+const zoomState = { level: null }; // null = fit mode
+
+function getZoomEl() {
+  return {
+    zoomOut:  document.getElementById('zoomOut'),
+    zoomIn:   document.getElementById('zoomIn'),
+    zoomFit:  document.getElementById('zoomFit'),
+    zoom100:  document.getElementById('zoom100'),
+    zoomLevel: document.getElementById('zoomLevel'),
+  };
+}
+
+function applyZoom() {
+  const z = getZoomEl();
+  const canvases = [
+    els.outputCanvas,
+    els.originalCanvas,
+    els.splitOriginalCanvas,
+    els.splitOutputCanvas,
+  ];
+
+  if (zoomState.level === null) {
+    // Fit mode: let CSS constrain the canvas
+    canvases.forEach(c => {
+      c.style.width = '';
+      c.style.height = '';
+      c.style.maxWidth = '100%';
+      c.style.maxHeight = 'calc(100vh - 120px)';
+    });
+    z.zoomLevel.textContent = 'FIT';
+    z.zoomFit.classList.add('active');
+    z.zoom100.classList.remove('active');
+  } else {
+    // Fixed zoom: set explicit pixel size
+    canvases.forEach(c => {
+      if (!c.width) return;
+      c.style.maxWidth = 'none';
+      c.style.maxHeight = 'none';
+      c.style.width = Math.round(c.width * zoomState.level) + 'px';
+      c.style.height = Math.round(c.height * zoomState.level) + 'px';
+    });
+    z.zoomLevel.textContent = Math.round(zoomState.level * 100) + '%';
+    z.zoomFit.classList.remove('active');
+    z.zoom100.classList.toggle('active', zoomState.level === 1);
+  }
+}
+
+function setZoom(level) {
+  zoomState.level = level;
+  applyZoom();
+}
+
+function initZoom() {
+  const z = getZoomEl();
+  const STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+
+  z.zoomFit.addEventListener('click', () => setZoom(null));
+  z.zoom100.addEventListener('click', () => setZoom(1));
+
+  z.zoomIn.addEventListener('click', () => {
+    if (zoomState.level === null) {
+      setZoom(1);
+      return;
+    }
+    const next = STEPS.find(s => s > zoomState.level);
+    if (next) setZoom(next);
+  });
+
+  z.zoomOut.addEventListener('click', () => {
+    if (zoomState.level === null) return;
+    const prev = [...STEPS].reverse().find(s => s < zoomState.level);
+    if (prev) setZoom(prev);
+    else setZoom(null);
+  });
+
+  // Scroll wheel zoom on canvas container
+  document.getElementById('canvasContainer').addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+    if (e.deltaY < 0) {
+      // zoom in
+      if (zoomState.level === null) { setZoom(1); return; }
+      const next = STEPS.find(s => s > zoomState.level);
+      if (next) setZoom(next);
+    } else {
+      // zoom out
+      if (zoomState.level === null) return;
+      const prev = [...STEPS].reverse().find(s => s < zoomState.level);
+      if (prev) setZoom(prev); else setZoom(null);
+    }
+  }, { passive: false });
+}
+
+
 function parseHexFile(text) {
   return text.split('\n')
     .map(l => l.trim().replace(/^0x/i, ''))
@@ -485,6 +582,7 @@ function savePrefs() {
       pixelation: state.pixelation,
       bias: state.bias,
       ditherThreshold: state.ditherThreshold,
+      halftoneCellSize: state.halftoneCellSize,
       selectedFilm: state.selectedFilm,
       favorites: [...state.favorites],
     }));
@@ -501,6 +599,7 @@ function loadPrefs() {
     if (typeof p.pixelation === 'number') state.pixelation = p.pixelation;
     if (typeof p.bias === 'number') state.bias = p.bias;
     if (typeof p.ditherThreshold === 'number') state.ditherThreshold = p.ditherThreshold;
+    if (typeof p.halftoneCellSize === 'number') state.halftoneCellSize = p.halftoneCellSize;
     if (p.selectedFilm) state.selectedFilm = p.selectedFilm;
     if (Array.isArray(p.favorites)) state.favorites = new Set(p.favorites);
   } catch {}
@@ -528,6 +627,11 @@ function applyPrefsToUI() {
   els.ditherThresholdValue.textContent = state.ditherThreshold.toFixed(2);
   updateSliderFill(els.ditherThresholdSlider);
 
+  els.halftoneCellSlider.value = state.halftoneCellSize;
+  els.halftoneCellValue.textContent = state.halftoneCellSize;
+  updateSliderFill(els.halftoneCellSlider);
+  els.halftoneCellRow.style.display = state.ditherType === 'halftone' ? '' : 'none';
+
   // Film mode UI
   updateFilmSectionState();
 
@@ -550,6 +654,7 @@ function resetToDefaults() {
   state.pixelation = DEFAULTS.pixelation;
   state.bias = DEFAULTS.bias;
   state.ditherThreshold = DEFAULTS.ditherThreshold;
+  state.halftoneCellSize = DEFAULTS.halftoneCellSize;
   applyPrefsToUI();
   savePrefs();
   triggerProcessing();
@@ -641,6 +746,7 @@ function initEvents() {
   // Dither select
   els.ditherSelect.addEventListener('change', () => {
     state.ditherType = els.ditherSelect.value;
+    els.halftoneCellRow.style.display = state.ditherType === 'halftone' ? '' : 'none';
     savePrefs();
     triggerProcessing();
   });
@@ -666,6 +772,14 @@ function initEvents() {
     state.ditherThreshold = parseFloat(els.ditherThresholdSlider.value);
     els.ditherThresholdValue.textContent = state.ditherThreshold.toFixed(2);
     updateSliderFill(els.ditherThresholdSlider);
+    savePrefs();
+    triggerProcessing();
+  });
+
+  els.halftoneCellSlider.addEventListener('input', () => {
+    state.halftoneCellSize = parseInt(els.halftoneCellSlider.value, 10);
+    els.halftoneCellValue.textContent = state.halftoneCellSize;
+    updateSliderFill(els.halftoneCellSlider);
     savePrefs();
     triggerProcessing();
   });
@@ -721,6 +835,7 @@ async function init() {
   initWorker();
   initEvents();
   initTooltips();
+  initZoom();
   applyPrefsToUI();
 
   // Try loading from manifest (works when served via HTTP)

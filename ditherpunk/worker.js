@@ -99,13 +99,25 @@ function nearestFullColor(r, g, b) {
   return FULL_COLOR_PALETTE[best];
 }
 
-// ── Film palette nearest color ──────────────────────────────
+// ── Film palette nearest color (LAB) ───────────────────────
+// Cache LAB values per palette to avoid recomputing every pixel
+const filmLabCache = new WeakMap();
+
+function getFilmLab(palette) {
+  if (filmLabCache.has(palette)) return filmLabCache.get(palette);
+  const lab = palette.map(c => rgbToLab(c.r, c.g, c.b));
+  filmLabCache.set(palette, lab);
+  return lab;
+}
+
 function nearestFilmColor(r, g, b, palette) {
+  const lab = getFilmLab(palette);
+  const [L, A, B_] = rgbToLab(r, g, b);
   let best = palette[0], bestDist = Infinity;
-  for (const c of palette) {
-    const dR = r - c.r, dG = g - c.g, dB = b - c.b;
-    const d = 0.3 * dR * dR + 0.59 * dG * dG + 0.11 * dB * dB;
-    if (d < bestDist) { bestDist = d; best = c; }
+  for (let i = 0; i < lab.length; i++) {
+    const [lL, lA, lB] = lab[i];
+    const d = (L - lL) ** 2 + (A - lA) ** 2 + (B_ - lB) ** 2;
+    if (d < bestDist) { bestDist = d; best = palette[i]; }
   }
   return best;
 }
@@ -115,47 +127,74 @@ function applyBias(val, exponent) {
   return 255 * Math.pow(val / 255, exponent);
 }
 
-// ── Step 1: Area-average downscale ──────────────────────────
+// ── Step 1: Area-average downscale (integer block size) ─────
+// blockSize is always an integer so every dithered pixel maps to
+// exactly blockSize×blockSize output pixels — no uneven squares.
 function downscale(src, srcW, srcH, scale) {
-  const dstW = Math.max(1, Math.round(srcW * scale));
-  const dstH = Math.max(1, Math.round(srcH * scale));
+  // Derive an integer block size from the scale factor.
+  // scale=1 → blockSize=1 (no downscale), scale=0.25 → blockSize=4, etc.
+  const blockSize = Math.max(1, Math.round(1 / scale));
+  const dstW = Math.ceil(srcW / blockSize);
+  const dstH = Math.ceil(srcH / blockSize);
   const dst = new Uint8ClampedArray(dstW * dstH * 4);
-
-  const scaleX = srcW / dstW;
-  const scaleY = srcH / dstH;
 
   for (let dy = 0; dy < dstH; dy++) {
     for (let dx = 0; dx < dstW; dx++) {
-      const x0 = dx * scaleX, x1 = (dx + 1) * scaleX;
-      const y0 = dy * scaleY, y1 = (dy + 1) * scaleY;
+      // Source region for this block (clamped to image bounds)
+      const x0 = dx * blockSize;
+      const y0 = dy * blockSize;
+      const x1 = Math.min(x0 + blockSize, srcW);
+      const y1 = Math.min(y0 + blockSize, srcH);
 
-      let rSum = 0, gSum = 0, bSum = 0, aSum = 0, weight = 0;
-
-      const iy0 = Math.floor(y0), iy1 = Math.ceil(y1);
-      const ix0 = Math.floor(x0), ix1 = Math.ceil(x1);
-
-      for (let sy = iy0; sy < iy1; sy++) {
-        const wy = Math.min(sy + 1, y1) - Math.max(sy, y0);
-        for (let sx = ix0; sx < ix1; sx++) {
-          const wx = Math.min(sx + 1, x1) - Math.max(sx, x0);
-          const w = wx * wy;
-          const idx = (Math.min(sy, srcH - 1) * srcW + Math.min(sx, srcW - 1)) * 4;
-          rSum += src[idx]     * w;
-          gSum += src[idx + 1] * w;
-          bSum += src[idx + 2] * w;
-          aSum += src[idx + 3] * w;
-          weight += w;
+      let rSum = 0, gSum = 0, bSum = 0, aSum = 0, count = 0;
+      for (let sy = y0; sy < y1; sy++) {
+        for (let sx = x0; sx < x1; sx++) {
+          const i = (sy * srcW + sx) * 4;
+          rSum += src[i];
+          gSum += src[i + 1];
+          bSum += src[i + 2];
+          aSum += src[i + 3];
+          count++;
         }
       }
 
       const di = (dy * dstW + dx) * 4;
-      dst[di]     = rSum / weight;
-      dst[di + 1] = gSum / weight;
-      dst[di + 2] = bSum / weight;
-      dst[di + 3] = aSum / weight;
+      dst[di]     = rSum / count;
+      dst[di + 1] = gSum / count;
+      dst[di + 2] = bSum / count;
+      dst[di + 3] = aSum / count;
     }
   }
-  return { data: dst, width: dstW, height: dstH };
+  return { data: dst, width: dstW, height: dstH, blockSize };
+}
+
+// ── Step 5: Nearest-neighbor upscale (integer block size) ───
+// Each dithered pixel becomes exactly blockSize×blockSize output pixels.
+function upscale(src, srcW, srcH, dstW, dstH, blockSize) {
+  const dst = new Uint8ClampedArray(dstW * dstH * 4);
+
+  for (let sy = 0; sy < srcH; sy++) {
+    for (let sx = 0; sx < srcW; sx++) {
+      const si = (sy * srcW + sx) * 4;
+      const r = src[si], g = src[si + 1], b = src[si + 2], a = src[si + 3];
+
+      const dyStart = sy * blockSize;
+      const dxStart = sx * blockSize;
+      const dyEnd = Math.min(dyStart + blockSize, dstH);
+      const dxEnd = Math.min(dxStart + blockSize, dstW);
+
+      for (let dy = dyStart; dy < dyEnd; dy++) {
+        for (let dx = dxStart; dx < dxEnd; dx++) {
+          const di = (dy * dstW + dx) * 4;
+          dst[di]     = r;
+          dst[di + 1] = g;
+          dst[di + 2] = b;
+          dst[di + 3] = a;
+        }
+      }
+    }
+  }
+  return dst;
 }
 
 // ── Step 2: Apply bias ──────────────────────────────────────
@@ -301,35 +340,60 @@ function errorDiffusionDither(data, w, h, kernel, mode, filmPalette, filmDark, f
   return out;
 }
 
+// ── Color quantization (article formula) ───────────────────
+// floor(c * (n-1) + 0.5) / (n-1) — finds nearest step in an n-level palette
+function quantizeChannel(c, n) {
+  return Math.floor(c * (n - 1) + 0.5) / (n - 1);
+}
+
+// Quantize a perturbed pixel using the article's additive threshold method.
+// For palette modes we still snap to nearest palette color, but for
+// fullcolor/mono we use the proper quantization formula for clean gradients.
+function orderedQuantize(r, g, b, threshold, spread, mode, filmPalette, filmDark, filmBright) {
+  // Normalize to 0-1, add threshold offset (centered around 0), clamp
+  const tr = Math.max(0, Math.min(1, r / 255 + (threshold - 0.5) * spread));
+  const tg = Math.max(0, Math.min(1, g / 255 + (threshold - 0.5) * spread));
+  const tb = Math.max(0, Math.min(1, b / 255 + (threshold - 0.5) * spread));
+
+  if (mode === 'fullcolor') {
+    // 6-level quantization per channel (matches FULL_COLOR_PALETTE R=6,G=5,B=6)
+    const qr = Math.round(quantizeChannel(tr, 6) * 255);
+    const qg = Math.round(quantizeChannel(tg, 5) * 255);
+    const qb = Math.round(quantizeChannel(tb, 6) * 255);
+    return nearestFullColor(qr, qg, qb);
+  } else if (mode === 'mono') {
+    // 2-level: black or white
+    const lum = 0.2126 * tr + 0.7152 * tg + 0.0722 * tb;
+    const v = quantizeChannel(lum, 2) > 0.5 ? 255 : 0;
+    return { r: v, g: v, b: v };
+  } else if (mode === 'filmcolor') {
+    return nearestFilmColor(Math.round(tr * 255), Math.round(tg * 255), Math.round(tb * 255), filmPalette);
+  } else { // film 1-bit
+    const lum = 0.2126 * tr + 0.7152 * tg + 0.0722 * tb;
+    return lum >= 0.5 ? filmBright : filmDark;
+  }
+}
+
 // ── Ordered dithering ───────────────────────────────────────
 function orderedDither(data, w, h, matrix, matSize, mode, filmPalette, filmDark, filmBright, biasExponent, ditherThreshold) {
   const out = new Uint8ClampedArray(data.length);
   const matMax = matSize * matSize;
+
+  // spread controls how strongly the threshold perturbs the color.
+  // The article uses a fixed additive offset; we expose it via ditherThreshold
+  // mapped to a useful range (0 = no dither, 1 = full spread of ~1 palette step).
+  // A spread of 1/colorLevels is the "correct" amount per the article.
+  const spread = ditherThreshold * 2.0; // 0..2 gives nice range
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const idx = (y * w + x) * 4;
       const r = data[idx], g = data[idx + 1], b = data[idx + 2];
 
-      // Check if pixel is already close enough to snap flat
-      const nearest = quantizePixel(r, g, b, mode, filmPalette, filmDark, filmBright);
-      const dist = colorDist(r, g, b, nearest.r, nearest.g, nearest.b);
+      // Normalized threshold from Bayer matrix (0..1)
+      const threshold = (matrix[y % matSize][x % matSize] + 0.5) / matMax;
 
-      let q;
-      if (dist <= ditherThreshold) {
-        // Close enough — snap flat, no ordered perturbation
-        q = nearest;
-      } else {
-        // Far from palette — apply ordered dithering
-        const threshold = matrix[y % matSize][x % matSize] / matMax;
-        const biasedThreshold = Math.pow(threshold, biasExponent);
-        const perturbation = (biasedThreshold - 0.5) * 255;
-
-        const pr = Math.max(0, Math.min(255, r + perturbation));
-        const pg = Math.max(0, Math.min(255, g + perturbation));
-        const pb = Math.max(0, Math.min(255, b + perturbation));
-        q = quantizePixel(pr, pg, pb, mode, filmPalette, filmDark, filmBright);
-      }
+      const q = orderedQuantize(r, g, b, threshold, spread, mode, filmPalette, filmDark, filmBright);
 
       out[idx]     = q.r;
       out[idx + 1] = q.g;
@@ -341,9 +405,8 @@ function orderedDither(data, w, h, matrix, matSize, mode, filmPalette, filmDark,
 }
 
 // ── Halftone dithering ──────────────────────────────────────
-function halftoneDither(data, w, h, mode, filmPalette, filmDark, filmBright, ditherThreshold) {
+function halftoneDither(data, w, h, mode, filmPalette, filmDark, filmBright, ditherThreshold, cellSize) {
   const out = new Uint8ClampedArray(data.length);
-  const cellSize = 4;
   const halfCell = cellSize / 2;
 
   for (let y = 0; y < h; y++) {
@@ -388,27 +451,6 @@ function halftoneDither(data, w, h, mode, filmPalette, filmDark, filmBright, dit
   return out;
 }
 
-// ── Step 5: Nearest-neighbor upscale ───────────────────────
-function upscale(src, srcW, srcH, dstW, dstH) {
-  const dst = new Uint8ClampedArray(dstW * dstH * 4);
-  const scaleX = srcW / dstW;
-  const scaleY = srcH / dstH;
-
-  for (let dy = 0; dy < dstH; dy++) {
-    for (let dx = 0; dx < dstW; dx++) {
-      const sx = Math.min(Math.floor(dx * scaleX), srcW - 1);
-      const sy = Math.min(Math.floor(dy * scaleY), srcH - 1);
-      const si = (sy * srcW + sx) * 4;
-      const di = (dy * dstW + dx) * 4;
-      dst[di]     = src[si];
-      dst[di + 1] = src[si + 1];
-      dst[di + 2] = src[si + 2];
-      dst[di + 3] = src[si + 3];
-    }
-  }
-  return dst;
-}
-
 // ── Get film dark/bright ────────────────────────────────────
 function getFilmExtremes(palette) {
   if (!palette || palette.length === 0) return [{ r: 0, g: 0, b: 0 }, { r: 255, g: 255, b: 255 }];
@@ -425,7 +467,7 @@ function getFilmExtremes(palette) {
 // ── Main pipeline ───────────────────────────────────────────
 self.onmessage = function(e) {
   const { imageData, width, height, settings, filmPalette } = e.data;
-  const { pixelation, bias, colorMode, ditherType, ditherThreshold } = settings;
+  const { pixelation, bias, colorMode, ditherType, ditherThreshold, halftoneCellSize } = settings;
 
   // Bias exponent
   const biasExponent = Math.log(bias) / Math.log(0.5);
@@ -434,7 +476,7 @@ self.onmessage = function(e) {
   const [filmDark, filmBright] = getFilmExtremes(filmPalette);
 
   // Step 1: Downscale
-  const { data: smallData, width: smallW, height: smallH } = downscale(imageData, width, height, pixelation);
+  const { data: smallData, width: smallW, height: smallH, blockSize } = downscale(imageData, width, height, pixelation);
 
   // Step 2: Bias
   const biasedData = applyBiasToImage(smallData, biasExponent);
@@ -460,7 +502,7 @@ self.onmessage = function(e) {
       case 'bayer8':        matrix = BAYER8;        matSize = 8;  break;
       case 'void-cluster':  matrix = VOID_CLUSTER_16; matSize = 16; break;
       case 'halftone':
-        ditheredData = halftoneDither(biasedData, smallW, smallH, colorMode, filmPalette, filmDark, filmBright, ditherThreshold);
+        ditheredData = halftoneDither(biasedData, smallW, smallH, colorMode, filmPalette, filmDark, filmBright, ditherThreshold, halftoneCellSize || 8);
         break;
       default:              matrix = BAYER4;        matSize = 4;  break;
     }
@@ -475,7 +517,7 @@ self.onmessage = function(e) {
   }
 
   // Step 5: Upscale back to original dimensions
-  const upscaled = upscale(ditheredData, smallW, smallH, width, height);
+  const upscaled = upscale(ditheredData, smallW, smallH, width, height, blockSize);
 
   self.postMessage({ result: upscaled, width, height }, [upscaled.buffer]);
 };
