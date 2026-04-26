@@ -74,10 +74,19 @@
     #menu button:not(:last-child) {
       border-bottom: 1px solid #e5e7eb;
     }
+
+    #selection-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      letter-spacing: 0.03em;
+      min-height: 22px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <div id="selection-label"></div>
     <button id="main-btn" onclick="handleEntrar()">Entrar</button>
     <div id="menu">
       <button onclick="selectOption('Excepción')">Excepción</button>
@@ -97,6 +106,7 @@
     function selectOption(option) {
       entered = true;
       document.getElementById('menu').classList.remove('visible');
+      document.getElementById('selection-label').textContent = option;
       const btn = document.getElementById('main-btn');
       btn.textContent = 'Salir';
       btn.classList.add('salir');
@@ -106,6 +116,7 @@
 
     function handleSalir() {
       entered = false;
+      document.getElementById('selection-label').textContent = '';
       const btn = document.getElementById('main-btn');
       btn.textContent = 'Entrar';
       btn.classList.remove('salir');
