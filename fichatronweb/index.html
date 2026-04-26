@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fichatron</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+      background: #f0f0f0;
+    }
+
+    .container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #main-btn {
+      padding: 14px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      background: #22c55e;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #main-btn.salir {
+      background: #ef4444;
+    }
+
+    #main-btn:active {
+      transform: scale(0.97);
+    }
+
+    #menu {
+      display: none;
+      flex-direction: column;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      overflow: hidden;
+      min-width: 180px;
+    }
+
+    #menu.visible {
+      display: flex;
+    }
+
+    #menu button {
+      padding: 14px 24px;
+      font-size: 16px;
+      border: none;
+      background: white;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+    }
+
+    #menu button:hover {
+      background: #f3f4f6;
+    }
+
+    #menu button:not(:last-child) {
+      border-bottom: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="main-btn" onclick="handleEntrar()">Entrar</button>
+    <div id="menu">
+      <button onclick="selectOption('Excepción')">Excepción</button>
+      <button onclick="selectOption('Oficina')">Oficina</button>
+    </div>
+  </div>
+
+  <script>
+    let entered = false;
+
+    function handleEntrar() {
+      if (!entered) {
+        document.getElementById('menu').classList.add('visible');
+      }
+    }
+
+    function selectOption(option) {
+      entered = true;
+      document.getElementById('menu').classList.remove('visible');
+      const btn = document.getElementById('main-btn');
+      btn.textContent = 'Salir';
+      btn.classList.add('salir');
+      btn.onclick = handleSalir;
+      console.log('Seleccionado:', option);
+    }
+
+    function handleSalir() {
+      entered = false;
+      const btn = document.getElementById('main-btn');
+      btn.textContent = 'Entrar';
+      btn.classList.remove('salir');
+      btn.onclick = handleEntrar;
+    }
+  </script>
+</body>
+</html>
