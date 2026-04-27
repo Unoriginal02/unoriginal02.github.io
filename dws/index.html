@@ -112,6 +112,18 @@
         <button id="prioritizationButton" class="mode-switcher" style="margin-top: 14px;">
             <i class="bi bi-list-task"></i> Prioritization
         </button>
+        <button id="clickupSettingsButton" class="mode-switcher">
+            <i class="bi bi-plug"></i> ClickUp
+        </button>
+        <div id="clickupTokenSection" style="display:none;">
+            <input type="password" id="clickupTokenInput" class="form-control form-control-sm"
+                placeholder="Paste API token here..." autocomplete="off">
+            <button id="saveClickupTokenBtn" class="brutalButton mt-1" style="width:100%;">
+                <i class="bi bi-check-lg" id="saveClickupIcon"></i>
+                <span id="saveClickupLabel">Save token</span>
+            </button>
+            <small id="clickupConnectedInfo" style="display:none; opacity:0.7; margin-top:4px; display:block;"></small>
+        </div>
     </div>
 
     <!-- Time Block Modal -->
@@ -144,11 +156,6 @@
                                     </button>
                                 </div>
                             </div>
-                        </div>
-
-                        <div id="presetListContainer" class="mb-3" style="display:none;">
-                            <label class="form-label">Saved project/task pairs</label>
-                            <div id="presetList" class="list-group"></div>
                         </div>
 
                         <div class="row mb-3">
@@ -201,6 +208,12 @@
                             <span class="btnLabel">Copy Total Time</span>
                         </button>
                     </div>
+                    <div class="modal-copy-row" id="imputarRow" style="display:none;">
+                        <button id="imputarButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-clock-history" id="imputarIcon"></i>
+                            <span class="btnLabel" id="imputarLabel">Imputar horas</span>
+                        </button>
+                    </div>
                     <div class="modal-copy-row">
                         <button id="deleteButton" type="button" class="brutalButton iconBtn" style="display:none;">
                             <i class="bi bi-trash"></i>
@@ -223,6 +236,50 @@
                             <span class="btnLabel">Accept</span>
                         </button>
                     </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Task Picker Modal -->
+    <div class="modal fade" id="taskPickerModal" tabindex="-1" aria-labelledby="taskPickerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskPickerModalLabel">Select Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- 1. Recently used presets -->
+                    <label class="form-label">Recently used</label>
+                    <div id="presetList" class="list-group mb-3"></div>
+
+                    <!-- 2. Fetch by ID/URL (only if configured) -->
+                    <div id="cuFetchRow" class="mb-3" style="display:none;">
+                        <div class="d-flex gap-2">
+                            <input type="text" id="cuFetchInput" class="form-control form-control-sm"
+                                placeholder="Paste task ID or ClickUp URL...">
+                            <button type="button" id="cuFetchBtn" class="brutalButton" title="Fetch from ClickUp">
+                                <i class="bi bi-cloud-download" id="cuFetchIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. My ClickUp Tasks (only if configured) -->
+                    <div id="cuTasksSection" style="display:none;">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label mb-0">My ClickUp Tasks</label>
+                            <button type="button" id="cuRefreshBtn" class="brutalButton"
+                                style="padding:2px 8px; font-size:0.7rem; line-height:1.4;">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </div>
+                        <div id="cuTasksLoading" style="display:none; opacity:0.7; padding:4px 0;">Loading tasks...</div>
+                        <div id="cuTasksList" class="list-group"></div>
+                    </div>
+
                 </div>
             </div>
         </div>

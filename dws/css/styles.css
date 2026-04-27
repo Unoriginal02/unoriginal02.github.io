@@ -571,28 +571,38 @@ table {
     color: #ffffff;
 }
 
-/* Preset list */
-#presetList .project-group-header {
+/* Task picker modal body scroll */
+#taskPickerModal .modal-body {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+/* Shared styles for both preset list and CU task list */
+#presetList .project-group-header,
+#cuTasksList .project-group-header {
     font-size: .75rem;
     font-weight: 700;
     margin-bottom: 6px;
 }
 
-#presetList .list-group-item {
+#presetList .list-group-item,
+#cuTasksList .list-group-item {
     background-color: var(--background-color);
     color: var(--main-color);
     border: 1px solid var(--main-color);
     margin-bottom: -1px;
 }
 
-#presetList .btn {
+#presetList .btn,
+#cuTasksList .btn {
     background-color: transparent;
     color: var(--main-color);
     border: none;
     box-shadow: none;
 }
 
-#presetList .btn:hover { background-color: var(--main-color-hover); }
+#presetList .btn:hover,
+#cuTasksList .btn:hover { background-color: var(--main-color-hover); }
 
 /* Drag handles */
 .drag-handle {

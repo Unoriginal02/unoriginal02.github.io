@@ -5,6 +5,10 @@
 import { DAYS, TIME_SLOT_INTERVAL, COLOR_THEMES, AVAILABLE_COLORS, COLOR_DISPLAY_NAMES } from './config.js';
 import { getAppState, saveAppState } from './db.js';
 import {
+    getApiToken, setApiToken, getSavedUser, initUserAndTeam,
+    isConfigured, fetchTask, fetchAssignedTasks, registerTime, extractTaskId
+} from './clickup.js';
+import {
     timeToMinutes, minutesToTime, addMinutes, generateTimeSlots,
     getRandomArrayItem, toISODateLocal, parseISOToLocalDate,
     startOfWeekMonday, addDays, getCellHeight
@@ -30,6 +34,9 @@ let currentEditingBlock = null;
 let originalCardSignature = null;
 let modalLoggedState = false;
 let selectedDay = null;
+
+// ClickUp state
+let cuTasksCache = null;
 
 // Drag state
 let draggedBlock = null;
@@ -85,9 +92,32 @@ const openTaskLinkButton = document.getElementById('openTaskLinkButton');
 const copyTaskIdButton = document.getElementById('copyTaskIdButton');
 const copyDescriptionButton = document.getElementById('copyDescriptionButton');
 const copyTotalTimeButton = document.getElementById('copyTotalTimeButton');
-const openPresetListButton = document.getElementById('openPresetListButton');
-const presetListContainer = document.getElementById('presetListContainer');
-const presetList = document.getElementById('presetList');
+const openPresetListButton  = document.getElementById('openPresetListButton');
+const presetList            = document.getElementById('presetList');
+const taskPickerModalElement = document.getElementById('taskPickerModal');
+const taskPickerModal        = new bootstrap.Modal(taskPickerModalElement);
+
+const clickupSettingsButton  = document.getElementById('clickupSettingsButton');
+const clickupTokenSection    = document.getElementById('clickupTokenSection');
+const clickupTokenInput      = document.getElementById('clickupTokenInput');
+const saveClickupTokenBtn    = document.getElementById('saveClickupTokenBtn');
+const saveClickupIcon        = document.getElementById('saveClickupIcon');
+const saveClickupLabel       = document.getElementById('saveClickupLabel');
+const clickupConnectedInfo   = document.getElementById('clickupConnectedInfo');
+
+const cuFetchRow     = document.getElementById('cuFetchRow');
+const cuFetchInput   = document.getElementById('cuFetchInput');
+const cuFetchBtn     = document.getElementById('cuFetchBtn');
+const cuFetchIcon    = document.getElementById('cuFetchIcon');
+const cuTasksSection = document.getElementById('cuTasksSection');
+const cuTasksLoading = document.getElementById('cuTasksLoading');
+const cuTasksList    = document.getElementById('cuTasksList');
+const cuRefreshBtn   = document.getElementById('cuRefreshBtn');
+
+const imputarRow    = document.getElementById('imputarRow');
+const imputarButton = document.getElementById('imputarButton');
+const imputarIcon   = document.getElementById('imputarIcon');
+const imputarLabel  = document.getElementById('imputarLabel');
 
 const notifyToggle = document.getElementById('notifyToggle');
 
@@ -540,7 +570,7 @@ function checkConflict(day, start, end, excludeId = null) {
 
 function openModal(block = null, day = null, startTime = null, endTime = null) {
     currentEditingBlock = block;
-    presetListContainer.style.display = 'none';
+    taskPickerModal.hide();
 
     if (block) {
         modalStartTime.value = block.start;
@@ -575,6 +605,13 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
     }
 
     loggedToggleButton.classList.toggle('logged-active', modalLoggedState);
+
+    const showImputar = isConfigured() && !!(block?.taskId);
+    imputarRow.style.display = showImputar ? 'flex' : 'none';
+    imputarIcon.className = 'bi bi-clock-history';
+    imputarLabel.textContent = 'Imputar horas';
+    imputarButton.disabled = false;
+
     timeBlockModal.show();
 }
 
@@ -786,6 +823,245 @@ function openTaskLink() {
     const taskId = (modalTaskId.value || '').trim();
     if (!taskId) { alert('Please enter a Task ID first.'); return; }
     window.open(`https://app.clickup.com/t/${encodeURIComponent(taskId)}`, '_blank', 'noopener,noreferrer');
+}
+
+// ── ClickUp integration ────────────────────────────────────────
+
+function updateClickUpUI() {
+    const user = getSavedUser();
+    if (user) {
+        clickupSettingsButton.innerHTML = `<i class="bi bi-plug-fill"></i> ${user.userName}`;
+        clickupConnectedInfo.textContent = `Connected as ${user.userName}`;
+        clickupConnectedInfo.style.display = 'block';
+    } else {
+        clickupSettingsButton.innerHTML = '<i class="bi bi-plug"></i> ClickUp';
+        clickupConnectedInfo.style.display = 'none';
+    }
+    const configured = isConfigured();
+    cuFetchRow.style.display     = configured ? 'block' : 'none';
+    cuTasksSection.style.display = configured ? 'block' : 'none';
+}
+
+async function cuFetchFromPreset() {
+    const raw = cuFetchInput.value.trim();
+    if (!raw) { alert('Paste a task ID or ClickUp URL first.'); return; }
+
+    cuFetchIcon.className = 'bi bi-hourglass-split';
+    cuFetchBtn.disabled = true;
+
+    try {
+        const task = await fetchTask(raw, getApiToken());
+        modalProjectName.value = task.list?.name || task.space?.name || '';
+        modalTaskName.value    = task.name || '';
+        modalTaskId.value      = task.id;
+        cuFetchInput.value     = '';
+        taskPickerModal.hide();
+        modalProjectName.focus();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        cuFetchIcon.className = 'bi bi-cloud-download';
+        cuFetchBtn.disabled = false;
+    }
+}
+
+function makeCuOpenLink(taskId, taskUrl) {
+    const a = document.createElement('a');
+    a.href = taskUrl || `https://app.clickup.com/t/${taskId}`;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.className = 'btn btn-sm px-1';
+    a.innerHTML = '<i class="bi bi-box-arrow-up-right" style="font-size:0.7rem;opacity:0.6;"></i>';
+    a.title = 'Open in ClickUp';
+    a.addEventListener('click', e => e.stopPropagation());
+    return a;
+}
+
+function renderCuTasks(tasks) {
+    cuTasksList.innerHTML = '';
+    if (!tasks.length) {
+        const empty = document.createElement('div');
+        empty.className = 'list-group-item';
+        empty.style.fontSize = '0.8rem';
+        empty.textContent = 'No open tasks assigned to you.';
+        cuTasksList.appendChild(empty);
+        return;
+    }
+
+    // Separate subtasks from parents
+    const subtasksByParent = {};
+    const parentTasks = [];
+    tasks.forEach(task => {
+        if (task.parent) {
+            if (!subtasksByParent[task.parent]) subtasksByParent[task.parent] = [];
+            subtasksByParent[task.parent].push(task);
+        } else {
+            parentTasks.push(task);
+        }
+    });
+
+    // Group parents by list
+    const groups = {};
+    parentTasks.forEach(task => {
+        const key = task.list?.name || 'No List';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(task);
+    });
+
+    Object.entries(groups).forEach(([listName, listTasks]) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'list-group-item preset-project-group';
+
+        const header = document.createElement('div');
+        header.className = 'project-group-header d-flex align-items-center gap-1';
+
+        const headerLabel = document.createElement('span');
+        headerLabel.className = 'flex-grow-1';
+        headerLabel.textContent = listName;
+        header.appendChild(headerLabel);
+
+        const listId = listTasks[0]?.list?.id;
+        if (listId) {
+            const teamId = getSavedUser()?.teamId;
+            const listLink = document.createElement('a');
+            listLink.href = teamId
+                ? `https://app.clickup.com/${teamId}/v/li/${listId}`
+                : `https://app.clickup.com/t/li/${listId}`;
+            listLink.target = '_blank';
+            listLink.rel = 'noopener noreferrer';
+            listLink.className = 'btn btn-sm px-1';
+            listLink.innerHTML = '<i class="bi bi-box-arrow-up-right" style="font-size:0.7rem;opacity:0.6;"></i>';
+            listLink.title = 'Open list in ClickUp';
+            listLink.addEventListener('click', e => e.stopPropagation());
+            header.appendChild(listLink);
+        }
+
+        wrapper.appendChild(header);
+
+        listTasks.forEach(task => {
+            const row = document.createElement('div');
+            row.className = 'project-task-row d-flex align-items-center gap-2 py-1';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm flex-grow-1 text-start';
+            btn.textContent = task.name;
+            btn.addEventListener('click', () => {
+                modalProjectName.value = listName;
+                modalTaskName.value    = task.name;
+                modalTaskId.value      = task.id;
+                taskPickerModal.hide();
+            });
+
+            row.appendChild(btn);
+            row.appendChild(makeCuOpenLink(task.id, task.url));
+            wrapper.appendChild(row);
+
+            // Subtask rows indented under the parent
+            (subtasksByParent[task.id] || []).forEach(sub => {
+                const subRow = document.createElement('div');
+                subRow.className = 'project-task-row d-flex align-items-center gap-2 py-1';
+                subRow.style.paddingLeft = '1.25rem';
+
+                const subBtn = document.createElement('button');
+                subBtn.type = 'button';
+                subBtn.className = 'btn btn-sm flex-grow-1 text-start';
+                subBtn.style.fontSize = '0.85em';
+                subBtn.textContent = `↳ ${sub.name}`;
+                subBtn.addEventListener('click', () => {
+                    modalProjectName.value = listName;
+                    modalTaskName.value    = sub.name;
+                    modalTaskId.value      = sub.id;
+                    taskPickerModal.hide();
+                });
+
+                subRow.appendChild(subBtn);
+                subRow.appendChild(makeCuOpenLink(sub.id, sub.url));
+                wrapper.appendChild(subRow);
+            });
+        });
+
+        cuTasksList.appendChild(wrapper);
+    });
+}
+
+async function loadCuTasks(force = false) {
+    if (!isConfigured()) return;
+    if (!force && cuTasksCache !== null) { renderCuTasks(cuTasksCache); return; }
+
+    cuTasksLoading.style.display = 'block';
+    cuTasksList.innerHTML = '';
+
+    try {
+        const user = getSavedUser();
+        const tasks = await fetchAssignedTasks(getApiToken(), user.teamId, user.userId);
+        cuTasksCache = tasks;
+        renderCuTasks(tasks);
+    } catch (err) {
+        cuTasksList.innerHTML = `<div class="list-group-item" style="color:var(--button-active-color);font-size:0.8rem;">${err.message}</div>`;
+    } finally {
+        cuTasksLoading.style.display = 'none';
+    }
+}
+
+async function imputarHoras() {
+    if (!currentEditingBlock?.taskId || !isConfigured()) return;
+
+    const taskId = currentEditingBlock.taskId.trim();
+    const day    = currentEditingBlock.day;
+
+    const relatedBlocks = schedule.filter(b =>
+        b.day === day && (b.taskId || '').trim() === taskId
+    );
+
+    const totalMinutes = relatedBlocks.reduce(
+        (sum, b) => sum + Math.max(0, timeToMinutes(b.end) - timeToMinutes(b.start)), 0
+    );
+    if (totalMinutes === 0) { alert('No time to register.'); return; }
+
+    const earliest = [...relatedBlocks].sort(
+        (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
+    )[0];
+
+    const dayIndex  = DAYS.indexOf(day);
+    const monday    = parseISOToLocalDate(weekMondayISO);
+    const blockDate = addDays(monday, dayIndex);
+    const [h, m]    = earliest.start.split(':').map(Number);
+    blockDate.setHours(h, m, 0, 0);
+    const startTs    = blockDate.getTime();
+    const durationMs = totalMinutes * 60 * 1000;
+    const description = currentEditingBlock.description || '';
+    const user = getSavedUser();
+
+    imputarIcon.className = 'bi bi-hourglass-split';
+    imputarButton.disabled = true;
+
+    let success = false;
+    try {
+        await registerTime(getApiToken(), taskId, startTs, durationMs, description, user?.userId);
+        success = true;
+        relatedBlocks.forEach(b => { b.logged = true; });
+        if (currentEditingBlock) currentEditingBlock.logged = true;
+        loggedToggleButton.classList.add('logged-active');
+        modalLoggedState = true;
+        saveSchedule();
+        renderSchedule();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        if (success) {
+            imputarIcon.className = 'bi bi-check-circle';
+            imputarLabel.textContent = 'Imputado!';
+            setTimeout(() => {
+                imputarIcon.className = 'bi bi-clock-history';
+                imputarLabel.textContent = 'Imputar horas';
+                imputarButton.disabled = false;
+            }, 2500);
+        } else {
+            imputarIcon.className = 'bi bi-clock-history';
+            imputarButton.disabled = false;
+        }
+    }
 }
 
 // ── Export / Import ───────────────────────────────────────────
@@ -1027,7 +1303,7 @@ function renderPresetList() {
     if (!projectTaskPresets.length) {
         const empty = document.createElement('div');
         empty.className = 'list-group-item';
-        empty.textContent = 'No saved project/task pairs yet.';
+        empty.textContent = 'No recently used tasks yet.';
         presetList.appendChild(empty);
         return;
     }
@@ -1153,7 +1429,7 @@ function renderPresetList() {
                 modalProjectName.value = taskPreset.projectName || '';
                 modalTaskName.value = taskPreset.taskName || '';
                 modalTaskId.value = taskPreset.taskId || '';
-                presetListContainer.style.display = 'none';
+                taskPickerModal.hide();
             });
 
             const delBtn = document.createElement('button');
@@ -1171,6 +1447,17 @@ function renderPresetList() {
 
             row.appendChild(taskHandle);
             row.appendChild(fillBtn);
+            if (taskPreset.taskId) {
+                const linkBtn = document.createElement('a');
+                linkBtn.href = `https://app.clickup.com/t/${taskPreset.taskId}`;
+                linkBtn.target = '_blank';
+                linkBtn.rel = 'noopener noreferrer';
+                linkBtn.className = 'btn btn-sm px-1';
+                linkBtn.innerHTML = '<i class="bi bi-box-arrow-up-right" style="font-size:0.7rem;opacity:0.6;"></i>';
+                linkBtn.title = 'Open in ClickUp';
+                linkBtn.addEventListener('click', e => e.stopPropagation());
+                row.appendChild(linkBtn);
+            }
             row.appendChild(delBtn);
             wrapper.appendChild(row);
 
@@ -1277,14 +1564,10 @@ function renderPresetList() {
     presetList.appendChild(finalDropZone);
 }
 
-function togglePresetList() {
-    const isOpen = presetListContainer.style.display === 'block';
-    if (isOpen) {
-        presetListContainer.style.display = 'none';
-    } else {
-        renderPresetList();
-        presetListContainer.style.display = 'block';
-    }
+function openTaskPicker() {
+    renderPresetList();
+    taskPickerModal.show();
+    if (isConfigured()) loadCuTasks();
 }
 
 // ── Prioritization panel ──────────────────────────────────────
@@ -1417,7 +1700,7 @@ copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
 copyTotalTimeButton.addEventListener('click', copyTotalTimeForSameTaskSameDay);
 importCardButton.addEventListener('click', importCardFromClipboard);
 openTaskLinkButton.addEventListener('click', openTaskLink);
-openPresetListButton.addEventListener('click', togglePresetList);
+openPresetListButton.addEventListener('click', openTaskPicker);
 
 prioTextareas.forEach(t => {
     t.addEventListener('input', () => saveSchedule());
@@ -1453,6 +1736,43 @@ modalProjectName.addEventListener('keydown', e => {
 
 notifyToggle.addEventListener('change', handleNotificationToggle);
 
+clickupSettingsButton.addEventListener('click', () => {
+    const isOpen = clickupTokenSection.style.display !== 'none';
+    clickupTokenSection.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+        clickupTokenInput.value = getApiToken();
+        clickupTokenInput.focus();
+    }
+});
+
+saveClickupTokenBtn.addEventListener('click', async () => {
+    const token = clickupTokenInput.value.trim();
+    if (!token) return;
+
+    saveClickupIcon.className = 'bi bi-hourglass-split';
+    saveClickupLabel.textContent = 'Connecting...';
+    saveClickupTokenBtn.disabled = true;
+
+    try {
+        setApiToken(token);
+        await initUserAndTeam(token);
+        updateClickUpUI();
+        cuTasksCache = null;
+        clickupTokenSection.style.display = 'none';
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        saveClickupIcon.className = 'bi bi-check-lg';
+        saveClickupLabel.textContent = 'Save token';
+        saveClickupTokenBtn.disabled = false;
+    }
+});
+
+cuFetchBtn.addEventListener('click', cuFetchFromPreset);
+cuFetchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cuFetchFromPreset(); } });
+cuRefreshBtn.addEventListener('click', () => { cuTasksCache = null; loadCuTasks(true); });
+imputarButton.addEventListener('click', imputarHoras);
+
 document.addEventListener('mouseup', onMouseUpDocument);
 
 window.addEventListener('resize', () => {
@@ -1469,4 +1789,5 @@ window.addEventListener('resize', () => {
     switchTheme(currentTheme);
     setInterval(updateCurrentTimeLine, 60_000);
     updateCurrentTimeLine();
+    updateClickUpUI();
 })();
