@@ -148,7 +148,12 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-12">
-                                <label for="modalProjectName" class="form-label">Project Name</label>
+                                <label for="modalProjectName" class="form-label d-flex align-items-center gap-2">
+                                    Project Name
+                                    <button type="button" id="toggleProjectNameBtn" class="btn btn-sm p-0 lh-1 visibility-toggle" title="Toggle project name in timetable">
+                                        <i id="toggleProjectNameIcon" class="bi bi-eye"></i>
+                                    </button>
+                                </label>
                                 <div class="d-flex gap-2">
                                     <input type="text" id="modalProjectName" class="form-control">
                                     <button type="button" id="openPresetListButton" class="brutalButton" title="Open saved project/task pairs">
@@ -160,7 +165,12 @@
 
                         <div class="row mb-3">
                             <div class="col-6">
-                                <label for="modalTaskName" class="form-label">Task Name</label>
+                                <label for="modalTaskName" class="form-label d-flex align-items-center gap-2">
+                                    Task Name
+                                    <button type="button" id="toggleTaskNameBtn" class="btn btn-sm p-0 lh-1 visibility-toggle" title="Toggle task name in timetable">
+                                        <i id="toggleTaskNameIcon" class="bi bi-eye"></i>
+                                    </button>
+                                </label>
                                 <input type="text" id="modalTaskName" class="form-control">
                             </div>
                             <div class="col-6">

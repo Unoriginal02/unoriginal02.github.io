@@ -643,3 +643,15 @@ table {
 
 /* Make project header draggable cursor */
 #presetList .project-group-header { cursor: default; }
+
+/* Visibility toggle buttons in modal labels */
+.visibility-toggle {
+    opacity: 0.45;
+    line-height: 1;
+    font-size: 0.85rem;
+    transition: opacity 0.15s;
+    color: inherit;
+    background: none;
+    border: none;
+}
+.visibility-toggle:hover { opacity: 1; }
