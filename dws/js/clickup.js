@@ -92,8 +92,8 @@ export async function fetchAssignedTasks(token, teamId, userId) {
     return all;
 }
 
-export async function registerTime(token, taskId, startTimestamp, durationMs, description, userId) {
-    const body = { start: startTimestamp, duration: durationMs, description: description || '' };
+export async function registerTime(token, taskId, teamId, startTimestamp, durationMs, description, userId) {
+    const body = { tid: taskId, start: startTimestamp, duration: durationMs, description: description || '' };
     if (userId) body.assignee = userId;
-    return apiPost(`/task/${encodeURIComponent(taskId)}/time`, body, token);
+    return apiPost(`/team/${encodeURIComponent(teamId)}/time_entries`, body, token);
 }

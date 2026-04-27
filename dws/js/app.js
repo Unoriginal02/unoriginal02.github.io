@@ -1038,7 +1038,7 @@ async function imputarHoras() {
 
     let success = false;
     try {
-        await registerTime(getApiToken(), taskId, startTs, durationMs, description, user?.userId);
+        await registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, description, user?.userId);
         success = true;
         relatedBlocks.forEach(b => { b.logged = true; });
         if (currentEditingBlock) currentEditingBlock.logged = true;
