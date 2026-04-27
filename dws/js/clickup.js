@@ -66,7 +66,8 @@ export async function fetchAssignedTasks(token, teamId, userId) {
     // 1. Parent tasks directly assigned to user
     const params = `assignees[]=${userId}&include_closed=false&page=0`;
     const data = await apiGet(`/team/${teamId}/task?${params}`, token);
-    const parentTasks = (data.tasks || []).filter(t => t.status?.type !== 'closed');
+    const isActive = t => t.status?.type !== 'closed' && t.status?.type !== 'done';
+    const parentTasks = (data.tasks || []).filter(isActive);
 
     // 2. Fetch subtasks for all parent tasks in parallel
     //    (subtask_count is unreliable in the list response, so we check all)
@@ -75,7 +76,7 @@ export async function fetchAssignedTasks(token, teamId, userId) {
             .map(task =>
                 apiGet(`/team/${teamId}/task?parent=${task.id}&include_closed=false`, token)
                     .then(d => (d.tasks || [])
-                        .filter(s => s.status?.type !== 'closed')
+                        .filter(isActive)
                         .map(s => ({ ...s, list: s.list || task.list }))
                     )
                     .catch(() => [])
