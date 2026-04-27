@@ -114,10 +114,13 @@ const cuTasksLoading = document.getElementById('cuTasksLoading');
 const cuTasksList    = document.getElementById('cuTasksList');
 const cuRefreshBtn   = document.getElementById('cuRefreshBtn');
 
-const imputarRow    = document.getElementById('imputarRow');
-const imputarButton = document.getElementById('imputarButton');
-const imputarIcon   = document.getElementById('imputarIcon');
-const imputarLabel  = document.getElementById('imputarLabel');
+const imputarRow             = document.getElementById('imputarRow');
+const imputarButton          = document.getElementById('imputarButton');
+const imputarIcon            = document.getElementById('imputarIcon');
+const imputarLabel           = document.getElementById('imputarLabel');
+const imputarGranularButton  = document.getElementById('imputarGranularButton');
+const imputarGranularIcon    = document.getElementById('imputarGranularIcon');
+const imputarGranularLabel   = document.getElementById('imputarGranularLabel');
 
 const notifyToggle = document.getElementById('notifyToggle');
 
@@ -608,9 +611,12 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
 
     const showImputar = isConfigured() && !!(block?.taskId);
     imputarRow.style.display = showImputar ? 'flex' : 'none';
-    imputarIcon.className = 'bi bi-clock-history';
-    imputarLabel.textContent = 'Imputar horas';
+    imputarIcon.className = 'bi bi-layers';
+    imputarLabel.textContent = 'Imputar bloque';
     imputarButton.disabled = false;
+    imputarGranularIcon.className = 'bi bi-card-checklist';
+    imputarGranularLabel.textContent = 'Imputar granular';
+    imputarGranularButton.disabled = false;
 
     timeBlockModal.show();
 }
@@ -1053,13 +1059,67 @@ async function imputarHoras() {
             imputarIcon.className = 'bi bi-check-circle';
             imputarLabel.textContent = 'Imputado!';
             setTimeout(() => {
-                imputarIcon.className = 'bi bi-clock-history';
-                imputarLabel.textContent = 'Imputar horas';
+                imputarIcon.className = 'bi bi-layers';
+                imputarLabel.textContent = 'Imputar bloque';
                 imputarButton.disabled = false;
             }, 2500);
         } else {
-            imputarIcon.className = 'bi bi-clock-history';
+            imputarIcon.className = 'bi bi-layers';
             imputarButton.disabled = false;
+        }
+    }
+}
+
+async function imputarGranular() {
+    if (!currentEditingBlock?.taskId || !isConfigured()) return;
+
+    const taskId = currentEditingBlock.taskId.trim();
+    const day    = currentEditingBlock.day;
+    const user   = getSavedUser();
+
+    const relatedBlocks = schedule.filter(b =>
+        b.day === day && (b.taskId || '').trim() === taskId
+    );
+    if (!relatedBlocks.length) { alert('No time to register.'); return; }
+
+    imputarGranularIcon.className = 'bi bi-hourglass-split';
+    imputarGranularButton.disabled = true;
+
+    const dayIndex = DAYS.indexOf(day);
+    const monday   = parseISOToLocalDate(weekMondayISO);
+    const baseDate = addDays(monday, dayIndex);
+
+    let success = false;
+    try {
+        await Promise.all(relatedBlocks.map(block => {
+            const [h, m] = block.start.split(':').map(Number);
+            const d = new Date(baseDate);
+            d.setHours(h, m, 0, 0);
+            const startTs    = d.getTime();
+            const durationMs = (timeToMinutes(block.end) - timeToMinutes(block.start)) * 60 * 1000;
+            return registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, block.description || '', user?.userId);
+        }));
+        success = true;
+        relatedBlocks.forEach(b => { b.logged = true; });
+        if (currentEditingBlock) currentEditingBlock.logged = true;
+        loggedToggleButton.classList.add('logged-active');
+        modalLoggedState = true;
+        saveSchedule();
+        renderSchedule();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        if (success) {
+            imputarGranularIcon.className = 'bi bi-check-circle';
+            imputarGranularLabel.textContent = 'Imputado!';
+            setTimeout(() => {
+                imputarGranularIcon.className = 'bi bi-card-checklist';
+                imputarGranularLabel.textContent = 'Imputar granular';
+                imputarGranularButton.disabled = false;
+            }, 2500);
+        } else {
+            imputarGranularIcon.className = 'bi bi-card-checklist';
+            imputarGranularButton.disabled = false;
         }
     }
 }
@@ -1772,6 +1832,7 @@ cuFetchBtn.addEventListener('click', cuFetchFromPreset);
 cuFetchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cuFetchFromPreset(); } });
 cuRefreshBtn.addEventListener('click', () => { cuTasksCache = null; loadCuTasks(true); });
 imputarButton.addEventListener('click', imputarHoras);
+imputarGranularButton.addEventListener('click', imputarGranular);
 
 document.addEventListener('mouseup', onMouseUpDocument);
 
