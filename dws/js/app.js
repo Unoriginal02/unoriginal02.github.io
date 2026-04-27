@@ -38,10 +38,6 @@ let selectedDay = null;
 // ClickUp state
 let cuTasksCache = null;
 
-// Visibility toggles (persisted in localStorage)
-let showProjectName = localStorage.getItem('dws_show_project_name') !== 'false';
-let showTaskName    = localStorage.getItem('dws_show_task_name')    !== 'false';
-
 // Drag state
 let draggedBlock = null;
 let dragStartOffsetMinutes = 0;
@@ -127,11 +123,6 @@ const imputarGranularIcon    = document.getElementById('imputarGranularIcon');
 const imputarGranularLabel   = document.getElementById('imputarGranularLabel');
 
 const notifyToggle = document.getElementById('notifyToggle');
-
-const toggleProjectNameBtn  = document.getElementById('toggleProjectNameBtn');
-const toggleProjectNameIcon = document.getElementById('toggleProjectNameIcon');
-const toggleTaskNameBtn     = document.getElementById('toggleTaskNameBtn');
-const toggleTaskNameIcon    = document.getElementById('toggleTaskNameIcon');
 
 const prioritizationButton = document.getElementById('prioritizationButton');
 const prioritizationPanel = document.getElementById('prioritizationPanel');
@@ -410,7 +401,7 @@ function renderSchedule() {
         blockDiv.appendChild(bottomHandle);
 
         // Content
-        if (showProjectName && block.projectName) {
+        if (block.projectName) {
             const el = document.createElement('div');
             el.style.fontWeight = 'bold';
             el.textContent = block.projectName;
@@ -418,7 +409,7 @@ function renderSchedule() {
         }
 
         const durationMin = timeToMinutes(block.end) - timeToMinutes(block.start);
-        if (durationMin > 15 && showTaskName && block.taskName) {
+        if (durationMin > 15 && block.taskName) {
             const el = document.createElement('div');
             el.textContent = block.taskName;
             blockDiv.appendChild(el);
@@ -1719,27 +1710,6 @@ function handleModalKeyDown(e) {
     }
 }
 
-// ── Visibility toggles ────────────────────────────────────────
-
-function syncVisibilityIcons() {
-    toggleProjectNameIcon.className = showProjectName ? 'bi bi-eye' : 'bi bi-eye-slash';
-    toggleTaskNameIcon.className    = showTaskName    ? 'bi bi-eye' : 'bi bi-eye-slash';
-}
-
-toggleProjectNameBtn.addEventListener('click', () => {
-    showProjectName = !showProjectName;
-    localStorage.setItem('dws_show_project_name', showProjectName);
-    syncVisibilityIcons();
-    renderSchedule();
-});
-
-toggleTaskNameBtn.addEventListener('click', () => {
-    showTaskName = !showTaskName;
-    localStorage.setItem('dws_show_task_name', showTaskName);
-    syncVisibilityIcons();
-    renderSchedule();
-});
-
 // ── Event listeners ───────────────────────────────────────────
 
 startTimeInput.addEventListener('change', () => {
@@ -1881,5 +1851,4 @@ window.addEventListener('resize', () => {
     setInterval(updateCurrentTimeLine, 60_000);
     updateCurrentTimeLine();
     updateClickUpUI();
-    syncVisibilityIcons();
 })();
