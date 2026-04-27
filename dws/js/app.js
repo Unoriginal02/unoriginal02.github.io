@@ -612,10 +612,10 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
     const showImputar = isConfigured() && !!(block?.taskId);
     imputarRow.style.display = showImputar ? 'flex' : 'none';
     imputarIcon.className = 'bi bi-layers';
-    imputarLabel.textContent = 'Imputar bloque';
+    imputarLabel.textContent = 'Block Log';
     imputarButton.disabled = false;
     imputarGranularIcon.className = 'bi bi-card-checklist';
-    imputarGranularLabel.textContent = 'Imputar granular';
+    imputarGranularLabel.textContent = 'Granular Log';
     imputarGranularButton.disabled = false;
 
     timeBlockModal.show();
@@ -1057,10 +1057,10 @@ async function imputarHoras() {
     } finally {
         if (success) {
             imputarIcon.className = 'bi bi-check-circle';
-            imputarLabel.textContent = 'Imputado!';
+            imputarLabel.textContent = 'Logged!';
             setTimeout(() => {
                 imputarIcon.className = 'bi bi-layers';
-                imputarLabel.textContent = 'Imputar bloque';
+                imputarLabel.textContent = 'Block Log';
                 imputarButton.disabled = false;
             }, 2500);
         } else {
@@ -1111,10 +1111,10 @@ async function imputarGranular() {
     } finally {
         if (success) {
             imputarGranularIcon.className = 'bi bi-check-circle';
-            imputarGranularLabel.textContent = 'Imputado!';
+            imputarGranularLabel.textContent = 'Logged!';
             setTimeout(() => {
                 imputarGranularIcon.className = 'bi bi-card-checklist';
-                imputarGranularLabel.textContent = 'Imputar granular';
+                imputarGranularLabel.textContent = 'Granular Log';
                 imputarGranularButton.disabled = false;
             }, 2500);
         } else {
