@@ -555,6 +555,24 @@ table {
     white-space: nowrap;
 }
 
+/* Visibility toggle */
+.visibility-toggle {
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    opacity: 0.6;
+    border: none;
+    background: transparent;
+}
+
+.visibility-toggle:hover {
+    opacity: 1;
+    background: transparent;
+}
+
+.visibility-toggle.visibility-hidden {
+    opacity: 1;
+}
+
 /* Logged state */
 .logged-active {
     background-color: #198754;

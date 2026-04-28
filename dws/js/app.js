@@ -33,6 +33,8 @@ let notificationsEnabled = false;
 let currentEditingBlock = null;
 let originalCardSignature = null;
 let modalLoggedState = false;
+let modalShowProjectName = true;
+let modalShowTaskName = true;
 let selectedDay = null;
 
 // ClickUp state
@@ -83,11 +85,11 @@ const modalTaskId = document.getElementById('modalTaskId');
 const modalDescription = document.getElementById('modalDescription');
 const modalColor = document.getElementById('modalColor');
 const loggedToggleButton = document.getElementById('loggedToggleButton');
+const toggleProjectNameButton = document.getElementById('toggleProjectNameButton');
+const toggleTaskNameButton = document.getElementById('toggleTaskNameButton');
 const acceptButton = document.getElementById('acceptButton');
 const deleteButton = document.getElementById('deleteButton');
-const copyButton = document.getElementById('copyButton');
 const syncCardButton = document.getElementById('syncCardButton');
-const importCardButton = document.getElementById('importCardButton');
 const openTaskLinkButton = document.getElementById('openTaskLinkButton');
 const copyTaskIdButton = document.getElementById('copyTaskIdButton');
 const copyDescriptionButton = document.getElementById('copyDescriptionButton');
@@ -401,7 +403,7 @@ function renderSchedule() {
         blockDiv.appendChild(bottomHandle);
 
         // Content
-        if (block.projectName) {
+        if (block.projectName && block.showProjectName !== false) {
             const el = document.createElement('div');
             el.style.fontWeight = 'bold';
             el.textContent = block.projectName;
@@ -409,7 +411,7 @@ function renderSchedule() {
         }
 
         const durationMin = timeToMinutes(block.end) - timeToMinutes(block.start);
-        if (durationMin > 15 && block.taskName) {
+        if (durationMin > 15 && block.taskName && block.showTaskName !== false) {
             const el = document.createElement('div');
             el.textContent = block.taskName;
             blockDiv.appendChild(el);
@@ -584,6 +586,8 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
         modalDescription.value = block.description || '';
         modalColor.value = block.colorName;
         modalLoggedState = block.logged === true;
+        modalShowProjectName = block.showProjectName !== false;
+        modalShowTaskName = block.showTaskName !== false;
         deleteButton.style.display = 'inline-flex';
         syncCardButton.style.display = 'inline-flex';
         originalCardSignature = {
@@ -602,12 +606,16 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
         modalDescription.value = '-';
         modalColor.value = getAutoColorForNewBlock(day, modalStartTime.value);
         modalLoggedState = false;
+        modalShowProjectName = true;
+        modalShowTaskName = true;
         deleteButton.style.display = 'none';
         syncCardButton.style.display = 'none';
         originalCardSignature = null;
     }
 
     loggedToggleButton.classList.toggle('logged-active', modalLoggedState);
+    updateVisibilityToggle(toggleProjectNameButton, modalShowProjectName);
+    updateVisibilityToggle(toggleTaskNameButton, modalShowTaskName);
 
     const showImputar = isConfigured() && !!(block?.taskId);
     imputarRow.style.display = showImputar ? 'flex' : 'none';
@@ -637,6 +645,8 @@ function saveBlock() {
     const description = modalDescription.value.trim();
     const colorName = modalColor.value;
     const logged = modalLoggedState;
+    const showProjectName = modalShowProjectName;
+    const showTaskName = modalShowTaskName;
 
     if (timeToMinutes(end) <= timeToMinutes(start)) {
         alert('End time must be after start time.');
@@ -649,9 +659,9 @@ function saveBlock() {
     }
 
     if (currentEditingBlock) {
-        Object.assign(currentEditingBlock, { projectName, taskName, taskId, description, colorName, logged, start, end });
+        Object.assign(currentEditingBlock, { projectName, taskName, taskId, description, colorName, logged, showProjectName, showTaskName, start, end });
     } else {
-        schedule.push({ id: Date.now(), day, start, end, projectName, taskName, taskId, description, colorName, logged });
+        schedule.push({ id: Date.now(), day, start, end, projectName, taskName, taskId, description, colorName, logged, showProjectName, showTaskName });
     }
 
     saveProjectTaskPreset({ projectName, taskName, taskId }, saveSchedule);
@@ -731,6 +741,23 @@ function toggleLoggedState() {
         renderSchedule();
     }
 }
+
+// ── Visibility toggles ────────────────────────────────────────
+
+function updateVisibilityToggle(btn, isVisible) {
+    btn.querySelector('i').className = isVisible ? 'bi bi-eye' : 'bi bi-eye-slash';
+    btn.classList.toggle('visibility-hidden', !isVisible);
+}
+
+toggleProjectNameButton.addEventListener('click', () => {
+    modalShowProjectName = !modalShowProjectName;
+    updateVisibilityToggle(toggleProjectNameButton, modalShowProjectName);
+});
+
+toggleTaskNameButton.addEventListener('click', () => {
+    modalShowTaskName = !modalShowTaskName;
+    updateVisibilityToggle(toggleTaskNameButton, modalShowTaskName);
+});
 
 // ── Clipboard actions ─────────────────────────────────────────
 
@@ -1754,11 +1781,9 @@ acceptButton.addEventListener('click', saveBlock);
 deleteButton.addEventListener('click', deleteBlock);
 syncCardButton.addEventListener('click', syncCard);
 loggedToggleButton.addEventListener('click', toggleLoggedState);
-copyButton.addEventListener('click', copyCard);
 copyTaskIdButton.addEventListener('click', copyTaskId);
 copyDescriptionButton.addEventListener('click', copyDescriptionOnly);
 copyTotalTimeButton.addEventListener('click', copyTotalTimeForSameTaskSameDay);
-importCardButton.addEventListener('click', importCardFromClipboard);
 openTaskLinkButton.addEventListener('click', openTaskLink);
 openPresetListButton.addEventListener('click', openTaskPicker);
 
