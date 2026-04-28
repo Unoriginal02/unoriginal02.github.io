@@ -221,34 +221,6 @@ table {
     pointer-events: none;
 }
 
-/* Totals section */
-.totals-and-buttons {
-    padding: 1rem;
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-    background-color: var(--background-color);
-    text-align: center;
-}
-
-.totals-table {
-    width: 100%;
-    margin-bottom: 1rem;
-    border-collapse: collapse;
-}
-
-.totals-table th,
-.totals-table td {
-    color: var(--main-color);
-    border: 1px solid var(--main-color);
-    padding: 0.5rem;
-    text-align: center;
-}
-
-.total-week-hours {
-    margin-top: 1rem;
-    font-weight: bold;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -336,7 +308,13 @@ table {
 
 .list-group { border-radius: 0rem; }
 
-.time-block:hover { opacity: 0.9; }
+.time-block:hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+}
 
 /* Resize Handles */
 .time-block .resize-handle {

@@ -37,8 +37,7 @@ export function scheduleNextNotification(schedule, notificationsEnabled) {
     // Milliseconds from now until 1 minute before the task starts
     const nowMs = currentMinutes * 60_000 + now.getSeconds() * 1000 + now.getMilliseconds();
     const targetMs = (timeToMinutes(nextTask.start) - 1) * 60_000;
-    let delay = targetMs - nowMs;
-    if (delay < 0) delay += 24 * 60 * 60_000;
+    const delay = Math.max(0, targetMs - nowMs);
 
     notificationTimeout = setTimeout(() => {
         showNotification(nextTask);

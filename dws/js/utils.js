@@ -18,12 +18,6 @@ export function addMinutes(timeStr, mins) {
     return minutesToTime(total);
 }
 
-export function minutesToHMMh(totalMinutes) {
-    const mins = Math.max(0, Math.round(totalMinutes));
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h}:${String(m).padStart(2, '0')}h`;
-}
 
 export function generateTimeSlots(start, end, interval) {
     const slots = [];
@@ -40,10 +34,6 @@ export function getRandomArrayItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function isoTodayLocal() {
-    const d = new Date();
-    return toISODateLocal(d);
-}
 
 export function toISODateLocal(dateObj) {
     const yyyy = dateObj.getFullYear();
@@ -72,12 +62,6 @@ export function addDays(dateObj, daysToAdd) {
     return d;
 }
 
-export function formatDateDMY(dateObj) {
-    const dd = String(dateObj.getDate()).padStart(2, '0');
-    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const yyyy = dateObj.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-}
 
 export function alphaCompare(a, b) {
     return (a || '').localeCompare(b || '', undefined, { sensitivity: 'base', numeric: true });
@@ -91,22 +75,3 @@ export function getCellHeight() {
     return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-height')) || 24;
 }
 
-export function getHoursColumnWidthPct() {
-    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hours-column-width')) || 10;
-}
-
-/**
- * Returns the left-offset percentage for a given day index (0-based).
- * Reads from an actual rendered cell to avoid parsing CSS calc().
- */
-export function getDayColumnMetrics(timetableContainer) {
-    const firstDataCell = timetableContainer.querySelector('.time-slot');
-    if (!firstDataCell) return { hoursColPct: 10, dayColPct: 18 };
-
-    const containerWidth = timetableContainer.offsetWidth;
-    const hoursColPct = getHoursColumnWidthPct();
-    // Measure actual rendered cell width
-    const dayColPx = firstDataCell.offsetWidth;
-    const dayColPct = containerWidth > 0 ? (dayColPx / containerWidth) * 100 : 18;
-    return { hoursColPct, dayColPct };
-}

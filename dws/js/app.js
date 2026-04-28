@@ -301,7 +301,6 @@ function renderTable() {
 
             td.addEventListener('mousedown', onCellMouseDown);
             td.addEventListener('mouseover', onCellMouseOver);
-            td.addEventListener('click', onCellClick);
 
             td.addEventListener('mouseup', onCellDropTarget);
 
@@ -410,8 +409,7 @@ function renderSchedule() {
             blockDiv.appendChild(el);
         }
 
-        const durationMin = timeToMinutes(block.end) - timeToMinutes(block.start);
-        if (durationMin > 15 && block.taskName && block.showTaskName !== false) {
+        if (block.taskName && block.showTaskName !== false) {
             const el = document.createElement('div');
             el.textContent = block.taskName;
             blockDiv.appendChild(el);
@@ -431,8 +429,9 @@ function renderSchedule() {
             draggedBlock = block;
             isCopyDrag = e.shiftKey;
             document.body.classList.add('dragging');
-            // Offset = how many minutes from the block's start the user grabbed
-            dragStartOffsetMinutes = 0;
+            const clickOffsetPx = e.clientY - timetableContainer.getBoundingClientRect().top - parseFloat(blockDiv.style.top);
+            const offsetSlots = Math.round(clickOffsetPx / getCellHeight());
+            dragStartOffsetMinutes = -Math.max(0, offsetSlots * TIME_SLOT_INTERVAL);
             document.addEventListener('mouseup', onDragEnd);
         });
 
@@ -544,13 +543,6 @@ function onMouseUpDocument() {
     clearSelectedRange();
 }
 
-function onCellClick(e) {
-    if (isSelecting) return;
-    const day = e.currentTarget.dataset.day;
-    const time = e.currentTarget.dataset.time;
-    selectedDay = day;
-    openModal(null, day, time);
-}
 
 function clearSelectedRange() {
     selectedCells.forEach(c => c.classList.remove('selected-range'));
@@ -607,7 +599,8 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
         modalColor.value = getAutoColorForNewBlock(day, modalStartTime.value);
         modalLoggedState = false;
         modalShowProjectName = true;
-        modalShowTaskName = true;
+        const newDuration = timeToMinutes(modalEndTime.value) - timeToMinutes(modalStartTime.value);
+        modalShowTaskName = newDuration > TIME_SLOT_INTERVAL;
         deleteButton.style.display = 'none';
         syncCardButton.style.display = 'none';
         originalCardSignature = null;
@@ -664,7 +657,7 @@ function saveBlock() {
         schedule.push({ id: Date.now(), day, start, end, projectName, taskName, taskId, description, colorName, logged, showProjectName, showTaskName });
     }
 
-    saveProjectTaskPreset({ projectName, taskName, taskId }, saveSchedule);
+    saveProjectTaskPreset({ projectName, taskName, taskId });
     saveSchedule();
     renderTable();
     closeModal();
@@ -761,16 +754,6 @@ toggleTaskNameButton.addEventListener('click', () => {
 
 // ── Clipboard actions ─────────────────────────────────────────
 
-function copyCard() {
-    if (!currentEditingBlock) return;
-    const { projectName, taskName, taskId, description, colorName, logged } = currentEditingBlock;
-    const colorHex = COLOR_THEMES[currentTheme][colorName] || '#FFFFFF';
-    const csv = [projectName, taskName, taskId, description, colorHex, String(logged === true)]
-        .map(v => `"${(v || '').replace(/"/g, '""')}"`)
-        .join(',');
-    navigator.clipboard.writeText(csv).catch(err => alert('Failed to copy: ' + err));
-}
-
 function copyTaskId() {
     if (!currentEditingBlock) return;
     const v = (currentEditingBlock.taskId || '').trim();
@@ -801,55 +784,6 @@ function copyTotalTimeForSameTaskSameDay() {
 
     const decimalHours = (totalMinutes / 60).toFixed(2).replace(/\.00$/, '');
     navigator.clipboard.writeText(decimalHours).catch(err => alert('Failed to copy: ' + err));
-}
-
-function importCardFromClipboard() {
-    navigator.clipboard.readText().then(text => {
-        const csvText = text.trim();
-        if (!csvText) { alert('Clipboard is empty or does not contain valid CSV data.'); return; }
-
-        const regex6 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-        const regex5 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-        const regex4 = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","(#?[A-Fa-f0-9]{6})","(true|false)"$/;
-
-        let projectName = '', taskName = '', taskId = '', description = '', colorHex = '', loggedStr = 'false';
-        let match;
-
-        // eslint-disable-next-line no-unused-vars
-        if ((match = csvText.match(regex6))) {
-            [, projectName, taskName, taskId, description, colorHex, loggedStr] = match;
-        } else if ((match = csvText.match(regex5))) {
-            [, projectName, taskId, description, colorHex, loggedStr] = match;
-        } else if ((match = csvText.match(regex4))) {
-            [, projectName, description, colorHex, loggedStr] = match;
-        } else {
-            alert('Invalid CSV format.');
-            return;
-        }
-
-        projectName = projectName.replace(/""/g, '"');
-        taskName = taskName.replace(/""/g, '"');
-        taskId = taskId.replace(/""/g, '"');
-        description = description.replace(/""/g, '"');
-
-        const logged = loggedStr.toLowerCase() === 'true';
-        const matchedColorName = Object.entries(COLOR_THEMES[currentTheme])
-            .find(([, hex]) => hex.toLowerCase() === colorHex.toLowerCase())?.[0];
-
-        if (!matchedColorName) {
-            alert('Color hex does not match any available colors in the current theme.');
-            return;
-        }
-
-        modalProjectName.value = projectName;
-        modalTaskName.value = taskName;
-        modalTaskId.value = taskId;
-        modalDescription.value = description;
-        modalColor.value = matchedColorName;
-        modalLoggedState = logged;
-        loggedToggleButton.classList.toggle('logged-active', logged);
-        modalProjectName.focus();
-    }).catch(err => alert('Failed to read from clipboard: ' + err));
 }
 
 function openTaskLink() {
@@ -1116,38 +1050,42 @@ async function imputarGranular() {
     const monday   = parseISOToLocalDate(weekMondayISO);
     const baseDate = addDays(monday, dayIndex);
 
-    let success = false;
-    try {
-        await Promise.all(relatedBlocks.map(block => {
-            const [h, m] = block.start.split(':').map(Number);
-            const d = new Date(baseDate);
-            d.setHours(h, m, 0, 0);
-            const startTs    = d.getTime();
-            const durationMs = (timeToMinutes(block.end) - timeToMinutes(block.start)) * 60 * 1000;
-            return registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, block.description || '', user?.userId);
-        }));
-        success = true;
-        relatedBlocks.forEach(b => { b.logged = true; });
-        if (currentEditingBlock) currentEditingBlock.logged = true;
-        loggedToggleButton.classList.add('logged-active');
-        modalLoggedState = true;
-        saveSchedule();
-        renderSchedule();
-    } catch (err) {
-        alert(err.message);
-    } finally {
-        if (success) {
-            imputarGranularIcon.className = 'bi bi-check-circle';
-            imputarGranularLabel.textContent = 'Logged!';
-            setTimeout(() => {
-                imputarGranularIcon.className = 'bi bi-card-checklist';
-                imputarGranularLabel.textContent = 'Granular Log';
-                imputarGranularButton.disabled = false;
-            }, 2500);
+    const results = await Promise.allSettled(relatedBlocks.map(block => {
+        const [h, m] = block.start.split(':').map(Number);
+        const d = new Date(baseDate);
+        d.setHours(h, m, 0, 0);
+        const startTs    = d.getTime();
+        const durationMs = (timeToMinutes(block.end) - timeToMinutes(block.start)) * 60 * 1000;
+        return registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, block.description || '', user?.userId);
+    }));
+
+    const errors = [];
+    results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+            relatedBlocks[i].logged = true;
         } else {
-            imputarGranularIcon.className = 'bi bi-card-checklist';
-            imputarGranularButton.disabled = false;
+            errors.push(result.reason?.message || 'Unknown error');
         }
+    });
+
+    // currentEditingBlock is a reference into schedule, so its .logged was updated above
+    loggedToggleButton.classList.toggle('logged-active', currentEditingBlock?.logged === true);
+    modalLoggedState = currentEditingBlock?.logged === true;
+    saveSchedule();
+    renderSchedule();
+
+    if (errors.length === 0) {
+        imputarGranularIcon.className = 'bi bi-check-circle';
+        imputarGranularLabel.textContent = 'Logged!';
+        setTimeout(() => {
+            imputarGranularIcon.className = 'bi bi-card-checklist';
+            imputarGranularLabel.textContent = 'Granular Log';
+            imputarGranularButton.disabled = false;
+        }, 2500);
+    } else {
+        alert(errors.join('\n'));
+        imputarGranularIcon.className = 'bi bi-card-checklist';
+        imputarGranularButton.disabled = false;
     }
 }
 
@@ -1376,6 +1314,14 @@ function addResizeListeners(blockDiv, block) {
 
         block.start = newStartTime;
         block.end = newEndTime;
+
+        const resizedDuration = timeToMinutes(newEndTime) - timeToMinutes(newStartTime);
+        if (resizedDuration <= TIME_SLOT_INTERVAL) {
+            block.showTaskName = false;
+        } else {
+            block.showTaskName = true;
+            block.showProjectName = true;
+        }
 
         saveSchedule();
         renderTable();
@@ -1816,7 +1762,7 @@ timeBlockModalElement.addEventListener('hidden.bs.modal', () => {
 
 timeBlockForm.addEventListener('submit', e => e.preventDefault());
 modalProjectName.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); modalDescription.focus(); }
+    if (e.key === 'Enter') { e.preventDefault(); modalTaskName.focus(); }
 });
 
 notifyToggle.addEventListener('change', handleNotificationToggle);

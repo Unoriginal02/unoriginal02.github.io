@@ -2,8 +2,6 @@
 // presets.js — project/task preset management
 // ============================================================
 
-import { alphaCompare } from './utils.js';
-
 // Shared mutable array — mutated in place so all importers see updates
 export const projectTaskPresets = [];
 
@@ -26,16 +24,13 @@ function presetEquals(a, b) {
         a.taskId === b.taskId;
 }
 
-export function saveProjectTaskPreset(preset, onSave) {
+export function saveProjectTaskPreset(preset) {
     const normalized = normalizePreset(preset);
     const isEmpty = !normalized.projectName && !normalized.taskName && !normalized.taskId;
     if (isEmpty) return;
 
     const alreadyExists = projectTaskPresets.some(p => presetEquals(normalizePreset(p), normalized));
-    if (!alreadyExists) {
-        projectTaskPresets.push(normalized);
-        if (onSave) onSave();
-    }
+    if (!alreadyExists) projectTaskPresets.push(normalized);
 }
 
 export function deleteProjectTaskPreset(index, onDelete) {
