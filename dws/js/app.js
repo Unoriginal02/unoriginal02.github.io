@@ -49,6 +49,14 @@ let dragSourceEl = null;
 let dragPendingDay = null;
 let dragPendingStart = null;
 let dragPendingEnd = null;
+let dragCandidateBlock = null;
+let dragCandidateEl = null;
+let dragCandidateShift = false;
+let dragCandidateOffsetMinutes = 0;
+let dragMouseDownX = 0;
+let dragMouseDownY = 0;
+let dragInitiated = false;
+let dragEndTime = 0;
 
 // Selection state
 let isSelecting = false;
@@ -427,27 +435,25 @@ function renderSchedule() {
         // Drag
         blockDiv.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('resize-handle')) return;
-            draggedBlock = block;
-            dragSourceEl = blockDiv;
-            isCopyDrag = e.shiftKey;
-            document.body.classList.add('dragging');
+            dragCandidateBlock = block;
+            dragCandidateEl = blockDiv;
+            dragCandidateShift = e.shiftKey;
+            dragInitiated = false;
+            dragMouseDownX = e.clientX;
+            dragMouseDownY = e.clientY;
             const clickOffsetPx = e.clientY - timetableContainer.getBoundingClientRect().top - parseFloat(blockDiv.style.top);
             const offsetSlots = Math.round(clickOffsetPx / getCellHeight());
-            dragStartOffsetMinutes = -Math.max(0, offsetSlots * TIME_SLOT_INTERVAL);
-
-            dragGhostEl = document.createElement('div');
-            dragGhostEl.className = 'time-block drag-ghost';
-            dragGhostEl.style.cssText = blockDiv.style.cssText;
-            dragGhostEl.style.pointerEvents = 'none';
-            timetableContainer.appendChild(dragGhostEl);
-            blockDiv.classList.add('dragging-source');
-
+            dragCandidateOffsetMinutes = -Math.max(0, offsetSlots * TIME_SLOT_INTERVAL);
             document.addEventListener('mousemove', onDragMouseMove);
             document.addEventListener('mouseup', onDragEnd);
         });
 
-        // Click → edit
-        blockDiv.addEventListener('click', (e) => { e.stopPropagation(); openModal(block); });
+        // Click → edit (suppressed if a drag just ended)
+        blockDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (Date.now() - dragEndTime < 300) return;
+            openModal(block);
+        });
 
         // Tooltip
         blockDiv.addEventListener('mouseover', (e) => {
@@ -468,7 +474,27 @@ function renderSchedule() {
 // ── Drag & Drop ───────────────────────────────────────────────
 
 function onDragMouseMove(e) {
-    if (!draggedBlock || !dragGhostEl) return;
+    if (!dragCandidateBlock) return;
+
+    if (!dragInitiated) {
+        const dx = e.clientX - dragMouseDownX;
+        const dy = e.clientY - dragMouseDownY;
+        if (dx * dx + dy * dy < 25) return; // 5px threshold before drag starts
+
+        draggedBlock = dragCandidateBlock;
+        dragSourceEl = dragCandidateEl;
+        isCopyDrag = dragCandidateShift;
+        dragStartOffsetMinutes = dragCandidateOffsetMinutes;
+        dragInitiated = true;
+        document.body.classList.add('dragging');
+
+        dragGhostEl = document.createElement('div');
+        dragGhostEl.className = 'time-block drag-ghost';
+        dragGhostEl.style.cssText = dragCandidateEl.style.cssText;
+        dragGhostEl.style.pointerEvents = 'none';
+        timetableContainer.appendChild(dragGhostEl);
+        dragCandidateEl.classList.add('dragging-source');
+    }
 
     const containerRect = timetableContainer.getBoundingClientRect();
     const mouseX = e.clientX - containerRect.left;
@@ -525,21 +551,28 @@ function onDragMouseMove(e) {
 function onDragEnd() {
     document.removeEventListener('mousemove', onDragMouseMove);
     document.removeEventListener('mouseup', onDragEnd);
-    document.body.classList.remove('dragging');
 
-    if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
-    if (dragSourceEl) { dragSourceEl.classList.remove('dragging-source'); dragSourceEl = null; }
+    if (dragInitiated) {
+        document.body.classList.remove('dragging');
+        if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
+        if (dragSourceEl) { dragSourceEl.classList.remove('dragging-source'); dragSourceEl = null; }
 
-    if (draggedBlock && dragPendingDay !== null) {
-        const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now() } : draggedBlock;
-        newBlock.day = dragPendingDay;
-        newBlock.start = minutesToTime(dragPendingStart);
-        newBlock.end = minutesToTime(dragPendingEnd);
-        if (isCopyDrag) schedule.push(newBlock);
-        saveSchedule();
-        renderSchedule();
+        if (draggedBlock && dragPendingDay !== null) {
+            const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now() } : draggedBlock;
+            newBlock.day = dragPendingDay;
+            newBlock.start = minutesToTime(dragPendingStart);
+            newBlock.end = minutesToTime(dragPendingEnd);
+            if (isCopyDrag) schedule.push(newBlock);
+            saveSchedule();
+            renderSchedule();
+        }
+
+        dragEndTime = Date.now();
     }
 
+    dragCandidateBlock = null;
+    dragCandidateEl = null;
+    dragInitiated = false;
     draggedBlock = null;
     dragPendingDay = null;
     dragPendingStart = null;
