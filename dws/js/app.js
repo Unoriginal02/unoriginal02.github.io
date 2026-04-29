@@ -44,6 +44,11 @@ let cuTasksCache = null;
 let draggedBlock = null;
 let dragStartOffsetMinutes = 0;
 let isCopyDrag = false;
+let dragGhostEl = null;
+let dragSourceEl = null;
+let dragPendingDay = null;
+let dragPendingStart = null;
+let dragPendingEnd = null;
 
 // Selection state
 let isSelecting = false;
@@ -302,10 +307,6 @@ function renderTable() {
             td.addEventListener('mousedown', onCellMouseDown);
             td.addEventListener('mouseover', onCellMouseOver);
 
-            td.addEventListener('mouseup', onCellDropTarget);
-
-            td.addEventListener('mouseenter', () => { if (draggedBlock) td.classList.add('drag-target'); });
-            td.addEventListener('mouseleave', () => td.classList.remove('drag-target'));
 
             tr.appendChild(td);
         });
@@ -427,11 +428,21 @@ function renderSchedule() {
         blockDiv.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('resize-handle')) return;
             draggedBlock = block;
+            dragSourceEl = blockDiv;
             isCopyDrag = e.shiftKey;
             document.body.classList.add('dragging');
             const clickOffsetPx = e.clientY - timetableContainer.getBoundingClientRect().top - parseFloat(blockDiv.style.top);
             const offsetSlots = Math.round(clickOffsetPx / getCellHeight());
             dragStartOffsetMinutes = -Math.max(0, offsetSlots * TIME_SLOT_INTERVAL);
+
+            dragGhostEl = document.createElement('div');
+            dragGhostEl.className = 'time-block drag-ghost';
+            dragGhostEl.style.cssText = blockDiv.style.cssText;
+            dragGhostEl.style.pointerEvents = 'none';
+            timetableContainer.appendChild(dragGhostEl);
+            blockDiv.classList.add('dragging-source');
+
+            document.addEventListener('mousemove', onDragMouseMove);
             document.addEventListener('mouseup', onDragEnd);
         });
 
@@ -440,6 +451,7 @@ function renderSchedule() {
 
         // Tooltip
         blockDiv.addEventListener('mouseover', (e) => {
+            if (draggedBlock) return;
             if (!blockDiv.contains(e.relatedTarget)) {
                 scheduleTooltip(() => showBlockTooltip(block, schedule, currentTheme));
             }
@@ -455,36 +467,83 @@ function renderSchedule() {
 
 // ── Drag & Drop ───────────────────────────────────────────────
 
-function onDragEnd() {
-    draggedBlock = null;
-    document.body.classList.remove('dragging');
-    document.removeEventListener('mouseup', onDragEnd);
-    document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+function onDragMouseMove(e) {
+    if (!draggedBlock || !dragGhostEl) return;
+
+    const containerRect = timetableContainer.getBoundingClientRect();
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+
+    const cellHeight = getCellHeight();
+    const headerHeight = document.querySelector('.table thead').offsetHeight;
+    const scheduleStart = timeToMinutes(startTimeInput.value);
+    const scheduleEnd = timeToMinutes(endTimeInput.value);
+    const dayRects = getDayColumnRects();
+
+    let dayIndex = -1;
+    for (let i = 0; i < dayRects.length; i++) {
+        const { leftPx, widthPx } = dayRects[i];
+        if (mouseX >= leftPx && mouseX < leftPx + widthPx) { dayIndex = i; break; }
+    }
+
+    if (dayIndex === -1) {
+        dragPendingDay = null;
+        dragGhostEl.style.opacity = '0';
+        return;
+    }
+
+    const slotIndex = Math.floor((mouseY - headerHeight) / cellHeight);
+    const cellTime = scheduleStart + slotIndex * TIME_SLOT_INTERVAL;
+    const startMinutes = Math.max(scheduleStart, cellTime + dragStartOffsetMinutes);
+
+    const day = DAYS[dayIndex];
+    const originalDuration = timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
+    const nextBlockStart = getNextBlockStart(day, startMinutes, isCopyDrag ? null : draggedBlock.id);
+    const endMinutes = Math.min(startMinutes + originalDuration, nextBlockStart, scheduleEnd);
+
+    if (endMinutes <= startMinutes) {
+        dragPendingDay = null;
+        dragGhostEl.style.opacity = '0';
+        return;
+    }
+
+    dragPendingDay = day;
+    dragPendingStart = startMinutes;
+    dragPendingEnd = endMinutes;
+
+    const topPx = ((startMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
+    const heightPx = ((endMinutes - startMinutes) / TIME_SLOT_INTERVAL) * cellHeight;
+    const { leftPx, widthPx } = dayRects[dayIndex];
+
+    dragGhostEl.style.opacity = '';
+    dragGhostEl.style.top = `${topPx}px`;
+    dragGhostEl.style.left = `${leftPx}px`;
+    dragGhostEl.style.width = `${widthPx}px`;
+    dragGhostEl.style.height = `${heightPx}px`;
 }
 
-function onCellDropTarget(e) {
-    if (!draggedBlock) return;
+function onDragEnd() {
+    document.removeEventListener('mousemove', onDragMouseMove);
+    document.removeEventListener('mouseup', onDragEnd);
+    document.body.classList.remove('dragging');
 
-    const day = e.currentTarget.dataset.day;
-    const cellTime = timeToMinutes(e.currentTarget.dataset.time);
-    const startMinutes = cellTime + dragStartOffsetMinutes;
-    const originalDuration = timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
-    const scheduleEnd = timeToMinutes(endTimeInput.value);
-    const nextBlockStart = getNextBlockStart(day, startMinutes, isCopyDrag ? null : draggedBlock.id);
-    const maxEnd = Math.min(startMinutes + originalDuration, nextBlockStart, scheduleEnd);
+    if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
+    if (dragSourceEl) { dragSourceEl.classList.remove('dragging-source'); dragSourceEl = null; }
 
-    if (maxEnd <= startMinutes) { draggedBlock = null; return; }
+    if (draggedBlock && dragPendingDay !== null) {
+        const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now() } : draggedBlock;
+        newBlock.day = dragPendingDay;
+        newBlock.start = minutesToTime(dragPendingStart);
+        newBlock.end = minutesToTime(dragPendingEnd);
+        if (isCopyDrag) schedule.push(newBlock);
+        saveSchedule();
+        renderSchedule();
+    }
 
-    const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now() } : draggedBlock;
-    newBlock.day = day;
-    newBlock.start = minutesToTime(startMinutes);
-    newBlock.end = minutesToTime(maxEnd);
-
-    if (isCopyDrag) schedule.push(newBlock);
-
-    saveSchedule();
-    renderSchedule();
     draggedBlock = null;
+    dragPendingDay = null;
+    dragPendingStart = null;
+    dragPendingEnd = null;
 }
 
 function getNextBlockStart(day, afterMinutes, ignoreId) {

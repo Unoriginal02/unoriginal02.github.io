@@ -513,10 +513,14 @@ table {
     -ms-user-select: none;
 }
 
-.time-slot.drag-target {
-    outline: 2px solid #4a90e2;
-    outline-offset: -2px;
-    background-color: rgba(74, 144, 226, 0.08);
+.drag-ghost {
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.dragging-source {
+    opacity: 0.2;
 }
 
 /* Modal copy row */
