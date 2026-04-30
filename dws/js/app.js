@@ -6,7 +6,8 @@ import { DAYS, TIME_SLOT_INTERVAL, COLOR_THEMES, AVAILABLE_COLORS, COLOR_DISPLAY
 import { getAppState, saveAppState } from './db.js';
 import {
     getApiToken, setApiToken, getSavedUser, initUserAndTeam,
-    isConfigured, fetchTask, fetchAssignedTasks, registerTime, extractTaskId
+    isConfigured, fetchTask, fetchAssignedTasks, registerTime, extractTaskId,
+    getTimeEntries, deleteTimeEntry
 } from './clickup.js';
 import {
     timeToMinutes, minutesToTime, addMinutes, generateTimeSlots,
@@ -1063,6 +1064,13 @@ async function loadCuTasks(force = false) {
     }
 }
 
+async function clearDayEntries(token, teamId, taskId, dayDate, userId) {
+    const startOfDay = new Date(dayDate); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay   = new Date(dayDate); endOfDay.setHours(23, 59, 59, 999);
+    const entries = await getTimeEntries(token, teamId, taskId, startOfDay.getTime(), endOfDay.getTime(), userId);
+    await Promise.all(entries.map(e => deleteTimeEntry(token, teamId, e.id)));
+}
+
 async function imputarHoras() {
     if (!currentEditingBlock?.taskId || !isConfigured()) return;
 
@@ -1097,6 +1105,7 @@ async function imputarHoras() {
 
     let success = false;
     try {
+        await clearDayEntries(getApiToken(), user?.teamId, taskId, blockDate, user?.userId);
         await registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, description, user?.userId);
         success = true;
         relatedBlocks.forEach(b => { b.logged = true; });
@@ -1141,6 +1150,8 @@ async function imputarGranular() {
     const dayIndex = DAYS.indexOf(day);
     const monday   = parseISOToLocalDate(weekMondayISO);
     const baseDate = addDays(monday, dayIndex);
+
+    await clearDayEntries(getApiToken(), user?.teamId, taskId, baseDate, user?.userId);
 
     const results = await Promise.allSettled(relatedBlocks.map(block => {
         const [h, m] = block.start.split(':').map(Number);

@@ -98,3 +98,24 @@ export async function registerTime(token, taskId, teamId, startTimestamp, durati
     if (userId) body.assignee = userId;
     return apiPost(`/team/${encodeURIComponent(teamId)}/time_entries`, body, token);
 }
+
+async function apiDelete(path, token) {
+    const resp = await fetch(`https://api.clickup.com/api/v2${path}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+    });
+    if (resp.status === 401) throw new Error('Invalid API token.');
+    if (!resp.ok) throw new Error(`ClickUp API error (${resp.status}).`);
+    return resp.json();
+}
+
+export async function getTimeEntries(token, teamId, taskId, startMs, endMs, userId) {
+    let path = `/team/${encodeURIComponent(teamId)}/time_entries?start_date=${startMs}&end_date=${endMs}&task_id=${encodeURIComponent(taskId)}`;
+    if (userId) path += `&assignee=${userId}`;
+    const data = await apiGet(path, token);
+    return data.data || [];
+}
+
+export async function deleteTimeEntry(token, teamId, entryId) {
+    return apiDelete(`/team/${encodeURIComponent(teamId)}/time_entries/${encodeURIComponent(entryId)}`, token);
+}
