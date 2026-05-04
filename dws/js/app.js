@@ -436,6 +436,7 @@ function renderSchedule() {
         // Drag
         blockDiv.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('resize-handle')) return;
+            e.preventDefault();
             dragCandidateBlock = block;
             dragCandidateEl = blockDiv;
             dragCandidateShift = e.shiftKey;
@@ -525,21 +526,25 @@ function onDragMouseMove(e) {
 
     const day = DAYS[dayIndex];
     const originalDuration = timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
-    const nextBlockStart = getNextBlockStart(day, startMinutes, isCopyDrag ? null : draggedBlock.id);
+    const ignoreId = isCopyDrag ? null : draggedBlock.id;
+    const nextBlockStart = getNextBlockStart(day, startMinutes, ignoreId);
     const endMinutes = Math.min(startMinutes + originalDuration, nextBlockStart, scheduleEnd);
 
-    if (endMinutes <= startMinutes) {
+    const prevBlockEnd = getPrevBlockEnd(day, startMinutes, ignoreId);
+    const clippedStart = Math.max(startMinutes, prevBlockEnd);
+
+    if (endMinutes <= clippedStart) {
         dragPendingDay = null;
         dragGhostEl.style.opacity = '0';
         return;
     }
 
     dragPendingDay = day;
-    dragPendingStart = startMinutes;
+    dragPendingStart = clippedStart;
     dragPendingEnd = endMinutes;
 
-    const topPx = ((startMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
-    const heightPx = ((endMinutes - startMinutes) / TIME_SLOT_INTERVAL) * cellHeight;
+    const topPx = ((clippedStart - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
+    const heightPx = ((endMinutes - clippedStart) / TIME_SLOT_INTERVAL) * cellHeight;
     const { leftPx, widthPx } = dayRects[dayIndex];
 
     dragGhostEl.style.opacity = '';
@@ -585,6 +590,13 @@ function getNextBlockStart(day, afterMinutes, ignoreId) {
         .filter(b => b.day === day && b.id !== ignoreId && timeToMinutes(b.start) > afterMinutes)
         .map(b => timeToMinutes(b.start))
         .sort((a, b) => a - b)[0] ?? Infinity;
+}
+
+function getPrevBlockEnd(day, startMinutes, ignoreId) {
+    return schedule
+        .filter(b => b.day === day && b.id !== ignoreId && timeToMinutes(b.start) < startMinutes && timeToMinutes(b.end) > startMinutes)
+        .map(b => timeToMinutes(b.end))
+        .sort((a, b) => b - a)[0] ?? -Infinity;
 }
 
 // ── Cell selection ────────────────────────────────────────────

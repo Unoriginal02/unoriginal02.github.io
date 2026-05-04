@@ -346,6 +346,9 @@ table {
 
 .resizing { user-select: none; }
 
+#timetable-container { user-select: none; }
+#timeBlockModal, #prioritizationPanel { user-select: text; }
+
 .selected-range {
     background-color: rgba(95, 146, 240, 0.3) !important;
 }
