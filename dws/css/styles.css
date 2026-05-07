@@ -367,6 +367,7 @@ table {
     pointer-events: none;
     z-index: 10;
     white-space: normal;
+    word-break: break-all;
     width: 240px;
     font-size: 0.75rem;
     display: none;
