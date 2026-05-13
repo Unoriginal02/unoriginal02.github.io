@@ -7,7 +7,7 @@ import { getAppState, saveAppState } from './db.js';
 import {
     getApiToken, setApiToken, getSavedUser, initUserAndTeam,
     isConfigured, fetchTask, fetchAssignedTasks, registerTime, extractTaskId,
-    getTimeEntries, deleteTimeEntry
+    getTimeEntries, deleteTimeEntry, fetchTaskDescription
 } from './clickup.js';
 import {
     timeToMinutes, minutesToTime, addMinutes, generateTimeSlots,
@@ -431,6 +431,17 @@ function renderSchedule() {
             dot.className = 'logged-indicator';
             dot.title = 'Already logged';
             blockDiv.appendChild(dot);
+        }
+
+        // Description button (top-right, only when task has a ClickUp ID)
+        if (block.taskId) {
+            const descBtn = document.createElement('button');
+            descBtn.className = 'desc-btn';
+            descBtn.title = 'View ClickUp description';
+            descBtn.innerHTML = '<i class="bi bi-card-text"></i>';
+            descBtn.addEventListener('mousedown', e => e.stopPropagation());
+            descBtn.addEventListener('click', e => { e.stopPropagation(); openDescPanel(block); });
+            blockDiv.appendChild(descBtn);
         }
 
         // Drag
@@ -1925,6 +1936,194 @@ document.addEventListener('mouseup', onMouseUpDocument);
 window.addEventListener('resize', () => {
     renderSchedule();
     updateCurrentTimeLine();
+});
+
+// ── Description Panel ────────────────────────────────────────
+
+const descPanel        = document.getElementById('descPanel');
+const descPanelProject = document.getElementById('descPanelProject');
+const descPanelTask    = document.getElementById('descPanelTask');
+const descPanelLoading = document.getElementById('descPanelLoading');
+const descPanelContent = document.getElementById('descPanelContent');
+const descPanelError   = document.getElementById('descPanelError');
+const descRefreshBtn   = document.getElementById('descRefreshBtn');
+const descRefreshIcon  = document.getElementById('descRefreshIcon');
+const descOpenCuBtn    = document.getElementById('descOpenCuBtn');
+
+let descCurrentBlock = null;
+const descCache      = new Map();
+
+function mdInline(text) {
+    const e = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return text
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, a, s) => `<img src="${e(s)}" alt="${e(a)}">`)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g,  (_, t, h) => `<a href="${e(h)}">${e(t)}</a>`)
+        .replace(/~~([^~\n]+)~~/g,    '<del>$1</del>')
+        .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
+        .replace(/__([^_\n]+)__/g,    '<strong>$1</strong>')
+        .replace(/\*([^*\n]+)\*/g,    '<em>$1</em>')
+        .replace(/_([^_\n]+)_/g,      '<em>$1</em>')
+        .replace(/`([^`]+)`/g, (_, c) => `<code>${e(c)}</code>`);
+}
+
+function parseMarkdown(src) {
+    const e = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lines = src.split('\n');
+    let html = '', inUL = false, inTaskList = false, inCode = false, codeBuf = '';
+
+    const closeList = () => {
+        if (inTaskList) { html += '</ul>\n'; inTaskList = false; }
+        else if (inUL)  { html += '</ul>\n'; inUL       = false; }
+    };
+
+    for (const line of lines) {
+        if (line.startsWith('```')) {
+            if (inCode) { html += `<pre><code>${e(codeBuf)}</code></pre>\n`; inCode = false; codeBuf = ''; }
+            else        { closeList(); inCode = true; }
+            continue;
+        }
+        if (inCode) { codeBuf += line + '\n'; continue; }
+
+        const hm = line.match(/^(#{1,6})\s+(.*)/);
+        if (hm) { closeList(); html += `<h${hm[1].length}>${mdInline(hm[2])}</h${hm[1].length}>\n`; continue; }
+
+        if (/^(?:---+|\*\*\*+|___+)\s*$/.test(line)) { closeList(); html += '<hr>\n'; continue; }
+
+        const bq = line.match(/^>\s?(.*)/);
+        if (bq) { closeList(); html += `<blockquote><p>${mdInline(bq[1])}</p></blockquote>\n`; continue; }
+
+        // Task list: "- [ ] text" or "- [x] text", with optional leading indent
+        const tm = line.match(/^(\s*)[-*]\s+\[([ xX])\]\s+(.*)/);
+        if (tm) {
+            if (inUL) { html += '</ul>\n'; inUL = false; }
+            if (!inTaskList) { html += '<ul class="task-list">\n'; inTaskList = true; }
+            const ml = tm[1].length > 0 ? ` style="margin-left:${tm[1].length * 1}px"` : '';
+            const checked = tm[2].toLowerCase() === 'x';
+            html += `<li class="task-list-item"${ml}><input type="checkbox"${checked ? ' checked' : ''}>${mdInline(tm[3])}</li>\n`;
+            continue;
+        }
+
+        // Regular list item, with optional leading indent
+        const lm = line.match(/^(\s*)[-*]\s+(.*)/);
+        if (lm) {
+            if (inTaskList) { html += '</ul>\n'; inTaskList = false; }
+            if (!inUL) { html += '<ul>\n'; inUL = true; }
+            const ml = lm[1].length > 0 ? ` style="margin-left:${lm[1].length * 1}px"` : '';
+            html += `<li${ml}>${mdInline(lm[2])}</li>\n`;
+            continue;
+        }
+
+        if (!line.trim()) { closeList(); html += '<div class="md-spacer"></div>\n'; continue; }
+
+        closeList();
+        html += `<p>${mdInline(line)}</p>\n`;
+    }
+
+    closeList();
+    if (inCode) html += `<pre><code>${e(codeBuf)}</code></pre>\n`;
+    return html;
+}
+
+function openDescLightbox(src) {
+    const lb = document.createElement('div');
+    lb.id = 'descLightbox';
+    const img = document.createElement('img');
+    img.src = src;
+    lb.appendChild(img);
+    const close = () => lb.remove();
+    lb.addEventListener('click', close);
+    img.addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('keydown', function onKey(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+    document.body.appendChild(lb);
+}
+
+function renderDescMarkdown(markdown) {
+    if (!markdown || !markdown.trim()) {
+        descPanelContent.innerHTML = '<em style="opacity:0.4">(no description)</em>';
+        return;
+    }
+    descPanelContent.innerHTML = parseMarkdown(markdown);
+    descPanelContent.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+    descPanelContent.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const span = document.createElement('span');
+        span.className = 'desc-cb' + (cb.checked ? ' desc-cb-on' : '');
+        cb.closest('li')?.classList.add('desc-task-item');
+        cb.replaceWith(span);
+    });
+    descPanelContent.querySelectorAll('img').forEach(img => {
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => openDescLightbox(img.src));
+    });
+}
+
+async function loadDescContent(taskId, force = false) {
+    descPanelLoading.style.display = 'block';
+    descPanelContent.style.display = 'none';
+    descPanelError.style.display   = 'none';
+    try {
+        let raw;
+        if (!force && descCache.has(taskId)) {
+            raw = descCache.get(taskId);
+        } else {
+            const task = await fetchTaskDescription(taskId, getApiToken());
+            raw = task.markdown_description || task.description || '';
+            descCache.set(taskId, raw);
+        }
+        descPanelLoading.style.display = 'none';
+        descPanelContent.style.display = 'block';
+        renderDescMarkdown(raw);
+    } catch (err) {
+        descPanelLoading.style.display = 'none';
+        descPanelError.textContent     = err.message;
+        descPanelError.style.display   = 'block';
+    }
+}
+
+async function openDescPanel(block) {
+    descCurrentBlock = block;
+    descPanelProject.textContent   = block.projectName || '';
+    descPanelTask.textContent      = block.taskName || block.taskId;
+    descPanelLoading.style.display = 'block';
+    descPanelContent.style.display = 'none';
+    descPanelError.style.display   = 'none';
+    descPanel.classList.add('open');
+    descPanel.setAttribute('aria-hidden', 'false');
+    if (!getApiToken()) {
+        descPanelLoading.style.display = 'none';
+        descPanelError.style.display   = 'block';
+        descPanelError.textContent     = 'ClickUp not configured — add your API token first.';
+        return;
+    }
+    await loadDescContent(block.taskId);
+}
+
+function closeDescPanel() {
+    descPanel.classList.remove('open');
+    descPanel.setAttribute('aria-hidden', 'true');
+    descCurrentBlock = null;
+}
+
+document.getElementById('descPanelX').addEventListener('click', closeDescPanel);
+document.getElementById('descPanelClose').addEventListener('click', closeDescPanel);
+
+descRefreshBtn.addEventListener('click', async () => {
+    if (!descCurrentBlock) return;
+    descRefreshIcon.className = 'bi bi-hourglass-split';
+    descRefreshBtn.disabled   = true;
+    await loadDescContent(descCurrentBlock.taskId, true);
+    descRefreshIcon.className = 'bi bi-arrow-repeat';
+    descRefreshBtn.disabled   = false;
+});
+
+descOpenCuBtn.addEventListener('click', () => {
+    if (descCurrentBlock?.taskId)
+        window.open(`https://app.clickup.com/t/${descCurrentBlock.taskId}`, '_blank', 'noopener,noreferrer');
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && descPanel.classList.contains('open')) closeDescPanel();
 });
 
 // ── Init ──────────────────────────────────────────────────────

@@ -298,6 +298,40 @@
     <!-- Custom Tooltip -->
     <div id="customTooltip" class="custom-tooltip with-border"></div>
 
+    <!-- Description Panel -->
+    <div id="descPanel" aria-hidden="true">
+        <div class="desc-panel-header">
+            <div class="desc-panel-title">
+                <span id="descPanelProject" class="desc-panel-project"></span>
+                <span id="descPanelTask" class="desc-panel-taskname"></span>
+            </div>
+            <button id="descPanelX" class="panel-close" aria-label="Close">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="desc-panel-body">
+            <div id="descPanelLoading" class="desc-panel-status">
+                <i class="bi bi-hourglass-split"></i> Loading…
+            </div>
+            <div id="descPanelError" class="desc-panel-status desc-panel-error" style="display:none;"></div>
+            <div id="descPanelContent" class="desc-panel-content" style="display:none;"></div>
+        </div>
+        <div class="desc-panel-footer">
+            <button id="descRefreshBtn" class="brutalButton iconBtn">
+                <i class="bi bi-arrow-repeat" id="descRefreshIcon"></i>
+                <span>Refresh</span>
+            </button>
+            <button id="descOpenCuBtn" class="brutalButton iconBtn">
+                <i class="bi bi-box-arrow-up-right"></i>
+                <span>Open in ClickUp</span>
+            </button>
+            <button id="descPanelClose" class="brutalButton iconBtn">
+                <i class="bi bi-x-lg"></i>
+                <span>Close</span>
+            </button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Heartbeat check runs before anything else -->

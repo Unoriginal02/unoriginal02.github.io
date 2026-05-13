@@ -99,6 +99,10 @@ export async function registerTime(token, taskId, teamId, startTimestamp, durati
     return apiPost(`/team/${encodeURIComponent(teamId)}/time_entries`, body, token);
 }
 
+export async function fetchTaskDescription(taskId, token) {
+    return apiGet(`/task/${encodeURIComponent(taskId)}?include_markdown_description=true`, token);
+}
+
 async function apiDelete(path, token) {
     const resp = await fetch(`https://api.clickup.com/api/v2${path}`, {
         method: 'DELETE',
