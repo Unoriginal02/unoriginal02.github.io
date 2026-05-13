@@ -49,6 +49,25 @@ const VOID_CLUSTER_16 = [
   [ 85,213,117,245, 93,221,125,253, 87,215,119,247, 95,223,127,255]
 ];
 
+// Blue noise 64×64 — Halton base-2/base-3 sequence, collision-resolved with linear probe
+const BLUENOISE_64 = (() => {
+  const size = 64, n = size * size;
+  function halton(i, b) {
+    let f = 1, r = 0;
+    for (; i > 0; i = Math.floor(i / b)) { f /= b; r += f * (i % b); }
+    return r;
+  }
+  const flat = new Int16Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    let idx = Math.floor(halton(i, 2) * size) + Math.floor(halton(i, 3) * size) * size;
+    while (flat[idx] !== -1) idx = (idx + 1) % n;
+    flat[idx] = i;
+  }
+  return Array.from({length: size}, (_, y) =>
+    Array.from({length: size}, (_, x) => flat[y * size + x])
+  );
+})();
+
 // ── Full-color 6×5×6 palette ────────────────────────────────
 function buildFullColorPalette() {
   const R = 6, G = 5, B = 6;
@@ -501,6 +520,7 @@ self.onmessage = function(e) {
       case 'bayer4':        matrix = BAYER4;        matSize = 4;  break;
       case 'bayer8':        matrix = BAYER8;        matSize = 8;  break;
       case 'void-cluster':  matrix = VOID_CLUSTER_16; matSize = 16; break;
+      case 'bluenoise':     matrix = BLUENOISE_64;    matSize = 64; break;
       case 'halftone':
         ditheredData = halftoneDither(biasedData, smallW, smallH, colorMode, filmPalette, filmDark, filmBright, ditherThreshold, halftoneCellSize || 8);
         break;
