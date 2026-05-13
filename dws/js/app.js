@@ -1731,10 +1731,17 @@ function openTaskPicker() {
 
 // ── Prioritization panel ──────────────────────────────────────
 
+const panelOverlay = document.getElementById('panelOverlay');
+panelOverlay.addEventListener('click', () => {
+    if (prioritizationPanel.classList.contains('open')) closePrioPanel();
+    else closeDescPanel();
+});
+
 function openPrioPanel() {
     prioritizationPanel.classList.add('open');
     prioritizationPanel.setAttribute('aria-hidden', 'false');
     mainContent.classList.add('shifted');
+    panelOverlay.classList.add('visible');
     prioTop3.focus();
 }
 
@@ -1742,6 +1749,7 @@ function closePrioPanel() {
     prioritizationPanel.classList.remove('open');
     prioritizationPanel.setAttribute('aria-hidden', 'true');
     mainContent.classList.remove('shifted');
+    panelOverlay.classList.remove('visible');
 }
 
 function handleIndentKey(e) {
@@ -1864,7 +1872,8 @@ prioTextareas.forEach(t => {
     t.addEventListener('keydown', handleIndentKey);
 });
 
-prioritizationButton.addEventListener('click', () => {
+prioritizationButton.addEventListener('click', (e) => {
+    e.stopPropagation();
     prioritizationPanel.classList.contains('open') ? closePrioPanel() : openPrioPanel();
 });
 closePrioritizationPanel.addEventListener('click', closePrioPanel);
@@ -1872,6 +1881,7 @@ closePrioritizationPanel.addEventListener('click', closePrioPanel);
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && prioritizationPanel.classList.contains('open')) closePrioPanel();
 });
+
 
 importFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -2090,6 +2100,7 @@ async function openDescPanel(block) {
     descPanelError.style.display   = 'none';
     descPanel.classList.add('open');
     descPanel.setAttribute('aria-hidden', 'false');
+    panelOverlay.classList.add('visible');
     if (!getApiToken()) {
         descPanelLoading.style.display = 'none';
         descPanelError.style.display   = 'block';
@@ -2102,11 +2113,13 @@ async function openDescPanel(block) {
 function closeDescPanel() {
     descPanel.classList.remove('open');
     descPanel.setAttribute('aria-hidden', 'true');
+    panelOverlay.classList.remove('visible');
     descCurrentBlock = null;
 }
 
 document.getElementById('descPanelX').addEventListener('click', closeDescPanel);
 document.getElementById('descPanelClose').addEventListener('click', closeDescPanel);
+
 
 descRefreshBtn.addEventListener('click', async () => {
     if (!descCurrentBlock) return;

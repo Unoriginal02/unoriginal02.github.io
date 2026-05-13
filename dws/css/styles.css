@@ -426,6 +426,22 @@ table {
     border: 1px solid var(--main-color);
 }
 
+/* Panel overlay (backdrop for slide panels) */
+#panelOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+#panelOverlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
 /* Prioritization Panel */
 #prioritizationPanel {
     position: fixed;
@@ -455,7 +471,8 @@ table {
     border-bottom: 1px solid var(--main-color);
 }
 
-#prioritizationPanel .panel-close {
+#prioritizationPanel .panel-close,
+#descPanel .panel-close {
     border: 1px solid var(--main-color);
     background: var(--background-color);
     color: var(--main-color);
