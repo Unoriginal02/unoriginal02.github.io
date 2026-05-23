@@ -327,6 +327,13 @@ class GameScene extends Phaser.Scene {
     this._pinchDist   = null;
   }
 
+  preload() {
+    this.load.image('grass',      'assets/sprites/grass.png');
+    this.load.image('tree_round', 'assets/sprites/tree_round.png');
+    this.load.image('tree_pine',  'assets/sprites/tree_pine.png');
+    this.load.image('tree_bush',  'assets/sprites/tree_bush.png');
+  }
+
   create() {
     this._drawTerrain();
     this._spawnTrees(28);
@@ -348,14 +355,13 @@ class GameScene extends Phaser.Scene {
 
   // ── Terrain ───────────────────────────────
   _drawTerrain() {
-    const g = this.add.graphics().setDepth(0);
-    for (let tx = 0; tx < WORLD_W / TILE; tx++) {
-      for (let ty = 0; ty < WORLD_H / TILE; ty++) {
-        g.fillStyle((tx + ty) % 2 === 0 ? 0x4a7c4e : 0x3f6e43);
-        g.fillRect(tx * TILE, ty * TILE, TILE, TILE);
-      }
-    }
-    g.lineStyle(4, 0x2a4a1e);
+    // Kenney grass tile tiled across the entire world
+    this.add.tileSprite(0, 0, WORLD_W, WORLD_H, 'grass')
+      .setOrigin(0, 0)
+      .setDepth(0);
+    // World border
+    const g = this.add.graphics().setDepth(1);
+    g.lineStyle(5, 0x2a4a1e);
     g.strokeRect(0, 0, WORLD_W, WORLD_H);
   }
 
@@ -366,19 +372,18 @@ class GameScene extends Phaser.Scene {
   }
 
   _addTree(x, y) {
-    const g = this.add.graphics().setDepth(5);
-    g.x = x; g.y = y; g.active = true; g.jobType = JOB.LUMBERJACK;
-    this._drawTree(g);
-    this.trees.push(g);
-    return g;
-  }
-
-  _drawTree(g) {
-    g.clear();
-    g.fillStyle(0x6b3f1e); g.fillRect(-5,  2, 10, 22);
-    g.fillStyle(0x276622); g.fillTriangle(-22,  4,  22,  4,  0, -34);
-    g.fillStyle(0x318a2a); g.fillTriangle(-16, -12, 16, -12,  0, -46);
-    g.fillStyle(0x40a835); g.fillTriangle(-10, -26, 10, -26,  0, -52);
+    const variants = ['tree_round', 'tree_pine', 'tree_bush'];
+    // Weighted: round 50%, pine 30%, bush 20%
+    const weights = [0.5, 0.8, 1.0];
+    const r = Math.random();
+    const key = variants[weights.findIndex(w => r < w)];
+    const img = this.add.image(x, y, key)
+      .setDepth(5)
+      .setScale(0.8 + Math.random() * 0.45);
+    img.active  = true;
+    img.jobType = JOB.LUMBERJACK;
+    this.trees.push(img);
+    return img;
   }
 
   // ── Building Sites ────────────────────────
@@ -505,7 +510,7 @@ class GameScene extends Phaser.Scene {
       target.active = false;
       this._updateHUD();
       this.tweens.add({
-        targets: target, alpha: 0, scaleX: 0, scaleY: 0,
+        targets: target, alpha: 0, scale: 0,
         duration: 400, ease: 'Power2',
         onComplete: () => {
           target.destroy();
