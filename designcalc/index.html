@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Calc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0b0b12;
+      --surface:     #13131f;
+      --surface-2:   #1a1a2a;
+      --surface-3:   #20203200;
+      --border:      #25253a;
+      --border-hover:#3d3d60;
+      --accent:      #7b5ea7;
+      --accent-dim:  #7b5ea720;
+      --accent-glow: #7b5ea740;
+      --text:        #e2e2f0;
+      --text-muted:  #77779980;
+      --text-sub:    #999abf;
+      --danger:      #e05a6a;
+      --danger-dim:  #e05a6a18;
+      --success:     #5aa790;
+      --radius:      10px;
+      --radius-sm:   6px;
+    }
+
+    html { font-size: 14px; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 58px;
+      backdrop-filter: blur(12px);
+      position: relative;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      flex-shrink: 0;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 6px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-sub);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* Subtle gradient on header bar */
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Section title ── */
+    .section-header {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .section-header-text { flex: 1; }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .section-desc {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* ── Reference modal button ── */
+    .ref-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .ref-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .ref-btn svg { width: 14px; height: 14px; }
+
+    /* ── Table wrapper ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: var(--surface-2);
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-sub);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    thead th:last-child { text-align: center; width: 96px; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+
+    tbody tr:hover { background: rgba(123,94,167,0.06); }
+
+    tbody td {
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+
+    /* ── Inputs & Selects ── */
+    .cell-input,
+    .cell-select {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 6px 9px;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .cell-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2377779980' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 26px;
+      cursor: pointer;
+    }
+
+    .cell-select option {
+      background: #1e1e30;
+      color: var(--text);
+    }
+
+    .cell-input:hover,
+    .cell-select:hover {
+      border-color: var(--border-hover);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .cell-input:focus,
+    .cell-select:focus {
+      border-color: var(--accent);
+      background: rgba(123,94,167,0.06);
+    }
+
+    .cell-select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background-image: none;
+      padding-right: 9px;
+    }
+
+    .cell-input::placeholder { color: rgba(119,121,153,0.5); }
+
+    /* ── Custom Dropdown (Página) ── */
+    .cs-wrap {
+      position: relative;
+      width: 100%;
+    }
+    .cs-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 9px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+      outline: none;
+    }
+    .cs-trigger:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.03); }
+    .cs-trigger:focus { border-color: var(--accent); background: rgba(123,94,167,0.06); }
+    .cs-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cs-label.placeholder { color: rgba(119,121,153,0.5); }
+    .cs-caret { flex-shrink: 0; color: rgba(119,121,153,0.5); transition: transform 0.2s; }
+    .cs-wrap.open .cs-caret { transform: rotate(180deg); }
+    .cs-menu {
+      position: fixed;
+      max-height: 300px;
+      overflow-y: auto;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      z-index: 9999;
+      padding: 6px;
+      display: none;
+    }
+    .cs-wrap.open .cs-menu { display: block; }
+    .cs-group-title {
+      padding: 8px 8px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+    .cs-group + .cs-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); }
+    .cs-item {
+      display: block;
+      width: 100%;
+      padding: 7px 10px 7px 14px;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .cs-item:hover { background: rgba(123,94,167,0.15); }
+    .cs-item.active { color: var(--accent); font-weight: 500; }
+
+    .cell-input[type="number"] {
+      width: 80px;
+      text-align: center;
+    }
+
+    /* Hide number arrows */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+
+    /* Horas read-only cell */
+    .horas-cell {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-align: right;
+      padding: 6px 10px 6px 6px;
+      white-space: nowrap;
+      min-width: 72px;
+    }
+
+    .horas-cell.empty { color: var(--text-muted); font-weight: 400; }
+
+    /* Horas editable input (for Personalizado) */
+    .horas-input {
+      width: 80px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 9px;
+      outline: none;
+      text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+      -moz-appearance: textfield;
+    }
+
+    .horas-input::-webkit-inner-spin-button,
+    .horas-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .horas-input:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.03); }
+    .horas-input:focus { border-color: var(--accent); background: rgba(123,94,167,0.06); }
+
+    /* Readonly tiempo cell (kept for compatibility) */
+    .tiempo-cell {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-align: right;
+      padding: 6px 14px 6px 8px;
+      white-space: nowrap;
+      min-width: 72px;
+    }
+
+    .tiempo-cell.empty { color: var(--text-muted); font-weight: 400; }
+
+    /* Rango cell */
+    .rango-cell {
+      font-size: 12px;
+      color: var(--text-sub);
+      padding: 6px 12px;
+      white-space: nowrap;
+      min-width: 100px;
+    }
+
+    .rango-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #b09ad0;
+      white-space: nowrap;
+    }
+
+    .rango-empty {
+      font-size: 12px;
+      color: rgba(119,121,153,0.4);
+    }
+
+    /* ── Delete button ── */
+    .del-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(119,121,153,0.5);
+      cursor: pointer;
+      transition: all 0.15s;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .del-btn:hover {
+      background: var(--danger-dim);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .del-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .del-btn svg { width: 14px; height: 14px; }
+
+    /* ── Order buttons (move up / down) ── */
+    .order-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(119,121,153,0.35);
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .order-btn:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: var(--border-hover);
+      color: var(--text-sub);
+    }
+
+    .order-btn:disabled {
+      opacity: 0.15;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .order-btn svg { width: 10px; height: 10px; }
+
+    /* Row actions cell */
+    .row-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    /* ── Custom page input + reset button ── */
+    .custom-page-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .custom-page-wrap .cell-input { flex: 1; }
+
+    .reset-custom-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .reset-custom-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .reset-custom-btn svg { width: 12px; height: 12px; }
+
+    /* ── Add row button ── */
+    .add-row-wrap {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .add-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .add-btn svg { width: 14px; height: 14px; }
+
+    /* ── Wipe button ── */
+    .btn-wipe {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background 0.15s;
+    }
+
+    .btn-wipe:hover { background: var(--danger-dim); }
+
+    /* ── Copy button ── */
+    .btn-copy {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: var(--radius);
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-copy:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .btn-copy.copied {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(90,167,144,0.1);
+    }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .card-unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-sub);
+      margin-left: 3px;
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 5px;
+    }
+
+    /* Total accent card */
+    .card-accent {
+      background: linear-gradient(135deg, #1c1430 0%, #1a1a2e 100%);
+      border-color: var(--accent);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-accent::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(123,94,167,0.15) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .card-accent .card-value { color: #c4aaee; }
+    .card-accent .card-label { color: #a889d0; }
+
+    /* Buffer editable input */
+    .buffer-input {
+      width: 56px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      padding: 0 4px;
+      outline: none;
+      text-align: center;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+
+    .buffer-input::-webkit-inner-spin-button,
+    .buffer-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .buffer-input:focus { border-color: var(--accent); }
+
+    .buffer-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .buffer-pct {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    /* Mod summary cards - special layout */
+    .mod-summary {
+      display: grid;
+      grid-template-columns: 160px 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card-range-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.4px;
+      line-height: 1;
+    }
+
+    .card-hm {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* ── Scrollable table on wide screens ── */
+    .table-scroll { overflow-x: auto; }
+
+    /* ── Col min-widths (desktop) ── */
+    .col-nota { min-width: 140px; }
+    .col-tarea { min-width: 180px; }
+    .col-pagina { min-width: 200px; }
+    .col-dificultad { min-width: 120px; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius);
+      max-width: 520px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+      transform: scale(0.96);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal-card { transform: scale(1); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--surface-2);
+      z-index: 1;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .modal-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .modal-close:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: var(--danger-dim);
+    }
+
+    .modal-close svg { width: 12px; height: 12px; }
+
+    .modal-body { padding: 16px 20px 20px; }
+
+    .modal-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      padding: 10px 0 6px;
+    }
+
+    .modal-section-title:first-child { padding-top: 0; }
+
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .modal-table th {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-sub);
+      padding: 5px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-table th:not(:first-child) { text-align: center; }
+
+    .modal-table td {
+      padding: 6px 8px;
+      color: var(--text);
+      border-bottom: 1px solid rgba(37,37,58,0.6);
+    }
+
+    .modal-table td:not(:first-child) {
+      text-align: center;
+      color: var(--text-sub);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .modal-table tr:last-child td { border-bottom: none; }
+
+    .modal-table .group-header-row td {
+      background: var(--surface);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 8px 8px 5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE — card layout below 640px
+    ══════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      header { padding: 0 16px; gap: 12px; }
+      .logo { font-size: 14px; }
+      .tab-btn { padding: 5px 12px; font-size: 12px; }
+      main { padding: 20px 12px 80px; }
+
+      /* Prevent iOS zoom on inputs */
+      .cell-input, .cell-select, .cs-trigger, .horas-input { font-size: 16px; }
+
+      /* Disable horizontal scroll — cards don't need it */
+      .table-scroll { overflow-x: visible; }
+
+      /* Block-display the table elements */
+      table, tbody { display: block; width: 100%; }
+      thead { display: none; }
+
+      /* Each row becomes a 2-col card */
+      tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 10px;
+        row-gap: 10px;
+        padding: 14px 12px 14px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        background: transparent !important;
+      }
+
+      tbody td {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 0;
+        vertical-align: unset;
+        min-width: 0;
+      }
+
+      /* Micro label above each field */
+      tbody td[data-label]::before {
+        content: attr(data-label);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--text-sub);
+        line-height: 1;
+      }
+
+      /* Delete btn — absolute top-right, no label */
+      tbody td.td-del {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        flex-direction: row;
+        width: auto;
+      }
+      tbody td.td-del::before { display: none; }
+
+      /* ── Estimación row layout ──
+         col 1: Página     → 1/-1
+         col 2: Dificultad → 1
+         col 3: Horas      → 2
+         col 4: Iteraciones→ 1
+         col 5: Nota       → 1/-1
+         col 6: delete     → absolute top-right
+      */
+      /* col1=Página(full) col2=Dificultad col3=Horas col4=Iteraciones col5=Nota(full) col6=del */
+      #est-tbody tr td:nth-child(1) { grid-column: 1 / -1; } /* Página */
+      #est-tbody tr td:nth-child(2) { grid-column: 1; }       /* Dificultad */
+      #est-tbody tr td:nth-child(3) { grid-column: 2; align-items: flex-end; } /* Horas */
+      #est-tbody tr td:nth-child(4) { grid-column: 1; }       /* Iteraciones */
+      #est-tbody tr td:nth-child(5) { grid-column: 1 / -1; } /* Nota */
+
+      /* ── Modificaciones row layout ── */
+      #mod-tbody tr td:nth-child(1) { grid-column: 1 / -1; }
+      #mod-tbody tr td:nth-child(2) { grid-column: 1; }
+      #mod-tbody tr td:nth-child(3) {
+        grid-column: 2;
+        justify-content: flex-end;
+        align-items: flex-end;
+      }
+      #mod-tbody tr td:nth-child(3)::before { text-align: right; }
+
+      /* Number input full width */
+      .cell-input[type="number"] { width: 100%; text-align: left; }
+      .horas-input { width: 100%; text-align: left; }
+
+      /* Summary grids */
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .mod-summary  { grid-template-columns: 1fr 1fr; }
+
+      /* Modal */
+      .modal-overlay { padding: 16px; }
+    }
+
+    @media (max-width: 360px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .mod-summary  { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── REFERENCE MODAL ── -->
+<div class="modal-overlay" id="ref-modal" role="dialog" aria-modal="true" aria-labelledby="ref-modal-title">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title" id="ref-modal-title">Referencia de horas base</span>
+      <button class="modal-close" onclick="closeRefModal()" title="Cerrar">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" id="ref-modal-body">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Design Calc
+  </div>
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('estimacion', event)">Estimación</button>
+    <button class="tab-btn"        onclick="switchTab('modificaciones', event)">Modificaciones</button>
+  </nav>
+</header>
+
+<!-- ── MAIN ── -->
+<main>
+
+  <!-- ═══════════════ TAB 1: ESTIMACIÓN ═══════════════ -->
+  <section id="tab-estimacion" class="tab-panel active">
+    <div class="section-header">
+      <div class="section-header-text">
+        <div class="section-title">Estimación de Proyecto</div>
+        <div class="section-desc">Añade páginas y define la dificultad para calcular el tiempo total estimado.</div>
+      </div>
+      <button class="ref-btn" onclick="openRefModal()" title="Ver tabla de referencia de horas">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="1" width="4" height="4" rx="0.5"/>
+          <rect x="9" y="1" width="4" height="4" rx="0.5"/>
+          <rect x="1" y="9" width="4" height="4" rx="0.5"/>
+          <rect x="9" y="9" width="4" height="4" rx="0.5"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="est-table">
+          <thead>
+            <tr>
+              <th class="col-pagina">Página</th>
+              <th class="col-dificultad">Dificultad</th>
+              <th style="width:80px;text-align:center">Horas</th>
+              <th style="width:88px;text-align:center">Iteraciones</th>
+              <th class="col-nota">Nota</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="est-tbody"></tbody>
+        </table>
+      </div>
+      <div class="add-row-wrap">
+        <button class="add-btn" onclick="addEstRow()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
+          </svg>
+          Añadir página
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card">
+        <div class="card-label">Subtotal</div>
+        <div class="card-value"><span id="est-subtotal">0</span><span class="card-unit">hr</span></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Buffer</div>
+        <div class="buffer-row">
+          <input class="buffer-input" id="est-buffer" type="number" min="0" max="200" value="5" oninput="calcEst(); saveState();" />
+          <span class="buffer-pct">%</span>
+        </div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-label">Total Estimado</div>
+        <div class="card-value"><span id="est-total">0</span><span class="card-unit">hr</span></div>
+      </div>
+    </div>
+    <button class="btn-copy" id="btn-copy-est" onclick="copyEstSummary()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="8" height="9" rx="1"/>
+        <path d="M2 10V2a1 1 0 011-1h7"/>
+      </svg>
+      Copiar resumen
+    </button>
+    <button class="btn-wipe" style="display:block;margin-top:8px;" onclick="wipeAll()">Borrar todo</button>
+  </section>
+
+  <!-- ═══════════════ TAB 2: MODIFICACIONES ═══════════════ -->
+  <section id="tab-modificaciones" class="tab-panel">
+    <div class="section-header">
+      <div class="section-header-text">
+        <div class="section-title">Modificaciones</div>
+        <div class="section-desc">Registra tareas de modificación y obtén el rango de tiempo estimado con PERT.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="mod-table">
+          <thead>
+            <tr>
+              <th class="col-tarea">Tarea</th>
+              <th style="width:150px">Delta</th>
+              <th style="width:130px">Rango</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="mod-tbody"></tbody>
+        </table>
+      </div>
+      <div class="add-row-wrap">
+        <button class="add-btn" onclick="addModRow()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
+          </svg>
+          Añadir tarea
+        </button>
+      </div>
+    </div>
+
+    <div class="mod-summary">
+      <div class="card">
+        <div class="card-label">Buffer</div>
+        <div class="buffer-row">
+          <input class="buffer-input" id="mod-buffer" type="number" min="0" max="200" value="10" oninput="calcMod(); saveState();" />
+          <span class="buffer-pct">%</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Mínimo</div>
+        <div class="card-range-val"><span id="mod-min">0</span><span class="card-unit">min</span></div>
+        <div class="card-hm" id="mod-min-hm">— h — min</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Máximo</div>
+        <div class="card-range-val"><span id="mod-max">0</span><span class="card-unit">min</span></div>
+        <div class="card-hm" id="mod-max-hm">— h — min</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-label">PERT Total</div>
+        <div class="card-range-val"><span id="mod-pert">0</span><span class="card-unit">min</span></div>
+        <div class="card-hm" id="mod-pert-hm">— h — min</div>
+      </div>
+    </div>
+    <button class="btn-copy" id="btn-copy-mod" onclick="copyModSummary()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="8" height="9" rx="1"/>
+        <path d="M2 10V2a1 1 0 011-1h7"/>
+      </svg>
+      Copiar resumen
+    </button>
+  </section>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════
+   DATA
+══════════════════════════════════════════ */
+
+const PAGES = [
+  // [group, label, simple, media, compleja]
+  ["LC Modular",  "LCM - Home",       12, 16, 22],
+  ["LC Modular",  "LCM - Category",    5,  6,  8],
+  ["LC Modular",  "LCM - Product",     6,  8, 11],
+  ["LC Modular",  "LCM - Additional",  3,  4,  6],
+  ["LC Bespoke",  "LCB - Home",       24, 32, 45],
+  ["LC Bespoke",  "LCB - Category",   12, 16, 22],
+  ["LC Bespoke",  "LCB - Product",    14, 18, 25],
+  ["LC Bespoke",  "LCB - Additional",  4,  5,  7],
+  ["PrestaShop",  "PS - Home",        12, 16, 22],
+  ["PrestaShop",  "PS - Additional",   5,  6,  8],
+  ["Shopify",     "SH - Home",        26, 34, 48],
+  ["Shopify",     "SH - Additional",   5,  6,  8],
+  ["Gestión",     "Kickoff + Reunión Diseño", 1, 2,  3],
+  ["Gestión",     "Investigación",     2,  3,  4],
+  ["Gestión",     "Entregas y Documentación", 8, 11, 15],
+];
+
+const MODS = { Simple: 1, Media: 2, Compleja: 3 };
+
+const DIFFS = ["Simple", "Media", "Compleja"];
+
+const PERSONALIZADO_PAGE = "Página personalizada";
+
+const DELTAS = [
+  { label: "Δ1 - Micro",    min:   5, max:  15 },
+  { label: "Δ2 - Pequeño",  min:  15, max:  30 },
+  { label: "Δ3 - Mediano",  min:  30, max:  60 },
+  { label: "Δ4 - Grande",   min:  60, max: 120 },
+  { label: "Δ5 - Crítico",  min: 120, max: 240 },
+];
+
+/* ── Helpers ── */
+function fmt(n, decimals = 1) {
+  const v = parseFloat(n);
+  if (isNaN(v)) return "0";
+  return decimals === 0 ? Math.round(v).toString() : v.toFixed(decimals).replace(/\.0$/, "");
+}
+
+function toHM(minutes) {
+  if (!minutes) return "0 min";
+  const m = Math.round(minutes);
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h === 0) return `${rem} min`;
+  if (rem === 0) return `${h}h`;
+  return `${h}h ${rem}min`;
+}
+
+function isPersonalizado(row) {
+  return row.isCustom === true || row.dificultad === "Personalizado";
+}
+
+function buildPageDropdown(rowId, selectedVal) {
+  const groups = {};
+  const groupOrder = [];
+  for (const p of PAGES) {
+    if (!groups[p[0]]) { groups[p[0]] = []; groupOrder.push(p[0]); }
+    groups[p[0]].push(p[1]);
+  }
+  const label = selectedVal || "— Seleccionar —";
+  const isPlaceholder = !selectedVal;
+
+  // "Página personalizada" goes FIRST
+  let groupsHtml = `
+    <div class="cs-group">
+      <div class="cs-group-title">Personalizada</div>
+      <button type="button" class="cs-item"
+        onclick="selectPage('${rowId}','${PERSONALIZADO_PAGE}',this)">
+        + Página personalizada
+      </button>
+    </div>
+  `;
+
+  groupsHtml += groupOrder.map(g => `
+    <div class="cs-group">
+      <div class="cs-group-title">${g}</div>
+      ${groups[g].map(name => `
+        <button type="button" class="cs-item${selectedVal === name ? ' active' : ''}"
+          onclick="selectPage('${rowId}','${name.replace(/'/g,"\\'")}',this)">
+          ${name}
+        </button>
+      `).join('')}
+    </div>
+  `).join('');
+
+  return `
+    <div class="cs-wrap" id="cs-${rowId}">
+      <button type="button" class="cs-trigger" onclick="toggleDropdown('cs-${rowId}')">
+        <span class="cs-label${isPlaceholder ? ' placeholder' : ''}">${label}</span>
+        <svg class="cs-caret" width="10" height="6" viewBox="0 0 10 6" fill="none">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="cs-menu">${groupsHtml}</div>
+    </div>
+  `;
+}
+
+function buildDiffSelect(selectedVal, locked) {
+  if (locked) {
+    return `<option value="Personalizado" selected>Personalizado</option>`;
+  }
+  let html = `<option value="">— —</option>`;
+  for (const d of DIFFS) {
+    const sel = selectedVal === d ? "selected" : "";
+    html += `<option value="${d}" ${sel}>${d}</option>`;
+  }
+  html += `<option value="Personalizado" ${selectedVal === "Personalizado" ? "selected" : ""}>Personalizado</option>`;
+  return html;
+}
+
+function buildDeltaSelect(selectedVal) {
+  let html = `<option value="">— Delta —</option>`;
+  for (let i = 0; i < DELTAS.length; i++) {
+    const sel = selectedVal === String(i) ? "selected" : "";
+    html += `<option value="${i}" ${sel}>${DELTAS[i].label}</option>`;
+  }
+  return html;
+}
+
+/* ══════════════════════════════════════════
+   CUSTOM DROPDOWN
+══════════════════════════════════════════ */
+
+function toggleDropdown(id) {
+  const wrap = document.getElementById(id);
+  const isOpen = wrap.classList.contains('open');
+  document.querySelectorAll('.cs-wrap.open').forEach(w => w.classList.remove('open'));
+  if (!isOpen) {
+    const trigger = wrap.querySelector('.cs-trigger');
+    const rect = trigger.getBoundingClientRect();
+    const menu = wrap.querySelector('.cs-menu');
+    const menuW = Math.max(rect.width, 220);
+    const left  = Math.min(rect.left, window.innerWidth - menuW - 8);
+    menu.style.top      = (rect.bottom + 4) + 'px';
+    menu.style.left     = Math.max(8, left) + 'px';
+    menu.style.minWidth = menuW + 'px';
+    wrap.classList.add('open');
+  }
+}
+
+function selectPage(rowId, value, btn) {
+  const wrap = document.getElementById('cs-' + rowId);
+  // update label
+  const label = wrap.querySelector('.cs-label');
+  label.textContent = value;
+  label.classList.remove('placeholder');
+  // update active state
+  wrap.querySelectorAll('.cs-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // close
+  wrap.classList.remove('open');
+  // fire change — will trigger full re-render if personalizado
+  onEstChange(rowId, 'pagina', value);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.cs-wrap') && !e.target.closest('.modal-card')) {
+    document.querySelectorAll('.cs-wrap.open').forEach(w => w.classList.remove('open'));
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.cs-wrap.open').forEach(w => w.classList.remove('open'));
+    closeRefModal();
+  }
+});
+
+window.addEventListener('scroll', () => {
+  const openWrap = document.querySelector('.cs-wrap.open');
+  if (!openWrap) return;
+  const trigger = openWrap.querySelector('.cs-trigger');
+  const rect = trigger.getBoundingClientRect();
+  const menu = openWrap.querySelector('.cs-menu');
+  menu.style.top  = (rect.bottom + 4) + 'px';
+  menu.style.left = rect.left + 'px';
+}, true);
+
+/* ══════════════════════════════════════════
+   REFERENCE MODAL
+══════════════════════════════════════════ */
+
+function buildRefModalContent() {
+  const groups = {};
+  const groupOrder = [];
+  for (const p of PAGES) {
+    if (!groups[p[0]]) { groups[p[0]] = []; groupOrder.push(p[0]); }
+    groups[p[0]].push(p);
+  }
+
+  // Strip common group prefix from page labels (e.g. "LCM - Home" → "Home")
+  function shortName(label) {
+    return label.replace(/^[A-Z]+ - /, '');
+  }
+
+  let html = `
+    <table class="modal-table">
+      <thead>
+        <tr>
+          <th>Página</th>
+          <th>Simple</th>
+          <th>Media</th>
+          <th>Compleja</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  for (const g of groupOrder) {
+    html += `<tr class="group-header-row"><td colspan="4">${g}</td></tr>`;
+    for (const p of groups[g]) {
+      html += `
+        <tr>
+          <td>${shortName(p[1])}</td>
+          <td>${p[2]} hr</td>
+          <td>${p[3]} hr</td>
+          <td>${p[4]} hr</td>
+        </tr>
+      `;
+    }
+  }
+
+  html += `</tbody></table>`;
+
+  html += `
+    <div class="modal-section-title" style="margin-top:18px">Modificador por iteración</div>
+    <table class="modal-table">
+      <thead>
+        <tr><th>Dificultad</th><th>Coste / iteración</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Simple</td><td>+1 hr</td></tr>
+        <tr><td>Media</td><td>+2 hr</td></tr>
+        <tr><td>Compleja</td><td>+3 hr</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--text-sub);margin-top:10px;line-height:1.6">
+      Total = Base + (Iteraciones × modificador)
+    </p>
+  `;
+
+  return html;
+}
+
+function openRefModal() {
+  const modal = document.getElementById('ref-modal');
+  document.getElementById('ref-modal-body').innerHTML = buildRefModalContent();
+  modal.classList.add('open');
+}
+
+function closeRefModal() {
+  document.getElementById('ref-modal').classList.remove('open');
+}
+
+document.getElementById('ref-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRefModal();
+});
+
+/* ══════════════════════════════════════════
+   TAB SWITCHING
+══════════════════════════════════════════ */
+
+function switchTab(name, event) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  if (event && event.currentTarget) event.currentTarget.classList.add("active");
+}
+
+/* ══════════════════════════════════════════
+   LOCALSTORAGE
+══════════════════════════════════════════ */
+
+function saveState() {
+  try {
+    const estBuffer = document.getElementById("est-buffer").value;
+    const modBuffer = document.getElementById("mod-buffer").value;
+    const state = { estRows, modRows, estBuffer, modBuffer };
+    localStorage.setItem('dc_state', JSON.stringify(state));
+  } catch(e) { /* storage unavailable */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('dc_state');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function wipeAll() {
+  if (!confirm("¿Borrar toda la información?")) return;
+  try { localStorage.removeItem('dc_state'); } catch(e) {}
+  estRows = [];
+  modRows = [];
+  addEstRow();
+  addModRow();
+  document.getElementById("est-buffer").value = 5;
+  document.getElementById("mod-buffer").value = 10;
+  calcEst();
+  calcMod();
+}
+
+/* ══════════════════════════════════════════
+   TAB 1: ESTIMACIÓN
+══════════════════════════════════════════ */
+
+let estRows = [];
+
+function addEstRow(data) {
+  const id = Date.now() + Math.random();
+  const row = {
+    id,
+    pagina:      data?.pagina      ?? "",
+    isCustom:    data?.isCustom    ?? false,
+    dificultad:  data?.dificultad  ?? "",
+    iteraciones: data?.iteraciones ?? 2,
+    nota:        data?.nota        ?? "",
+    horas:       data?.horas       ?? null,
+  };
+  estRows.push(row);
+  renderEstTable();
+  calcEst();
+  saveState();
+}
+
+function deleteEstRow(id) {
+  if (estRows.length <= 1) return;
+  estRows = estRows.filter(r => r.id !== id);
+  renderEstTable();
+  calcEst();
+  saveState();
+}
+
+function resetCustomRow(id) {
+  const row = estRows.find(r => String(r.id) === String(id));
+  if (!row) return;
+  row.isCustom = false;
+  row.pagina = "";
+  row.dificultad = "";
+  row.horas = null;
+  renderEstTable();
+  calcEst();
+  saveState();
+}
+
+function moveEstRow(id, dir) {
+  const idx = estRows.findIndex(r => String(r.id) === String(id));
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= estRows.length) return;
+  const tmp = estRows[idx];
+  estRows[idx] = estRows[newIdx];
+  estRows[newIdx] = tmp;
+  renderEstTable();
+  calcEst();
+  saveState();
+}
+
+function getEstRowTime(row) {
+  if (isPersonalizado(row)) {
+    // Personalizado: use horas value directly
+    return parseFloat(row.horas) || 0;
+  }
+  if (!row.pagina || !row.dificultad) return null;
+  const page = PAGES.find(p => p[1] === row.pagina);
+  if (!page) return null;
+  const diffIdx = { Simple: 2, Media: 3, Compleja: 4 };
+  const base = page[diffIdx[row.dificultad]];
+  const iter = parseFloat(row.iteraciones) || 0;
+  return base + iter * MODS[row.dificultad];
+}
+
+function renderEstTable() {
+  const tbody = document.getElementById("est-tbody");
+  tbody.innerHTML = "";
+
+  for (const row of estRows) {
+    const tiempo = getEstRowTime(row);
+    const personalizado = isPersonalizado(row);
+
+    // Página cell: text input + reset btn when custom, dropdown when preset
+    const paginaCell = row.isCustom
+      ? `<div class="custom-page-wrap">
+           <input class="cell-input" type="text" placeholder="Nombre de la página…"
+             value="${(row.pagina || '').replace(/"/g, '&quot;')}"
+             oninput="onEstChange('${row.id}','pagina',this.value)" />
+           <button class="reset-custom-btn" onclick="resetCustomRow('${row.id}')" title="Volver al desplegable">
+             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M1.5 7a5.5 5.5 0 1 0 5.5-5.5H4"/>
+               <polyline points="1.5,3.5 1.5,7 5,7"/>
+             </svg>
+           </button>
+         </div>`
+      : buildPageDropdown(row.id, row.pagina);
+
+    // Horas cell: editable for Personalizado, read-only display for preset
+    const horasCell = personalizado
+      ? `<input class="horas-input" type="number" min="0" max="9999" step="0.5"
+           placeholder="0" value="${row.horas !== null ? row.horas : ''}"
+           oninput="onEstChange('${row.id}','horas',this.value)"
+           onchange="onEstChange('${row.id}','horas',this.value)" />`
+      : (tiempo !== null
+          ? `<span class="horas-cell">${fmt(tiempo)}</span>`
+          : `<span class="horas-cell empty">—</span>`);
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="col-pagina" data-label="Página">${paginaCell}</td>
+      <td class="col-dificultad" data-label="Dificultad">
+        <select class="cell-select"
+          ${row.isCustom ? 'disabled' : ''}
+          onchange="onEstChange('${row.id}','dificultad',this.value)">
+          ${buildDiffSelect(row.dificultad, row.isCustom)}
+        </select>
+      </td>
+      <td data-label="Horas" style="text-align:center">${horasCell}</td>
+      <td data-label="Iteraciones" style="text-align:center">
+        <input class="cell-input" type="number" min="0" max="99" step="1"
+          value="${row.iteraciones}"
+          onchange="onEstChange('${row.id}','iteraciones',this.value)"
+          oninput="onEstChange('${row.id}','iteraciones',this.value)" />
+      </td>
+      <td class="col-nota" data-label="Nota">
+        <input class="cell-input" type="text" placeholder="Observaciones…"
+          value="${(row.nota || '').replace(/"/g, '&quot;')}"
+          oninput="onEstChange('${row.id}','nota',this.value)" />
+      </td>
+      <td class="td-del">
+        <div class="row-actions">
+          <button class="order-btn" onclick="moveEstRow('${row.id}',-1)"
+            ${estRows.indexOf(row) === 0 ? 'disabled' : ''} title="Mover arriba">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2,7 5,3 8,7"/>
+            </svg>
+          </button>
+          <button class="order-btn" onclick="moveEstRow('${row.id}',1)"
+            ${estRows.indexOf(row) === estRows.length - 1 ? 'disabled' : ''} title="Mover abajo">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2,3 5,7 8,3"/>
+            </svg>
+          </button>
+          <button class="del-btn" onclick="deleteEstRow('${row.id}')"
+            ${estRows.length <= 1 ? "disabled" : ""} title="Eliminar fila">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function onEstChange(id, field, value) {
+  const row = estRows.find(r => String(r.id) === String(id));
+  if (!row) return;
+
+  const prevDiff = row.dificultad;
+  const prevPagina = row.pagina;
+
+  if (field === "iteraciones") {
+    row[field] = parseFloat(value) || 0;
+  } else if (field === "horas") {
+    row[field] = value === "" ? null : value;
+  } else {
+    row[field] = value;
+  }
+
+  // Selecting "Página personalizada" from dropdown → switch to custom mode
+  if (field === "pagina" && value === PERSONALIZADO_PAGE) {
+    row.isCustom = true;
+    row.pagina = "";
+    row.dificultad = "Personalizado";
+    renderEstTable();
+    calcEst();
+    saveState();
+    return;
+  }
+
+  // Renaming a custom page → just update text, no re-render (keeps focus)
+  if (field === "pagina" && row.isCustom) {
+    calcEst();
+    saveState();
+    return;
+  }
+
+  // Dificultad changed to/from Personalizado → full re-render to swap Horas cell
+  if (field === "dificultad" && (value === "Personalizado" || prevDiff === "Personalizado")) {
+    if (value !== "Personalizado") row.horas = null;
+    renderEstTable();
+    calcEst();
+    saveState();
+    return;
+  }
+
+  // Preset page selection → full re-render to update dropdown label
+  if (field === "pagina") {
+    renderEstTable();
+    calcEst();
+    saveState();
+    return;
+  }
+
+  // Lightweight update for iteraciones / horas / nota
+  const tiempo = getEstRowTime(row);
+  const rows = document.getElementById("est-tbody").rows;
+  const idx = estRows.indexOf(row);
+  if (rows[idx] && !isPersonalizado(row)) {
+    // Refresh Horas cell (col 2) for preset rows when iteraciones changes
+    rows[idx].cells[2].innerHTML = tiempo !== null
+      ? `<span class="horas-cell">${fmt(tiempo)}</span>`
+      : `<span class="horas-cell empty">—</span>`;
+  }
+
+  calcEst();
+  saveState();
+}
+
+function calcEst() {
+  const subtotal = estRows.reduce((sum, r) => {
+    const t = getEstRowTime(r);
+    return sum + (t !== null ? t : 0);
+  }, 0);
+
+  const buffer = parseFloat(document.getElementById("est-buffer").value) || 0;
+  const total = subtotal * (1 + buffer / 100);
+
+  document.getElementById("est-subtotal").textContent = fmt(subtotal);
+  document.getElementById("est-total").textContent   = fmt(total);
+}
+
+/* ══════════════════════════════════════════
+   TAB 2: MODIFICACIONES
+══════════════════════════════════════════ */
+
+let modRows = [];
+
+function addModRow(data) {
+  const id = Date.now() + Math.random();
+  const row = {
+    id,
+    tarea: data?.tarea ?? "",
+    delta: data?.delta ?? "",
+  };
+  modRows.push(row);
+  renderModTable();
+  calcMod();
+  saveState();
+}
+
+function deleteModRow(id) {
+  if (modRows.length <= 1) return;
+  modRows = modRows.filter(r => r.id !== id);
+  renderModTable();
+  calcMod();
+  saveState();
+}
+
+function moveModRow(id, dir) {
+  const idx = modRows.findIndex(r => String(r.id) === String(id));
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= modRows.length) return;
+  const tmp = modRows[idx];
+  modRows[idx] = modRows[newIdx];
+  modRows[newIdx] = tmp;
+  renderModTable();
+  calcMod();
+  saveState();
+}
+
+function getRango(delta) {
+  const i = parseInt(delta, 10);
+  if (isNaN(i) || !DELTAS[i]) return null;
+  return DELTAS[i];
+}
+
+function renderModTable() {
+  const tbody = document.getElementById("mod-tbody");
+  tbody.innerHTML = "";
+
+  for (const row of modRows) {
+    const rango = getRango(row.delta);
+    const rangoHtml = rango
+      ? `<span class="rango-pill">${rango.min} – ${rango.max} min</span>`
+      : `<span class="rango-empty">—</span>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="col-tarea" data-label="Tarea">
+        <input class="cell-input" type="text" placeholder="Descripción de la tarea…"
+          value="${(row.tarea || '').replace(/"/g, '&quot;')}"
+          oninput="onModChange('${row.id}','tarea',this.value)" />
+      </td>
+      <td data-label="Delta">
+        <select class="cell-select" onchange="onModChange('${row.id}','delta',this.value)">
+          ${buildDeltaSelect(row.delta)}
+        </select>
+      </td>
+      <td class="rango-cell" data-label="Rango">${rangoHtml}</td>
+      <td class="td-del">
+        <div class="row-actions">
+          <button class="order-btn" onclick="moveModRow('${row.id}',-1)"
+            ${modRows.indexOf(row) === 0 ? 'disabled' : ''} title="Mover arriba">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2,7 5,3 8,7"/>
+            </svg>
+          </button>
+          <button class="order-btn" onclick="moveModRow('${row.id}',1)"
+            ${modRows.indexOf(row) === modRows.length - 1 ? 'disabled' : ''} title="Mover abajo">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2,3 5,7 8,3"/>
+            </svg>
+          </button>
+          <button class="del-btn" onclick="deleteModRow('${row.id}')"
+            ${modRows.length <= 1 ? "disabled" : ""} title="Eliminar fila">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function onModChange(id, field, value) {
+  const row = modRows.find(r => String(r.id) === String(id));
+  if (!row) return;
+  row[field] = value;
+  if (field === "delta") {
+    // update rango cell only
+    const rango = getRango(value);
+    const rangoHtml = rango
+      ? `<span class="rango-pill">${rango.min} – ${rango.max} min</span>`
+      : `<span class="rango-empty">—</span>`;
+    const rows = document.getElementById("mod-tbody").rows;
+    const idx = modRows.indexOf(row);
+    if (rows[idx]) rows[idx].cells[2].innerHTML = rangoHtml;
+  }
+  calcMod();
+  saveState();
+}
+
+function calcMod() {
+  let totalMin = 0, totalMax = 0;
+
+  for (const row of modRows) {
+    const rango = getRango(row.delta);
+    if (rango) {
+      totalMin += rango.min;
+      totalMax += rango.max;
+    }
+  }
+
+  const buffer = parseFloat(document.getElementById("mod-buffer").value) || 0;
+  const bufferFactor = 1 + buffer / 100;
+
+  // PERT: (min + 4×most_likely + max) / 6   where most_likely = midpoint
+  const mostLikely = (totalMin + totalMax) / 2;
+  const pert = Math.round(((totalMin + 4 * mostLikely + totalMax) / 6) * bufferFactor);
+
+  document.getElementById("mod-min").textContent  = totalMin;
+  document.getElementById("mod-max").textContent  = totalMax;
+  document.getElementById("mod-pert").textContent = pert;
+
+  document.getElementById("mod-min-hm").textContent  = toHM(totalMin);
+  document.getElementById("mod-max-hm").textContent  = toHM(totalMax);
+  document.getElementById("mod-pert-hm").textContent = toHM(pert);
+}
+
+/* ══════════════════════════════════════════
+   COPY SUMMARY
+══════════════════════════════════════════ */
+
+function padEnd(str, len) {
+  const s = String(str);
+  return s + ' '.repeat(Math.max(0, len - s.length));
+}
+
+function todayStr() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+
+function copyEstSummary() {
+  const buffer = parseFloat(document.getElementById("est-buffer").value) || 0;
+  const subtotal = estRows.reduce((sum, r) => {
+    const t = getEstRowTime(r);
+    return sum + (t !== null ? t : 0);
+  }, 0);
+  const total = subtotal * (1 + buffer / 100);
+
+  // Column widths
+  const W_PAG  = Math.max(20, ...estRows.map(r => (r.pagina || '(sin página)').length));
+  const W_DIFF = 13;
+  const W_ITER = 4;
+  const W_HRS  = 7;
+  const ROW_W  = W_PAG + W_DIFF + W_ITER + W_HRS + 13; // separators
+  const SEP    = ' ' + '─'.repeat(ROW_W);
+
+  const lines = [];
+  lines.push(`ESTIMACIÓN DE DISEÑO — ${todayStr()}`);
+  lines.push(' ' + '═'.repeat(ROW_W));
+  lines.push(` ${padEnd('Página', W_PAG)} | ${padEnd('Dificultad', W_DIFF)} | ${padEnd('Iter', W_ITER)} | Horas`);
+  lines.push(SEP);
+
+  for (const row of estRows) {
+    const tiempo = getEstRowTime(row);
+    if (!row.pagina && !row.dificultad) continue;
+    const pagina = row.pagina || '(sin página)';
+    const diff   = isPersonalizado(row) ? 'Personalizado' : (row.dificultad || '—');
+    const iter   = isPersonalizado(row) ? '—' : String(row.iteraciones);
+    const hrs    = tiempo !== null ? fmt(tiempo) + ' hr' : '—';
+    lines.push(` ${padEnd(pagina, W_PAG)} | ${padEnd(diff, W_DIFF)} | ${padEnd(iter, W_ITER)} | ${hrs}`);
+    if (row.nota) lines.push(`   ${row.nota}`);
+  }
+
+  lines.push(SEP);
+  lines.push(` Subtotal: ${fmt(subtotal)} hr  ·  Buffer: ${buffer}%  ·  TOTAL: ${fmt(total)} hr`);
+
+  const text = lines.join('\n');
+  flashCopyBtn('btn-copy-est', text);
+}
+
+function copyModSummary() {
+  const buffer = parseFloat(document.getElementById("mod-buffer").value) || 0;
+  let totalMin = 0, totalMax = 0;
+  for (const row of modRows) {
+    const rango = getRango(row.delta);
+    if (rango) { totalMin += rango.min; totalMax += rango.max; }
+  }
+  const bufferFactor = 1 + buffer / 100;
+  const mostLikely = (totalMin + totalMax) / 2;
+  const pert = Math.round(((totalMin + 4 * mostLikely + totalMax) / 6) * bufferFactor);
+
+  // Column widths
+  const W_TAREA = Math.max(20, ...modRows.map(r => (r.tarea || '(sin descripción)').length));
+  const W_DELTA = 14;
+  const W_RANGO = 14;
+  const ROW_W   = W_TAREA + W_DELTA + W_RANGO + 9;
+  const SEP     = ' ' + '─'.repeat(ROW_W);
+
+  const lines = [];
+  lines.push(`MODIFICACIONES — ${todayStr()}`);
+  lines.push(' ' + '═'.repeat(ROW_W));
+  lines.push(` ${padEnd('Tarea', W_TAREA)} | ${padEnd('Delta', W_DELTA)} | Rango`);
+  lines.push(SEP);
+
+  for (const row of modRows) {
+    if (!row.tarea && !row.delta) continue;
+    const tarea      = row.tarea || '(sin descripción)';
+    const rango      = getRango(row.delta);
+    const deltaLabel = rango ? DELTAS[parseInt(row.delta,10)].label : '—';
+    const rangoStr   = rango ? `${rango.min}–${rango.max} min` : '—';
+    lines.push(` ${padEnd(tarea, W_TAREA)} | ${padEnd(deltaLabel, W_DELTA)} | ${rangoStr}`);
+  }
+
+  lines.push(SEP);
+  lines.push(` Mín: ${totalMin} min  ·  Máx: ${totalMax} min  ·  PERT (${buffer}%): ${pert} min  (${toHM(pert)})`);
+
+  const text = lines.join('\n');
+  flashCopyBtn('btn-copy-mod', text);
+}
+
+function flashCopyBtn(btnId, text) {
+  const btn = document.getElementById(btnId);
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="2,7 5.5,11 12,3"/>
+      </svg>
+      ¡Copiado!
+    `;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="8" height="9" rx="1"/>
+          <path d="M2 10V2a1 1 0 011-1h7"/>
+        </svg>
+        Copiar resumen
+      `;
+    }, 2000);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.classList.add('copied');
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="2,7 5.5,11 12,3"/>
+      </svg>
+      ¡Copiado!
+    `;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="8" height="9" rx="1"/>
+          <path d="M2 10V2a1 1 0 011-1h7"/>
+        </svg>
+        Copiar resumen
+      `;
+    }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+
+(function init() {
+  const state = loadState();
+  if (state) {
+    // Restore est rows
+    if (Array.isArray(state.estRows) && state.estRows.length > 0) {
+      estRows = state.estRows;
+      // Ensure all rows have the horas field
+      estRows.forEach(r => {
+        if (r.horas === undefined) r.horas = null;
+        if (r.isCustom === undefined) r.isCustom = false;
+      });
+    } else {
+      estRows = [];
+      addEstRow();
+    }
+
+    // Restore mod rows
+    if (Array.isArray(state.modRows) && state.modRows.length > 0) {
+      modRows = state.modRows;
+    } else {
+      modRows = [];
+      addModRow();
+    }
+
+    // Restore buffer values
+    if (state.estBuffer !== undefined) {
+      document.getElementById("est-buffer").value = state.estBuffer;
+    }
+    if (state.modBuffer !== undefined) {
+      document.getElementById("mod-buffer").value = state.modBuffer;
+    }
+
+    renderEstTable();
+    calcEst();
+    renderModTable();
+    calcMod();
+  } else {
+    addEstRow();
+    addModRow();
+  }
+})();
+</script>
+</body>
+</html>
