@@ -207,7 +207,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <div class="modal-copy-row">
+                    <div class="modal-copy-row" style="display:none;">
                         <button id="copyDescriptionButton" type="button" class="brutalButton iconBtn">
                             <i class="bi bi-chat-left-text"></i>
                             <span class="btnLabel">Copy Description</span>
@@ -265,11 +265,7 @@
                 </div>
                 <div class="modal-body">
 
-                    <!-- 1. Recently used presets -->
-                    <label class="form-label">Recently used</label>
-                    <div id="presetList" class="list-group mb-3"></div>
-
-                    <!-- 2. Fetch by ID/URL (only if configured) -->
+                    <!-- 1. Fetch by ID/URL (only if configured) -->
                     <div id="cuFetchRow" class="mb-3" style="display:none;">
                         <div class="d-flex gap-2">
                             <input type="text" id="cuFetchInput" class="form-control form-control-sm"
@@ -279,6 +275,10 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- 2. Recently used presets -->
+                    <label class="form-label">Recently used</label>
+                    <div id="presetList" class="list-group mb-3"></div>
 
                     <!-- 3. My ClickUp Tasks (only if configured) -->
                     <div id="cuTasksSection" style="display:none;">
