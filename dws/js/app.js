@@ -1876,6 +1876,62 @@ prioritizationButton.addEventListener('click', (e) => {
     e.stopPropagation();
     prioritizationPanel.classList.contains('open') ? closePrioPanel() : openPrioPanel();
 });
+
+document.getElementById('printButton').addEventListener('click', () => window.print());
+
+// For print, paint the actual <td> cells covered by each block instead of relying
+// on absolutely-positioned overlays — overlays drift when the table reflows for
+// the print layout. Cells are part of the table flow, so alignment is guaranteed.
+function paintCellsForPrint() {
+    const scheduleStart = timeToMinutes(startTimeInput.value || '08:00');
+    const scheduleEnd = timeToMinutes(endTimeInput.value || '18:00');
+
+    // Tell the print CSS how many slot rows there are so it can size each row
+    // to (page height − header) / count and fill the page exactly once.
+    const slotCount = Math.max(1, (scheduleEnd - scheduleStart) / TIME_SLOT_INTERVAL);
+    document.documentElement.style.setProperty('--print-row-count', slotCount);
+
+    schedule.forEach(block => {
+        const bStart = Math.max(timeToMinutes(block.start), scheduleStart);
+        const bEnd = Math.min(timeToMinutes(block.end), scheduleEnd);
+        if (bEnd <= bStart) return;
+
+        const colorHex = COLOR_THEMES[currentTheme][block.colorName] || '#000000';
+        const label = [block.projectName, block.taskName].filter(Boolean).join(' / ');
+
+        for (let t = bStart; t < bEnd; t += TIME_SLOT_INTERVAL) {
+            const cell = document.querySelector(
+                `td.time-slot[data-day="${block.day}"][data-time="${minutesToTime(t)}"]`
+            );
+            if (!cell) continue;
+            cell.classList.add('print-painted');
+            // Pass the task color to CSS — the print stylesheet uses this as a
+            // linear-gradient background so the bar sits INSIDE the cell instead
+            // of on the border (where it would merge with the neighbor cell).
+            cell.style.setProperty('--block-color', colorHex);
+            // Mark continuation edges so the print CSS can hide the horizontal
+            // gridline between two cells of the SAME task — making the block
+            // read as one continuous span instead of N stacked slot rows.
+            if (t !== bStart) cell.classList.add('print-cont-top');
+            if (t + TIME_SLOT_INTERVAL < bEnd) cell.classList.add('print-cont-bottom');
+            if (t === bStart && label) {
+                cell.textContent = label;
+            }
+        }
+    });
+}
+
+function clearPrintCells() {
+    document.querySelectorAll('td.print-painted').forEach(cell => {
+        cell.classList.remove('print-painted', 'print-cont-top', 'print-cont-bottom');
+        cell.style.removeProperty('--block-color');
+        cell.textContent = '';
+    });
+    document.documentElement.style.removeProperty('--print-row-count');
+}
+
+window.addEventListener('beforeprint', paintCellsForPrint);
+window.addEventListener('afterprint', clearPrintCells);
 closePrioritizationPanel.addEventListener('click', closePrioPanel);
 
 document.addEventListener('keydown', (e) => {
