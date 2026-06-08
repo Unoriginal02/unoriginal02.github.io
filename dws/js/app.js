@@ -1899,6 +1899,11 @@ function paintCellsForPrint() {
         const colorHex = COLOR_THEMES[currentTheme][block.colorName] || '#000000';
         const label = [block.projectName, block.taskName].filter(Boolean).join(' / ');
 
+        // Put the label on the middle cell so it reads as vertically centered
+        // within the whole painted block (each cell has vertical-align: middle).
+        const slotsInBlock = (bEnd - bStart) / TIME_SLOT_INTERVAL;
+        const labelT = bStart + Math.floor((slotsInBlock - 1) / 2) * TIME_SLOT_INTERVAL;
+
         for (let t = bStart; t < bEnd; t += TIME_SLOT_INTERVAL) {
             const cell = document.querySelector(
                 `td.time-slot[data-day="${block.day}"][data-time="${minutesToTime(t)}"]`
@@ -1914,7 +1919,7 @@ function paintCellsForPrint() {
             // read as one continuous span instead of N stacked slot rows.
             if (t !== bStart) cell.classList.add('print-cont-top');
             if (t + TIME_SLOT_INTERVAL < bEnd) cell.classList.add('print-cont-bottom');
-            if (t === bStart && label) {
+            if (t === labelT && label) {
                 cell.textContent = label;
             }
         }
