@@ -302,6 +302,8 @@ table {
     transition: transform 0.15s ease;
 }
 .status-dropdown.open .status-chevron { transform: rotate(180deg); }
+#modalStatus .status-text,
+#modalStatusMenu li { text-transform: uppercase; }
 .color-square { border-radius: 2px; }
 .status-dot {
     display: inline-block;
