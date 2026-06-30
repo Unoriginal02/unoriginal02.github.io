@@ -191,6 +191,20 @@
                             </div>
                         </div>
 
+                        <div class="row mb-3" id="modalStatusRow" style="display:none;">
+                            <div class="col-12">
+                                <label for="modalStatus" class="form-label">Status</label>
+                                <div class="status-dropdown">
+                                    <button type="button" id="modalStatus" class="status-trigger">
+                                        <span class="status-dot"></span>
+                                        <span class="status-text"></span>
+                                        <i class="bi bi-chevron-down status-chevron"></i>
+                                    </button>
+                                    <ul id="modalStatusMenu" class="status-menu" role="listbox"></ul>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="modalDescription" class="form-label">Description</label>
                             <textarea id="modalDescription" class="form-control" rows="3"></textarea>
@@ -205,7 +219,15 @@
 
                         <div class="mb-3">
                             <label for="modalColor" class="form-label">Color</label>
-                            <select id="modalColor" class="form-select" required></select>
+                            <div class="status-dropdown">
+                                <button type="button" id="modalColorBtn" class="status-trigger">
+                                    <span class="status-dot color-square"></span>
+                                    <span class="status-text"></span>
+                                    <i class="bi bi-chevron-down status-chevron"></i>
+                                </button>
+                                <ul id="modalColorMenu" class="status-menu" role="listbox"></ul>
+                            </div>
+                            <input type="hidden" id="modalColor" required>
                         </div>
                     </form>
                 </div>
@@ -225,9 +247,9 @@
                         </button>
                     </div>
                     <div class="modal-copy-row" id="imputarRow" style="display:none;">
-                        <button id="imputarButton" type="button" class="brutalButton iconBtn">
-                            <i class="bi bi-layers" id="imputarIcon"></i>
-                            <span class="btnLabel" id="imputarLabel">Block Log</span>
+                        <button id="updateStatusButton" type="button" class="brutalButton iconBtn">
+                            <i class="bi bi-flag" id="updateStatusIcon"></i>
+                            <span class="btnLabel" id="updateStatusLabel">Update Status</span>
                         </button>
                         <button id="imputarGranularButton" type="button" class="brutalButton iconBtn">
                             <i class="bi bi-card-checklist" id="imputarGranularIcon"></i>

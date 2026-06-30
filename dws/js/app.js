@@ -7,7 +7,8 @@ import { getAppState, saveAppState } from './db.js';
 import {
     getApiToken, setApiToken, getSavedUser, initUserAndTeam,
     isConfigured, fetchTask, fetchAssignedTasks, registerTime, extractTaskId,
-    getTimeEntries, deleteTimeEntry, fetchTaskDescription
+    getTimeEntries, deleteTimeEntry, fetchTaskDescription,
+    fetchListStatuses, updateTaskStatus
 } from './clickup.js';
 import {
     timeToMinutes, minutesToTime, addMinutes, generateTimeSlots,
@@ -40,6 +41,8 @@ let selectedDay = null;
 
 // ClickUp state
 let cuTasksCache = null;
+const statusesByList = new Map();
+let modalStatusLoadToken = 0;
 
 // Drag state
 let draggedBlock = null;
@@ -97,7 +100,12 @@ const modalProjectName = document.getElementById('modalProjectName');
 const modalTaskName = document.getElementById('modalTaskName');
 const modalTaskId = document.getElementById('modalTaskId');
 const modalDescription = document.getElementById('modalDescription');
-const modalColor = document.getElementById('modalColor');
+const modalColor       = document.getElementById('modalColor');
+const modalColorBtn    = document.getElementById('modalColorBtn');
+const modalColorMenu   = document.getElementById('modalColorMenu');
+const modalColorDropdown = modalColorBtn.parentElement;
+const modalColorSquare = modalColorBtn.querySelector('.status-dot');
+const modalColorText   = modalColorBtn.querySelector('.status-text');
 const loggedToggleButton = document.getElementById('loggedToggleButton');
 const toggleProjectNameButton = document.getElementById('toggleProjectNameButton');
 const toggleTaskNameButton = document.getElementById('toggleTaskNameButton');
@@ -131,12 +139,40 @@ const cuTasksList    = document.getElementById('cuTasksList');
 const cuRefreshBtn   = document.getElementById('cuRefreshBtn');
 
 const imputarRow             = document.getElementById('imputarRow');
-const imputarButton          = document.getElementById('imputarButton');
-const imputarIcon            = document.getElementById('imputarIcon');
-const imputarLabel           = document.getElementById('imputarLabel');
+const updateStatusButton     = document.getElementById('updateStatusButton');
+const updateStatusIcon       = document.getElementById('updateStatusIcon');
+const updateStatusLabel      = document.getElementById('updateStatusLabel');
 const imputarGranularButton  = document.getElementById('imputarGranularButton');
 const imputarGranularIcon    = document.getElementById('imputarGranularIcon');
 const imputarGranularLabel   = document.getElementById('imputarGranularLabel');
+
+const modalStatusRow  = document.getElementById('modalStatusRow');
+const modalStatus     = document.getElementById('modalStatus');
+const modalStatusMenu = document.getElementById('modalStatusMenu');
+const modalStatusDropdown = modalStatus.parentElement;
+const modalStatusDot      = modalStatus.querySelector('.status-dot');
+const modalStatusText     = modalStatus.querySelector('.status-text');
+
+let modalStatusValue = '';
+
+function setModalStatus(name, color) {
+    modalStatusValue = name || '';
+    modalStatusText.textContent = name || '';
+    modalStatusDot.style.background = color || 'transparent';
+    modalStatusMenu.querySelectorAll('li').forEach(li => {
+        li.classList.toggle('selected', li.dataset.value === name);
+    });
+}
+
+modalStatus.addEventListener('click', e => {
+    e.stopPropagation();
+    modalStatusDropdown.classList.toggle('open');
+});
+document.addEventListener('click', e => {
+    if (!modalStatusDropdown.contains(e.target)) {
+        modalStatusDropdown.classList.remove('open');
+    }
+});
 
 const notifyToggle = document.getElementById('notifyToggle');
 
@@ -271,18 +307,45 @@ function getAutoColorForNewBlock(day, startTime) {
 }
 
 function populateColorOptions() {
-    modalColor.innerHTML = '';
+    modalColorMenu.innerHTML = '';
     AVAILABLE_COLORS.forEach(colorKey => {
-        const option = document.createElement('option');
-        option.value = colorKey;
         const hex = COLOR_THEMES[currentTheme][colorKey];
         const label = COLOR_DISPLAY_NAMES[colorKey] || colorKey;
-        option.textContent = `■ ${label}`;
-        option.style.color = hex;
-        option.style.fontWeight = '700';
-        modalColor.appendChild(option);
+        const li = document.createElement('li');
+        li.dataset.value = colorKey;
+        li.innerHTML = `<span class="status-dot color-square"></span><span>${label}</span>`;
+        li.querySelector('.status-dot').style.background = hex;
+        li.addEventListener('click', e => {
+            e.stopPropagation();
+            modalColor.value = colorKey;
+            syncModalColorUI();
+            modalColorDropdown.classList.remove('open');
+        });
+        modalColorMenu.appendChild(li);
+    });
+    syncModalColorUI();
+}
+
+function syncModalColorUI() {
+    const key = modalColor.value;
+    const hex = key ? COLOR_THEMES[currentTheme][key] : null;
+    const label = key ? (COLOR_DISPLAY_NAMES[key] || key) : '';
+    modalColorSquare.style.background = hex || 'transparent';
+    modalColorText.textContent = label;
+    modalColorMenu.querySelectorAll('li').forEach(li => {
+        li.classList.toggle('selected', li.dataset.value === key);
     });
 }
+
+modalColorBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    modalColorDropdown.classList.toggle('open');
+});
+document.addEventListener('click', e => {
+    if (!modalColorDropdown.contains(e.target)) {
+        modalColorDropdown.classList.remove('open');
+    }
+});
 
 // ── Table rendering ───────────────────────────────────────────
 
@@ -693,6 +756,7 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
         modalTaskId.value = block.taskId || '';
         modalDescription.value = block.description || '';
         modalColor.value = block.colorName;
+        syncModalColorUI();
         modalLoggedState = block.logged === true;
         modalShowProjectName = block.showProjectName !== false;
         modalShowTaskName = block.showTaskName !== false;
@@ -713,6 +777,7 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
         modalTaskId.value = '';
         modalDescription.value = '-';
         modalColor.value = getAutoColorForNewBlock(day, modalStartTime.value);
+        syncModalColorUI();
         modalLoggedState = false;
         modalShowProjectName = true;
         const newDuration = timeToMinutes(modalEndTime.value) - timeToMinutes(modalStartTime.value);
@@ -728,14 +793,77 @@ function openModal(block = null, day = null, startTime = null, endTime = null) {
 
     const showImputar = isConfigured() && !!(block?.taskId);
     imputarRow.style.display = showImputar ? 'flex' : 'none';
-    imputarIcon.className = 'bi bi-layers';
-    imputarLabel.textContent = 'Block Log';
-    imputarButton.disabled = false;
+    updateStatusIcon.className = 'bi bi-flag';
+    updateStatusLabel.textContent = 'Update Status';
+    updateStatusButton.disabled = false;
     imputarGranularIcon.className = 'bi bi-card-checklist';
     imputarGranularLabel.textContent = 'Granular Log';
     imputarGranularButton.disabled = false;
 
+    loadTaskStatus(block);
+
     timeBlockModal.show();
+}
+
+async function loadTaskStatus(block) {
+    const reqToken = ++modalStatusLoadToken;
+    modalStatusMenu.innerHTML = '';
+    modalStatusDropdown.classList.remove('open');
+
+    const configured = isConfigured() && !!block?.taskId;
+    modalStatusRow.style.display = configured ? '' : 'none';
+    setModalStatus('-', null);
+    modalStatus.disabled = true;
+
+    if (!configured) return;
+
+    try {
+        const task = await fetchTask(block.taskId, getApiToken());
+        if (reqToken !== modalStatusLoadToken) return;
+
+        const listId = task.list?.id;
+        if (!listId) { setModalStatus('-', null); return; }
+
+        let statuses = statusesByList.get(listId);
+        if (!statuses) {
+            statuses = await fetchListStatuses(listId, getApiToken());
+            if (reqToken !== modalStatusLoadToken) return;
+            statusesByList.set(listId, statuses);
+        }
+        if (!statuses.length) { setModalStatus('-', null); return; }
+
+        modalStatusMenu.innerHTML = '';
+        statuses.forEach(s => {
+            const li = document.createElement('li');
+            li.dataset.value = s.status;
+            li.dataset.color = s.color || '';
+            li.innerHTML = `<span class="status-dot"></span><span>${s.status}</span>`;
+            li.querySelector('.status-dot').style.background = s.color || 'transparent';
+            li.addEventListener('click', e => {
+                e.stopPropagation();
+                setModalStatus(s.status, s.color);
+                modalStatusDropdown.classList.remove('open');
+            });
+            modalStatusMenu.appendChild(li);
+        });
+
+        const current = task.status?.status;
+        const currentColor = task.status?.color || statuses.find(s => s.status === current)?.color;
+        setModalStatus(current || '-', currentColor);
+        modalStatus.disabled = false;
+    } catch (err) {
+        console.warn('Could not load task status:', err);
+        setModalStatus('-', null);
+    }
+}
+
+async function applySelectedStatus(taskId) {
+    if (!modalStatusValue || modalStatusValue === '-' || modalStatusRow.style.display === 'none') return;
+    try {
+        await updateTaskStatus(taskId, modalStatusValue, getApiToken());
+    } catch (err) {
+        console.warn('Could not update task status:', err);
+    }
 }
 
 function closeModal() {
@@ -1094,63 +1222,36 @@ async function clearDayEntries(token, teamId, taskId, dayDate, userId) {
     await Promise.all(entries.map(e => deleteTimeEntry(token, teamId, e.id)));
 }
 
-async function imputarHoras() {
+async function updateStatusOnly() {
     if (!currentEditingBlock?.taskId || !isConfigured()) return;
+    if (!modalStatusValue || modalStatusValue === '-') {
+        alert('No status selected.');
+        return;
+    }
 
     const taskId = currentEditingBlock.taskId.trim();
-    const day    = currentEditingBlock.day;
 
-    const relatedBlocks = schedule.filter(b =>
-        b.day === day && (b.taskId || '').trim() === taskId
-    );
-
-    const totalMinutes = relatedBlocks.reduce(
-        (sum, b) => sum + Math.max(0, timeToMinutes(b.end) - timeToMinutes(b.start)), 0
-    );
-    if (totalMinutes === 0) { alert('No time to register.'); return; }
-
-    const earliest = [...relatedBlocks].sort(
-        (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
-    )[0];
-
-    const dayIndex  = DAYS.indexOf(day);
-    const monday    = parseISOToLocalDate(weekMondayISO);
-    const blockDate = addDays(monday, dayIndex);
-    const [h, m]    = earliest.start.split(':').map(Number);
-    blockDate.setHours(h, m, 0, 0);
-    const startTs    = blockDate.getTime();
-    const durationMs = totalMinutes * 60 * 1000;
-    const description = currentEditingBlock.description || '';
-    const user = getSavedUser();
-
-    imputarIcon.className = 'bi bi-hourglass-split';
-    imputarButton.disabled = true;
+    updateStatusIcon.className = 'bi bi-hourglass-split';
+    updateStatusButton.disabled = true;
 
     let success = false;
     try {
-        await clearDayEntries(getApiToken(), user?.teamId, taskId, blockDate, user?.userId);
-        await registerTime(getApiToken(), taskId, user?.teamId, startTs, durationMs, description, user?.userId);
+        await updateTaskStatus(taskId, modalStatusValue, getApiToken());
         success = true;
-        relatedBlocks.forEach(b => { b.logged = true; });
-        if (currentEditingBlock) currentEditingBlock.logged = true;
-        loggedToggleButton.classList.add('logged-active');
-        modalLoggedState = true;
-        saveSchedule();
-        renderSchedule();
     } catch (err) {
         alert(err.message);
     } finally {
         if (success) {
-            imputarIcon.className = 'bi bi-check-circle';
-            imputarLabel.textContent = 'Logged!';
+            updateStatusIcon.className = 'bi bi-check-circle';
+            updateStatusLabel.textContent = 'Updated!';
             setTimeout(() => {
-                imputarIcon.className = 'bi bi-layers';
-                imputarLabel.textContent = 'Block Log';
-                imputarButton.disabled = false;
+                updateStatusIcon.className = 'bi bi-flag';
+                updateStatusLabel.textContent = 'Update Status';
+                updateStatusButton.disabled = false;
             }, 2500);
         } else {
-            imputarIcon.className = 'bi bi-layers';
-            imputarButton.disabled = false;
+            updateStatusIcon.className = 'bi bi-flag';
+            updateStatusButton.disabled = false;
         }
     }
 }
@@ -1193,6 +1294,10 @@ async function imputarGranular() {
             errors.push(result.reason?.message || 'Unknown error');
         }
     });
+
+    if (results.some(r => r.status === 'fulfilled')) {
+        await applySelectedStatus(taskId);
+    }
 
     // currentEditingBlock is a reference into schedule, so its .logged was updated above
     loggedToggleButton.classList.toggle('logged-active', currentEditingBlock?.logged === true);
@@ -1999,7 +2104,7 @@ saveClickupTokenBtn.addEventListener('click', async () => {
 cuFetchBtn.addEventListener('click', cuFetchFromPreset);
 cuFetchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cuFetchFromPreset(); } });
 cuRefreshBtn.addEventListener('click', () => { cuTasksCache = null; loadCuTasks(true); });
-imputarButton.addEventListener('click', imputarHoras);
+updateStatusButton.addEventListener('click', updateStatusOnly);
 imputarGranularButton.addEventListener('click', imputarGranular);
 
 document.addEventListener('mouseup', onMouseUpDocument);

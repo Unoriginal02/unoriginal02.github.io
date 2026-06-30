@@ -103,6 +103,26 @@ export async function fetchTaskDescription(taskId, token) {
     return apiGet(`/task/${encodeURIComponent(taskId)}?include_markdown_description=true`, token);
 }
 
+async function apiPut(path, body, token) {
+    const resp = await fetch(`https://api.clickup.com/api/v2${path}`, {
+        method: 'PUT',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (resp.status === 401) throw new Error('Invalid API token.');
+    if (!resp.ok) throw new Error(`ClickUp API error (${resp.status}).`);
+    return resp.json();
+}
+
+export async function fetchListStatuses(listId, token) {
+    const data = await apiGet(`/list/${encodeURIComponent(listId)}`, token);
+    return data.statuses || [];
+}
+
+export async function updateTaskStatus(taskId, status, token) {
+    return apiPut(`/task/${encodeURIComponent(taskId)}`, { status }, token);
+}
+
 async function apiDelete(path, token) {
     const resp = await fetch(`https://api.clickup.com/api/v2${path}`, {
         method: 'DELETE',
