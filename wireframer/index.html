@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Wireframer</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+
+    <!-- Sortable.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <!-- Quill Editor Stylesheet -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        /* Small helpers for the grid tiles */
+        .cat-grid-tile {
+            border: 1px solid #e5e5e5;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            height: 100%;
+            transition: box-shadow .15s ease, transform .05s ease;
+            background: #fff;
+        }
+
+        .cat-grid-tile:hover {
+            box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
+            transform: translateY(-1px);
+        }
+
+        .cat-grid-icon {
+            display: none;
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            margin-bottom: .5rem;
+        }
+
+        .cat-grid-name {
+            font-weight: 600;
+            font-size: .95rem;
+        }
+
+        .cat-pane-header-inline img.cat-icon-pane {
+            display: none;
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .cat-pane-header-inline .title-text {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .back-btn {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            margin-right: .5rem;
+        }
+
+        /* Mensaje de idea encima de la fila de iconos */
+        .idea-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            /* centra en ambos ejes */
+            background: #000;
+            color: #fff;
+            padding: .25rem .5rem;
+            font-weight: 600;
+            font-size: .9rem;
+            line-height: 1.2;
+            display: block;
+            /* visible cuando hay texto; JS la pone a none si está vacía */
+            max-width: 90%;
+            text-align: center;
+            z-index: 3;
+            /* por encima del contenido base */
+            pointer-events: none;
+            /* no bloquea clics en iconos/overlay */
+            opacity: 1;
+            transition: opacity .15s ease;
+        }
+
+        /* Hide the idea while the module is hovered (overlay visible) */
+        .block-container:hover .idea-message {
+            opacity: 0;
+            /* or: visibility:hidden; */
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="title">
+            Wireframer
+        </div>
+
+        <div class="header-search">
+            <input id="moduleSearch" type="search" placeholder="Search modules…" autocomplete="off" />
+            <div id="moduleSearchResults" class="search-popover" style="display:none"></div>
+        </div>
+
+
+        <div class="button-group">
+            <!-- Mode Toggle Switch -->
+            <div class="toggle-switch">
+                <label for="modeToggle">Desktop</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="modeToggle">
+                </div>
+                <label for="modeToggle">Mobile</label>
+            </div>
+            <button id="downloadJpgBtn" class="btn btn-secondary">Download</button>
+            <button id="exportBtn" class="btn btn-secondary">Export</button>
+            <button id="importBtn" class="btn btn-secondary">Import</button>
+            <button id="getListBtn" class="btn btn-secondary">Get List</button>
+             <button id="clearBtn" class="btn btn-warning">Clear</button>
+            <!-- Hidden file input for Import -->
+            <input type="file" id="importFileInput" accept=".json" style="display: none;" />
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Canvas / Stack Area -->
+        <div id="canvas" class="canvas mt-3">
+            <!-- Blocks will be inserted here dynamically -->
+        </div>
+
+        <!-- Plus Sign to add a new block at the bottom -->
+        <div class="text-center mt-4 mb-4">
+            <button id="addBlockBtn" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal"
+                data-bs-target="#modulesModal">
+                +
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal to choose a module -->
+    <div class="modal fade" id="modulesModal" tabindex="-1" aria-labelledby="modulesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modulesModalLabel">Choose a Module</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- NEW UX: Category grid first -->
+                    <div id="categoryGrid" class="row g-3"></div>
+
+                    <!-- Single-category view -->
+                    <div id="categoryView" style="display:none;">
+                        <div class="d-flex align-items-center mb-3 cat-pane-header-inline">
+                            <button id="backToGridBtn" class="back-btn" title="Back to categories">
+                                <i class="bi bi-arrow-left fs-5"></i>
+                            </button>
+                            <img id="selectedCategoryIcon" class="cat-icon-pane me-2" alt="" />
+                            <span id="selectedCategoryTitle" class="title-text"></span>
+                        </div>
+                        <div id="categoryModulesList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for module list -->
+    <div class="modal fade" id="listModal" tabindex="-1" aria-labelledby="listModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="height: 600px;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="listModalLabel">Module List</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="moduleListContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing notes with a larger dialog -->
+    <div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="noteModalLabel">Add/Edit Note</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Quill editor container with updated height -->
+                    <div id="noteEditor" style="height: 600px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="saveNoteBtn" class="btn btn-primary">Save Note</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ideas rápidas -->
+    <div class="modal fade" id="ideaModal" tabindex="-1" aria-labelledby="ideaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-6" id="ideaModalLabel">Añadir idea</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input id="ideaInput" type="text" class="form-control" placeholder="Escribe tu idea…" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="saveIdeaBtn" class="btn btn-primary">Aceptar</button>
+                    <button type="button" id="clearIdeaBtn" class="btn btn-light-gray">Borrar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- NEW: Paste Image Modal -->
+    <div class="modal fade" id="pasteModal" tabindex="-1" aria-labelledby="pasteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pasteModalLabel">Paste Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Please paste your image now (Ctrl+V or Command+V).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End New Modal -->
+
+    <!-- Download to JPG Modal -->
+    <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h1 class="modal-title fs-5" id="downloadModalLabel">Download as JPG</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+            <div class="mb-3">
+            <label for="downloadName" class="form-label">Project Name name</label>
+            <input type="text" id="downloadName" class="form-control" placeholder="e.g. Home v3 – Client A">
+            </div>
+
+            <div class="mb-3">
+            <label for="downloadDate" class="form-label">Render date</label>
+            <input type="date" id="downloadDate" class="form-control">
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="confirmDownloadBtn" class="btn btn-primary">Download</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+        </div>
+    </div>
+    </div>
+
+
+    <!-- Bootstrap JS + Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill Editor Script -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- Custom JavaScript Files -->
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
