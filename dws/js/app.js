@@ -92,10 +92,6 @@ const importButton = document.getElementById('importButton');
 const wipeButton = document.getElementById('wipeButton');
 const importFileInput = document.getElementById('importFileInput');
 
-const lightModeButton = document.getElementById('lightModeButton');
-const darkModeButton = document.getElementById('darkModeButton');
-const demureModeButton = document.getElementById('demureModeButton');
-
 const timeBlockModalElement = document.getElementById('timeBlockModal');
 const timeBlockModal = new bootstrap.Modal(timeBlockModalElement);
 const timeBlockForm = document.getElementById('timeBlockForm');
@@ -266,7 +262,7 @@ async function loadSchedule() {
             setPresets(data.projectTaskPresets || []);
             startTimeInput.value = data.startTime || '08:00';
             endTimeInput.value = data.endTime || '18:00';
-            currentTheme = data.theme || 'dark';
+            currentTheme = 'dark';
             notificationsEnabled = data.notificationsEnabled || false;
 
             Object.values(weeks).forEach(migrateBlockFields);
@@ -1478,7 +1474,7 @@ function importSchedule(file) {
             }
             startTimeInput.value = imported.startTime || '08:00';
             endTimeInput.value = imported.endTime || '18:00';
-            currentTheme = imported.theme || 'dark';
+            currentTheme = 'dark';
             notificationsEnabled = imported.notificationsEnabled || false;
             setPresets(imported.projectTaskPresets || []);
 
@@ -1525,18 +1521,10 @@ function wipeSchedule() {
     renderTable();
 }
 
-// ── Theme ─────────────────────────────────────────────────────
+// ── Theme (dark only) ─────────────────────────────────────────
 
-function switchTheme(mode) {
-    document.body.classList.remove('light-mode', 'demure-mode');
-    if (mode === 'light') document.body.classList.add('light-mode');
-    else if (mode === 'demure') document.body.classList.add('demure-mode');
-    currentTheme = mode;
-
-    document.querySelectorAll('.mode-switcher').forEach(btn => btn.classList.remove('active-mode'));
-    const activeBtn = { light: lightModeButton, dark: darkModeButton, demure: demureModeButton }[mode];
-    if (activeBtn) activeBtn.classList.add('active-mode');
-
+function switchTheme() {
+    currentTheme = 'dark';
     populateColorOptions();
     renderSchedule();
     saveSchedule();
@@ -2071,10 +2059,6 @@ document.getElementById('copyLastWeekButton').addEventListener('click', copyLast
 exportButton.addEventListener('click', exportSchedule);
 importButton.addEventListener('click', () => importFileInput.click());
 wipeButton.addEventListener('click', wipeSchedule);
-
-lightModeButton.addEventListener('click', () => switchTheme('light'));
-darkModeButton.addEventListener('click', () => switchTheme('dark'));
-demureModeButton.addEventListener('click', () => switchTheme('demure'));
 
 acceptButton.addEventListener('click', saveBlock);
 deleteButton.addEventListener('click', deleteBlock);

@@ -19,34 +19,6 @@ export const COLOR_THEMES = {
         lime: '#B6FF00',
         magenta: '#D500FF',
         gray: '#3B3B3C'
-    },
-    light: {
-        red: '#FF4D4D',
-        orange: '#FF8A3D',
-        yellow: '#FFD400',
-        green: '#12C95A',
-        blue: '#1F6FFF',
-        purple: '#8D3DFF',
-        pink: '#FF2EA6',
-        cyan: '#00BFE6',
-        teal: '#00A892',
-        lime: '#86D600',
-        magenta: '#B800E6',
-        gray: '#DBDBDD'
-    },
-    demure: {
-        red: '#FF9A9A',
-        orange: '#FFC08A',
-        yellow: '#FFE07A',
-        green: '#9CFFB8',
-        blue: '#9CBFFF',
-        purple: '#D2A8FF',
-        pink: '#FF9AD3',
-        cyan: '#9AF0FF',
-        teal: '#8EEBDD',
-        lime: '#D8FF9A',
-        magenta: '#F0A0FF',
-        gray: '#C9C9CB'
     }
 };
 
