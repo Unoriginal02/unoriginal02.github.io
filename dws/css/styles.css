@@ -272,6 +272,33 @@ table {
     border-radius: 0;
 }
 
+/* Week navigator */
+.week-nav .week-nav-btn {
+    border-radius: 0;
+    padding: .48rem .75rem;
+    line-height: 1.5;
+}
+
+.week-nav .week-nav-btn:hover:not(:disabled) {
+    background-color: var(--main-color-hover);
+    color: var(--main-color);
+}
+
+.week-nav .week-nav-btn:disabled {
+    opacity: 1;
+}
+
+.week-nav .week-nav-btn:disabled i {
+    opacity: 0.35;
+}
+
+.week-nav .week-label {
+    flex: 1 1 auto;
+    border-left: none;
+    border-right: none;
+    user-select: none;
+}
+
 /* Status dropdown */
 .status-dropdown { position: relative; }
 .status-trigger {

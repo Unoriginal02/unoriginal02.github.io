@@ -28,7 +28,10 @@ import {
 } from './tooltip.js';
 
 // ── State ────────────────────────────────────────────────────
-let schedule = [];
+const WEEKS_TO_KEEP = 9; // current week + 8 previous ≈ 2 months
+
+let weeks = {};      // { mondayISO: [blocks] } — all stored weeks
+let schedule = [];   // blocks of the currently displayed week (weeks[weekMondayISO])
 let currentTheme = 'dark';
 let weekMondayISO = null;
 let notificationsEnabled = false;
@@ -73,7 +76,9 @@ const timetableBody = document.getElementById('timetable-body');
 const timetableContainer = document.getElementById('timetable-container');
 const startTimeInput = document.getElementById('startTime');
 const endTimeInput = document.getElementById('endTime');
-const weekMondayInput = document.getElementById('weekMonday');
+const prevWeekBtn = document.getElementById('prevWeekBtn');
+const nextWeekBtn = document.getElementById('nextWeekBtn');
+const weekLabel = document.getElementById('weekLabel');
 const currentTimeLine = document.getElementById('currentTimeLine');
 
 const thMonday = document.getElementById('thMonday');
@@ -186,11 +191,37 @@ const prioOther = document.getElementById('prioOther');
 const prioIdeas = document.getElementById('prioIdeas');
 const prioTextareas = [prioTop3, prioOther, prioIdeas];
 
+// ── Week helpers ─────────────────────────────────────────────
+
+function currentWeekMondayISO() {
+    return toISODateLocal(startOfWeekMonday(new Date()));
+}
+
+function oldestAllowedMondayISO() {
+    const currentMonday = parseISOToLocalDate(currentWeekMondayISO());
+    return toISODateLocal(addDays(currentMonday, -7 * (WEEKS_TO_KEEP - 1)));
+}
+
+// Rolling retention: as each new week starts, the weeks that fall out of the
+// window are dropped one by one (ISO date strings compare lexicographically).
+function pruneOldWeeks() {
+    const cutoff = oldestAllowedMondayISO();
+    Object.keys(weeks).forEach(iso => {
+        if (iso < cutoff) delete weeks[iso];
+    });
+}
+
+function formatEuroDate(dateObj) {
+    return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+}
+
 // ── Persistence ──────────────────────────────────────────────
 
 async function saveSchedule() {
+    weeks[weekMondayISO] = schedule;
+    pruneOldWeeks();
     const data = {
-        schedule,
+        weeks,
         startTime: startTimeInput.value,
         endTime: endTimeInput.value,
         theme: currentTheme,
@@ -208,41 +239,52 @@ async function saveSchedule() {
     } catch (err) {
         console.error('Failed to save state:', err);
     }
-    scheduleNextNotification(schedule, notificationsEnabled);
+    scheduleNextNotification(weeks[currentWeekMondayISO()] || [], notificationsEnabled);
+}
+
+function migrateBlockFields(blocks) {
+    blocks.forEach(block => {
+        if (block.taskName === undefined) block.taskName = '';
+        if (block.taskId === undefined) block.taskId = '';
+        if (block.description === undefined) block.description = '';
+        if (block.logged === undefined) block.logged = false;
+    });
 }
 
 async function loadSchedule() {
     try {
         const data = await getAppState();
         if (data) {
-            schedule = data.schedule || [];
+            if (data.weeks && typeof data.weeks === 'object') {
+                weeks = data.weeks;
+            } else if (Array.isArray(data.schedule) && data.schedule.length) {
+                // Migrate legacy single-week format into the current week
+                weeks = { [currentWeekMondayISO()]: data.schedule };
+            } else {
+                weeks = {};
+            }
             setPresets(data.projectTaskPresets || []);
             startTimeInput.value = data.startTime || '08:00';
             endTimeInput.value = data.endTime || '18:00';
             currentTheme = data.theme || 'dark';
             notificationsEnabled = data.notificationsEnabled || false;
 
-            // Migrate old blocks missing new fields
-            schedule.forEach(block => {
-                if (block.taskName === undefined) block.taskName = '';
-                if (block.taskId === undefined) block.taskId = '';
-                if (block.description === undefined) block.description = '';
-                if (block.logged === undefined) block.logged = false;
-            });
+            Object.values(weeks).forEach(migrateBlockFields);
 
             const prio = data.prioritization || {};
             prioTop3.value = prio.top3 || '';
             prioOther.value = prio.other || '';
             prioIdeas.value = prio.ideas || '';
         } else {
+            weeks = {};
             currentTheme = 'dark';
             notificationsEnabled = false;
         }
 
         // Always snap to current week's Monday on load
-        const monday = startOfWeekMonday(new Date());
-        weekMondayISO = toISODateLocal(monday);
-        weekMondayInput.value = weekMondayISO;
+        weekMondayISO = currentWeekMondayISO();
+        pruneOldWeeks();
+        schedule = weeks[weekMondayISO] || (weeks[weekMondayISO] = []);
 
         notifyToggle.checked = notificationsEnabled;
 
@@ -255,14 +297,77 @@ async function loadSchedule() {
             }
         }
 
+        updateWeekNav();
         updateWeekHeaderLabels();
     } catch (err) {
         console.error('Failed to load state:', err);
+        weeks = {};
         schedule = [];
+        weekMondayISO = currentWeekMondayISO();
+        weeks[weekMondayISO] = schedule;
         currentTheme = 'dark';
         notificationsEnabled = false;
+        updateWeekNav();
         updateWeekHeaderLabels();
     }
+}
+
+// ── Week navigation ───────────────────────────────────────────
+
+function updateWeekNav() {
+    const monday = parseISOToLocalDate(weekMondayISO);
+    weekLabel.textContent = formatEuroDate(monday);
+    nextWeekBtn.disabled = weekMondayISO >= currentWeekMondayISO();
+    prevWeekBtn.disabled = weekMondayISO <= oldestAllowedMondayISO();
+}
+
+function switchToWeek(mondayISO) {
+    if (mondayISO === weekMondayISO) return;
+    weeks[weekMondayISO] = schedule;
+    weekMondayISO = mondayISO;
+    schedule = weeks[mondayISO] || (weeks[mondayISO] = []);
+    updateWeekNav();
+    renderTable();
+    saveSchedule();
+}
+
+function shiftWeek(deltaWeeks) {
+    const target = toISODateLocal(addDays(parseISOToLocalDate(weekMondayISO), deltaWeeks * 7));
+    if (target > currentWeekMondayISO()) return;   // cannot advance past the current week
+    if (target < oldestAllowedMondayISO()) return; // cannot go past the retention window
+    switchToWeek(target);
+}
+
+// Clone the previous week's blocks into the displayed week. Blocks that would
+// overlap something already placed this week are skipped; copies start unlogged.
+function copyLastWeek() {
+    const prevISO = toISODateLocal(addDays(parseISOToLocalDate(weekMondayISO), -7));
+    const sourceBlocks = weeks[prevISO] || [];
+    if (!sourceBlocks.length) {
+        alert(`Previous week (${formatEuroDate(parseISOToLocalDate(prevISO))}) has no blocks to copy.`);
+        return;
+    }
+
+    let nextId = Date.now();
+    let copied = 0;
+    let skipped = 0;
+    sourceBlocks.forEach(block => {
+        if (checkConflict(block.day, block.start, block.end)) {
+            skipped++;
+            return;
+        }
+        schedule.push({ ...block, id: nextId++, logged: false });
+        copied++;
+    });
+
+    if (!copied) {
+        alert('Nothing copied — every block overlaps an existing block this week.');
+        return;
+    }
+
+    saveSchedule();
+    renderTable();
+    if (skipped) alert(`Copied ${copied} block(s). Skipped ${skipped} that overlapped existing blocks.`);
 }
 
 // ── Week header ───────────────────────────────────────────────
@@ -359,8 +464,9 @@ function renderTable() {
     const start = startTimeInput.value || '08:00';
     const end = endTimeInput.value || '18:00';
     const slots = generateTimeSlots(start, end, TIME_SLOT_INTERVAL);
+    const isCurrentWeek = weekMondayISO === currentWeekMondayISO();
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayIndex = DAYS.indexOf(today); // -1 if not a weekday
+    const todayIndex = isCurrentWeek ? DAYS.indexOf(today) : -1; // -1 if not a weekday or viewing a past week
 
     slots.forEach(time => {
         const tr = document.createElement('tr');
@@ -389,7 +495,7 @@ function renderTable() {
     // Highlight current day header
     document.querySelectorAll('.table thead th').forEach((th, i) => {
         // i=0 is "Time" column; day headers start at i=1
-        th.classList.toggle('current-day', i === todayIndex + 1);
+        th.classList.toggle('current-day', todayIndex >= 0 && i === todayIndex + 1);
     });
 
     // Day header tooltips
@@ -1323,8 +1429,9 @@ async function imputarGranular() {
 // ── Export / Import ───────────────────────────────────────────
 
 function exportSchedule() {
+    weeks[weekMondayISO] = schedule;
     const data = {
-        schedule,
+        weeks,
         startTime: startTimeInput.value,
         endTime: endTimeInput.value,
         projectTaskPresets,
@@ -1342,9 +1449,10 @@ function exportSchedule() {
     const now = new Date();
     const savedDate = toISODateLocal(now);
     const savedTime = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join('-');
-    const mondayStr = weekMondayISO || 'unknown-monday';
+    const weekKeys = Object.keys(weeks).filter(iso => weeks[iso].length).sort();
+    const rangeStr = weekKeys.length ? `${weekKeys[0]} to ${weekKeys[weekKeys.length - 1]}` : 'empty';
 
-    a.download = `DWS WEEK ${mondayStr} - Saved on ${savedDate}_${savedTime}.json`;
+    a.download = `DWS WEEKS ${rangeStr} - Saved on ${savedDate}_${savedTime}.json`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1354,29 +1462,37 @@ function importSchedule(file) {
     reader.onload = async function (e) {
         try {
             const imported = JSON.parse(e.target.result);
-            if (!imported || !Array.isArray(imported.schedule)) throw new Error('Invalid schedule format.');
+            const hasWeeks = imported && imported.weeks && typeof imported.weeks === 'object';
+            if (!imported || (!hasWeeks && !Array.isArray(imported.schedule))) throw new Error('Invalid schedule format.');
 
-            schedule = imported.schedule;
+            if (hasWeeks) {
+                weeks = imported.weeks;
+            } else {
+                // Legacy single-week export: file it under its saved week
+                // (or the current week if that week is outside the retention window)
+                let targetISO = imported.weekMondayISO || currentWeekMondayISO();
+                if (targetISO < oldestAllowedMondayISO() || targetISO > currentWeekMondayISO()) {
+                    targetISO = currentWeekMondayISO();
+                }
+                weeks = { [targetISO]: imported.schedule };
+            }
             startTimeInput.value = imported.startTime || '08:00';
             endTimeInput.value = imported.endTime || '18:00';
             currentTheme = imported.theme || 'dark';
             notificationsEnabled = imported.notificationsEnabled || false;
             setPresets(imported.projectTaskPresets || []);
 
-            schedule.forEach(block => {
-                if (block.taskName === undefined) block.taskName = '';
-                if (block.taskId === undefined) block.taskId = '';
-                if (block.description === undefined) block.description = '';
-                if (block.logged === undefined) block.logged = false;
-            });
+            Object.values(weeks).forEach(migrateBlockFields);
 
             const prio = imported.prioritization || {};
             prioTop3.value = prio.top3 || '';
             prioOther.value = prio.other || '';
             prioIdeas.value = prio.ideas || '';
 
-            weekMondayISO = imported.weekMondayISO || toISODateLocal(startOfWeekMonday(new Date()));
-            weekMondayInput.value = weekMondayISO;
+            weekMondayISO = currentWeekMondayISO();
+            pruneOldWeeks();
+            schedule = weeks[weekMondayISO] || (weeks[weekMondayISO] = []);
+            updateWeekNav();
 
             notifyToggle.checked = notificationsEnabled;
             if (notificationsEnabled) {
@@ -1398,8 +1514,10 @@ function importSchedule(file) {
 }
 
 function wipeSchedule() {
-    if (!confirm('Are you sure you want to wipe the entire schedule?')) return;
+    if (!confirm('Are you sure you want to wipe the entire schedule (all stored weeks)?')) return;
+    weeks = {};
     schedule = [];
+    weeks[weekMondayISO] = schedule;
     prioTop3.value = '';
     prioOther.value = '';
     prioIdeas.value = '';
@@ -1432,7 +1550,7 @@ function updateCurrentTimeLine() {
     const scheduleStart = timeToMinutes(startTimeInput.value);
     const scheduleEnd = timeToMinutes(endTimeInput.value);
 
-    if (currentMinutes < scheduleStart || currentMinutes > scheduleEnd) {
+    if (weekMondayISO !== currentWeekMondayISO() || currentMinutes < scheduleStart || currentMinutes > scheduleEnd) {
         currentTimeLine.style.display = 'none';
         return;
     }
@@ -1946,13 +2064,9 @@ endTimeInput.addEventListener('change', () => {
     renderTable();
 });
 
-weekMondayInput.addEventListener('change', () => {
-    if (!weekMondayInput.value) return;
-    const monday = startOfWeekMonday(parseISOToLocalDate(weekMondayInput.value));
-    weekMondayISO = toISODateLocal(monday);
-    weekMondayInput.value = weekMondayISO;
-    updateWeekHeaderLabels();
-});
+prevWeekBtn.addEventListener('click', () => shiftWeek(-1));
+nextWeekBtn.addEventListener('click', () => shiftWeek(1));
+document.getElementById('copyLastWeekButton').addEventListener('click', copyLastWeek);
 
 exportButton.addEventListener('click', exportSchedule);
 importButton.addEventListener('click', () => importFileInput.click());

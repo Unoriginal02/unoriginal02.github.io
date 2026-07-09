@@ -50,8 +50,12 @@
             <!-- Time / Week Selectors -->
             <div class="row mb-4">
                 <div class="col-md-4 mb-2">
-                    <label for="weekMonday" class="form-label">Week (Monday)</label>
-                    <input type="date" id="weekMonday" class="form-control">
+                    <label class="form-label">Week</label>
+                    <div class="week-nav d-flex">
+                        <button type="button" id="prevWeekBtn" class="btn week-nav-btn" title="Previous week"><i class="bi bi-chevron-left"></i></button>
+                        <span id="weekLabel" class="form-control week-label text-center"></span>
+                        <button type="button" id="nextWeekBtn" class="btn week-nav-btn" title="Next week"><i class="bi bi-chevron-right"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4 mb-2">
                     <label for="startTime" class="form-label">Start Time</label>
@@ -83,6 +87,9 @@
 
             <!-- Action Buttons -->
             <div class="buttonGroup mt-3">
+                <button id="copyLastWeekButton" class="brutalButton" title="Copy the previous week's blocks into this week">
+                    <i class="bi bi-files"></i> Copy Last Week
+                </button>
                 <button id="exportButton" class="brutalButton">
                     <i class="bi bi-download"></i> Export
                 </button>
