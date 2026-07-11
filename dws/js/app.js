@@ -64,6 +64,14 @@ let dragMouseDownX = 0;
 let dragMouseDownY = 0;
 let dragInitiated = false;
 let dragEndTime = 0;
+let dragLastEvent = null;  // last mousemove, reused by the auto-scroll loop
+let dragScrollRAF = null;  // rAF id of the edge auto-scroll loop
+
+// A block that starts on the very first row sits flush against the
+// day-header divider (both land on the same sub-pixel row → the card's
+// color bleeds into the white line). Nudge only those blocks down a few
+// px so the header line stays crisp; every other block stays flush.
+const TOP_ROW_GAP = 3;
 
 // Selection state
 let isSelecting = false;
@@ -91,6 +99,9 @@ const exportButton = document.getElementById('exportButton');
 const importButton = document.getElementById('importButton');
 const wipeButton = document.getElementById('wipeButton');
 const importFileInput = document.getElementById('importFileInput');
+const logTodayButton = document.getElementById('logTodayButton');
+const logTodayIcon = document.getElementById('logTodayIcon');
+const logTodayLabel = document.getElementById('logTodayLabel');
 
 const timeBlockModalElement = document.getElementById('timeBlockModal');
 const timeBlockModal = new bootstrap.Modal(timeBlockModalElement);
@@ -515,6 +526,17 @@ function renderTable() {
  * Build a lookup of { leftPx, widthPx } for each day column by measuring
  * the actual rendered <th> cells relative to the timetable container.
  */
+/**
+ * Exact distance from the container top to the first data row (tbody top).
+ * thead.offsetHeight rounds to an integer and misses the half-pixel of the
+ * collapsed table border, which made cards overlap the day-header bar
+ * (worse under browser zoom, where the fraction grows).
+ */
+function getHeaderOffset() {
+    if (!timetableBody.firstChild) return document.querySelector('.table thead').offsetHeight;
+    return timetableBody.getBoundingClientRect().top - timetableContainer.getBoundingClientRect().top;
+}
+
 function getDayColumnRects() {
     const containerRect = timetableContainer.getBoundingClientRect();
     const thEls = [
@@ -538,7 +560,7 @@ function renderSchedule() {
     document.querySelectorAll('.time-block').forEach(b => b.remove());
 
     const cellHeight = getCellHeight();
-    const headerHeight = document.querySelector('.table thead').offsetHeight;
+    const headerHeight = getHeaderOffset();
     const scheduleStart = timeToMinutes(startTimeInput.value);
     const scheduleEnd = timeToMinutes(endTimeInput.value);
     const dayRects = getDayColumnRects();
@@ -553,8 +575,10 @@ function renderSchedule() {
         const adjEnd = Math.min(endMin, scheduleEnd);
         if (adjEnd <= adjStart) return;
 
-        const topPx = ((adjStart - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
-        const heightPx = ((adjEnd - adjStart) / TIME_SLOT_INTERVAL) * cellHeight;
+        // first-row blocks get nudged down so they don't sit on the header line
+        const topGap = adjStart <= scheduleStart ? TOP_ROW_GAP : 0;
+        const topPx = ((adjStart - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight + topGap;
+        const heightPx = ((adjEnd - adjStart) / TIME_SLOT_INTERVAL) * cellHeight - topGap;
         const { leftPx, widthPx } = dayRects[dayIndex];
         const colorHex = COLOR_THEMES[currentTheme][block.colorName] || '#FFFFFF';
 
@@ -619,11 +643,14 @@ function renderSchedule() {
             dragInitiated = false;
             dragMouseDownX = e.clientX;
             dragMouseDownY = e.clientY;
+            // floor (not round): the grab point must map to the slot it is
+            // actually inside, or the block jumps a slot when the drag starts
             const clickOffsetPx = e.clientY - timetableContainer.getBoundingClientRect().top - parseFloat(blockDiv.style.top);
-            const offsetSlots = Math.round(clickOffsetPx / getCellHeight());
+            const offsetSlots = Math.floor(clickOffsetPx / getCellHeight());
             dragCandidateOffsetMinutes = -Math.max(0, offsetSlots * TIME_SLOT_INTERVAL);
             document.addEventListener('mousemove', onDragMouseMove);
             document.addEventListener('mouseup', onDragEnd);
+            document.addEventListener('keydown', onDragKeyDown);
         });
 
         // Click → edit (suppressed if a drag just ended)
@@ -672,14 +699,26 @@ function onDragMouseMove(e) {
         dragGhostEl.style.pointerEvents = 'none';
         timetableContainer.appendChild(dragGhostEl);
         dragCandidateEl.classList.add('dragging-source');
+        startDragAutoScroll();
     }
 
+    dragLastEvent = e;
+    positionDragGhost(e);
+}
+
+/**
+ * Compute the drop position for the pointer and move the ghost there.
+ * The block keeps its full duration: it is slid within the free gap under
+ * the pointer (never truncated). If the gap is too small — or the pointer
+ * is over another block or outside the grid — the drop is marked invalid.
+ */
+function positionDragGhost(e) {
     const containerRect = timetableContainer.getBoundingClientRect();
     const mouseX = e.clientX - containerRect.left;
     const mouseY = e.clientY - containerRect.top;
 
     const cellHeight = getCellHeight();
-    const headerHeight = document.querySelector('.table thead').offsetHeight;
+    const headerHeight = getHeaderOffset();
     const scheduleStart = timeToMinutes(startTimeInput.value);
     const scheduleEnd = timeToMinutes(endTimeInput.value);
     const dayRects = getDayColumnRects();
@@ -690,37 +729,31 @@ function onDragMouseMove(e) {
         if (mouseX >= leftPx && mouseX < leftPx + widthPx) { dayIndex = i; break; }
     }
 
-    if (dayIndex === -1) {
-        dragPendingDay = null;
-        dragGhostEl.style.opacity = '0';
-        return;
-    }
+    if (dayIndex === -1) { hideDragGhost(); return; }
 
     const slotIndex = Math.floor((mouseY - headerHeight) / cellHeight);
     const cellTime = scheduleStart + slotIndex * TIME_SLOT_INTERVAL;
-    const startMinutes = Math.max(scheduleStart, cellTime + dragStartOffsetMinutes);
+    // pointer anchor clamped into the visible range
+    const pointerTime = Math.max(scheduleStart, Math.min(cellTime, scheduleEnd - TIME_SLOT_INTERVAL));
 
     const day = DAYS[dayIndex];
-    const originalDuration = timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
+    const duration = timeToMinutes(draggedBlock.end) - timeToMinutes(draggedBlock.start);
     const ignoreId = isCopyDrag ? null : draggedBlock.id;
-    const nextBlockStart = getNextBlockStart(day, startMinutes, ignoreId);
-    const endMinutes = Math.min(startMinutes + originalDuration, nextBlockStart, scheduleEnd);
 
-    const prevBlockEnd = getPrevBlockEnd(day, startMinutes, ignoreId);
-    const clippedStart = Math.max(startMinutes, prevBlockEnd);
+    const gap = getFreeGapAt(day, pointerTime, ignoreId, scheduleStart, scheduleEnd);
+    if (!gap || gap.end - gap.start < duration) { hideDragGhost(); return; }
 
-    if (endMinutes <= clippedStart) {
-        dragPendingDay = null;
-        dragGhostEl.style.opacity = '0';
-        return;
-    }
+    const desiredStart = cellTime + dragStartOffsetMinutes;
+    const startMinutes = Math.max(gap.start, Math.min(desiredStart, gap.end - duration));
+    const endMinutes = startMinutes + duration;
 
     dragPendingDay = day;
-    dragPendingStart = clippedStart;
+    dragPendingStart = startMinutes;
     dragPendingEnd = endMinutes;
 
-    const topPx = ((clippedStart - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
-    const heightPx = ((endMinutes - clippedStart) / TIME_SLOT_INTERVAL) * cellHeight;
+    const topGap = startMinutes <= scheduleStart ? TOP_ROW_GAP : 0;
+    const topPx = ((startMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight + topGap;
+    const heightPx = (duration / TIME_SLOT_INTERVAL) * cellHeight - topGap;
     const { leftPx, widthPx } = dayRects[dayIndex];
 
     dragGhostEl.style.opacity = '';
@@ -730,17 +763,58 @@ function onDragMouseMove(e) {
     dragGhostEl.style.height = `${heightPx}px`;
 }
 
+function hideDragGhost() {
+    dragPendingDay = null;
+    if (dragGhostEl) dragGhostEl.style.opacity = '0';
+}
+
+// Keep scrolling while the pointer sits near the viewport edge mid-drag
+// (mousemove alone stops firing when the mouse is stationary).
+function startDragAutoScroll() {
+    if (dragScrollRAF) return;
+    const step = () => {
+        if (!dragInitiated) { dragScrollRAF = null; return; }
+        if (dragLastEvent) {
+            const margin = 70, speed = 14;
+            const y = dragLastEvent.clientY;
+            let dy = 0;
+            if (y < margin) dy = -speed;
+            else if (y > window.innerHeight - margin) dy = speed;
+            if (dy) {
+                window.scrollBy(0, dy);
+                positionDragGhost(dragLastEvent);
+            }
+        }
+        dragScrollRAF = requestAnimationFrame(step);
+    };
+    dragScrollRAF = requestAnimationFrame(step);
+}
+
+function stopDragAutoScroll() {
+    if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
+    dragLastEvent = null;
+}
+
+function onDragKeyDown(e) {
+    if (e.key !== 'Escape') return;
+    dragPendingDay = null; // discard the pending drop
+    onDragEnd();
+}
+
 function onDragEnd() {
     document.removeEventListener('mousemove', onDragMouseMove);
     document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('keydown', onDragKeyDown);
 
     if (dragInitiated) {
         document.body.classList.remove('dragging');
+        stopDragAutoScroll();
         if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
         if (dragSourceEl) { dragSourceEl.classList.remove('dragging-source'); dragSourceEl = null; }
 
         if (draggedBlock && dragPendingDay !== null) {
-            const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now() } : draggedBlock;
+            // copies start unlogged, same as Copy Last Week
+            const newBlock = isCopyDrag ? { ...draggedBlock, id: Date.now(), logged: false } : draggedBlock;
             newBlock.day = dragPendingDay;
             newBlock.start = minutesToTime(dragPendingStart);
             newBlock.end = minutesToTime(dragPendingEnd);
@@ -761,18 +835,23 @@ function onDragEnd() {
     dragPendingEnd = null;
 }
 
-function getNextBlockStart(day, afterMinutes, ignoreId) {
-    return schedule
-        .filter(b => b.day === day && b.id !== ignoreId && timeToMinutes(b.start) > afterMinutes)
-        .map(b => timeToMinutes(b.start))
-        .sort((a, b) => a - b)[0] ?? Infinity;
-}
-
-function getPrevBlockEnd(day, startMinutes, ignoreId) {
-    return schedule
-        .filter(b => b.day === day && b.id !== ignoreId && timeToMinutes(b.start) < startMinutes && timeToMinutes(b.end) > startMinutes)
-        .map(b => timeToMinutes(b.end))
-        .sort((a, b) => b - a)[0] ?? -Infinity;
+/**
+ * Free interval [start, end) around `minute` on `day`, bounded by the
+ * visible schedule range. Returns null when `minute` falls inside an
+ * existing block (excluding `ignoreId`).
+ */
+function getFreeGapAt(day, minute, ignoreId, rangeStart, rangeEnd) {
+    let gapStart = rangeStart;
+    let gapEnd = rangeEnd;
+    for (const b of schedule) {
+        if (b.day !== day || b.id === ignoreId) continue;
+        const s = timeToMinutes(b.start);
+        const e = timeToMinutes(b.end);
+        if (minute >= s && minute < e) return null; // pointer over a block
+        if (e <= minute) gapStart = Math.max(gapStart, e);
+        else gapEnd = Math.min(gapEnd, s);
+    }
+    return { start: gapStart, end: gapEnd };
 }
 
 // ── Cell selection ────────────────────────────────────────────
@@ -1422,6 +1501,82 @@ async function imputarGranular() {
     }
 }
 
+// ── Log Today ─────────────────────────────────────────────────
+// Registers time in ClickUp for every block of today that has both a
+// task name and a task ID. Like imputarGranular, each task's entries
+// for the day are cleared first, so re-running is safe (idempotent).
+async function logToday() {
+    if (!isConfigured()) { alert('Connect ClickUp first (settings panel, bottom right).'); return; }
+    if (weekMondayISO !== currentWeekMondayISO()) { alert('Switch to the current week to log today.'); return; }
+
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const dayIndex = DAYS.indexOf(today);
+    if (dayIndex === -1) { alert('Today is not a weekday.'); return; }
+
+    const candidates = schedule.filter(b =>
+        b.day === today && (b.taskName || '').trim() && (b.taskId || '').trim()
+    );
+    if (!candidates.length) { alert('No blocks today with a task and ID assigned.'); return; }
+
+    // Only tasks that still have something unlogged
+    const taskIds = [...new Set(
+        candidates.filter(b => !b.logged).map(b => b.taskId.trim())
+    )];
+    if (!taskIds.length) { alert('Everything is already logged for today.'); return; }
+
+    logTodayIcon.className = 'bi bi-hourglass-split';
+    logTodayButton.disabled = true;
+
+    const user = getSavedUser();
+    const token = getApiToken();
+    const baseDate = addDays(parseISOToLocalDate(weekMondayISO), dayIndex);
+    const errors = [];
+    let loggedCount = 0;
+
+    for (const taskId of taskIds) {
+        // re-register ALL of today's blocks for this task (mirrors imputarGranular),
+        // since clearDayEntries wipes the whole day for the task
+        const blocks = schedule.filter(b =>
+            b.day === today && (b.taskId || '').trim() === taskId
+        );
+        try {
+            await clearDayEntries(token, user?.teamId, taskId, baseDate, user?.userId);
+        } catch (err) {
+            errors.push(`${taskId}: ${err.message || 'could not clear existing entries'}`);
+            continue;
+        }
+        const results = await Promise.allSettled(blocks.map(block => {
+            const [h, m] = block.start.split(':').map(Number);
+            const d = new Date(baseDate);
+            d.setHours(h, m, 0, 0);
+            const durationMs = (timeToMinutes(block.end) - timeToMinutes(block.start)) * 60 * 1000;
+            return registerTime(token, taskId, user?.teamId, d.getTime(), durationMs, block.description || '', user?.userId);
+        }));
+        results.forEach((result, i) => {
+            if (result.status === 'fulfilled') { blocks[i].logged = true; loggedCount++; }
+            else errors.push(`${taskId}: ${result.reason?.message || 'unknown error'}`);
+        });
+    }
+
+    saveSchedule();
+    renderSchedule();
+
+    if (errors.length === 0) {
+        logTodayIcon.className = 'bi bi-check-circle';
+        logTodayLabel.textContent = `Logged ${loggedCount}!`;
+        setTimeout(() => {
+            logTodayIcon.className = 'bi bi-calendar-check';
+            logTodayLabel.textContent = 'Log Today';
+            logTodayButton.disabled = false;
+        }, 2500);
+    } else {
+        alert('Some entries failed:\n' + errors.join('\n'));
+        logTodayIcon.className = 'bi bi-calendar-check';
+        logTodayLabel.textContent = 'Log Today';
+        logTodayButton.disabled = false;
+    }
+}
+
 // ── Export / Import ───────────────────────────────────────────
 
 function exportSchedule() {
@@ -1545,7 +1700,7 @@ function updateCurrentTimeLine() {
 
     currentTimeLine.style.display = 'block';
     const cellHeight = getCellHeight();
-    const headerHeight = document.querySelector('.table thead').offsetHeight;
+    const headerHeight = getHeaderOffset();
     const topPx = ((currentMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
     currentTimeLine.style.top = `${topPx}px`;
 
@@ -1591,7 +1746,7 @@ function addResizeListeners(blockDiv, block) {
         const deltaMinutes = Math.round((e.clientY - startY) / cellHeight * TIME_SLOT_INTERVAL);
         const scheduleStartMin = timeToMinutes(startTimeInput.value);
         const scheduleEndMin = timeToMinutes(endTimeInput.value);
-        const headerHeight = document.querySelector('.table thead').offsetHeight;
+        const headerHeight = getHeaderOffset();
 
         let newStart = originalStart;
         let newEnd = originalEnd;
@@ -1620,7 +1775,7 @@ function addResizeListeners(blockDiv, block) {
 
         const cellHeight = getCellHeight();
         const scheduleStartMin = timeToMinutes(startTimeInput.value);
-        const headerHeight = document.querySelector('.table thead').offsetHeight;
+        const headerHeight = getHeaderOffset();
 
         let newStart = Math.round(
             (scheduleStartMin + (parseFloat(blockDiv.style.top) - headerHeight) / cellHeight * TIME_SLOT_INTERVAL)
@@ -2059,6 +2214,7 @@ document.getElementById('copyLastWeekButton').addEventListener('click', copyLast
 exportButton.addEventListener('click', exportSchedule);
 importButton.addEventListener('click', () => importFileInput.click());
 wipeButton.addEventListener('click', wipeSchedule);
+logTodayButton.addEventListener('click', logToday);
 
 acceptButton.addEventListener('click', saveBlock);
 deleteButton.addEventListener('click', deleteBlock);
