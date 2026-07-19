@@ -140,6 +140,8 @@ const saveClickupTokenBtn    = document.getElementById('saveClickupTokenBtn');
 const saveClickupIcon        = document.getElementById('saveClickupIcon');
 const saveClickupLabel       = document.getElementById('saveClickupLabel');
 const clickupConnectedInfo   = document.getElementById('clickupConnectedInfo');
+const modeUser               = document.getElementById('modeUser');
+const modeUserName           = document.getElementById('modeUserName');
 
 const cuFetchRow     = document.getElementById('cuFetchRow');
 const cuFetchInput   = document.getElementById('cuFetchInput');
@@ -1225,9 +1227,13 @@ function updateClickUpUI() {
         clickupSettingsButton.innerHTML = `<i class="bi bi-plug-fill"></i> ${user.userName}`;
         clickupConnectedInfo.textContent = `Connected as ${user.userName}`;
         clickupConnectedInfo.style.display = 'block';
+        modeUserName.textContent = user.userName;
+        modeUser.style.display = '';
     } else {
         clickupSettingsButton.innerHTML = '<i class="bi bi-plug"></i> ClickUp';
         clickupConnectedInfo.style.display = 'none';
+        modeUserName.textContent = '';
+        modeUser.style.display = 'none';
     }
     const configured = isConfigured();
     cuFetchRow.style.display     = configured ? 'block' : 'none';
