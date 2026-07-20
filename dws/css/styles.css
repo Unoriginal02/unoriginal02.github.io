@@ -77,19 +77,8 @@ table {
 }
 
 /* Sidebar footer: user identity pill */
-.mode-user {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 9px 11px;
-    background: var(--panel);
-    font-size: 12px;
-    color: var(--fg);
-    margin-top: 4px;
-}
-.mode-user .status-live {
+.status-live {
+    display: inline-block;
     width: 6px;
     height: 6px;
     border-radius: 50%;
