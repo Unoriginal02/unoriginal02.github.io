@@ -5,20 +5,23 @@
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 export const TIME_SLOT_INTERVAL = 15; // minutes
 
+// Block colours are drawn from the same 16-colour ANSI scheme as the UI
+// (Tokyo Night) so a card never emits a hue a terminal could not print. Keys
+// are unchanged — stored schedules keep resolving.
 export const COLOR_THEMES = {
     dark: {
-        red: '#FF4D4D',
-        orange: '#FF8A3D',
-        yellow: '#FFD400',
-        green: '#3DFF7A',
-        blue: '#3D8BFF',
-        purple: '#B44DFF',
-        pink: '#FF4DB8',
-        cyan: '#00D5FF',
-        teal: '#00C2A8',
-        lime: '#B6FF00',
-        magenta: '#D500FF',
-        gray: '#3B3B3C'
+        red: '#F7768E',
+        orange: '#FF9E64',
+        yellow: '#E0AF68',
+        lime: '#CFE86B',
+        green: '#9ECE6A',
+        teal: '#73DACA',
+        cyan: '#7DCFFF',
+        blue: '#7AA2F7',
+        purple: '#9D7CD8',
+        magenta: '#BB9AF7',
+        pink: '#FF9EC3',
+        gray: '#565F89'
     }
 };
 
@@ -26,14 +29,14 @@ export const COLOR_DISPLAY_NAMES = {
     red: 'Red',
     orange: 'Orange',
     yellow: 'Yellow',
+    lime: 'Lime',
     green: 'Green',
+    teal: 'Teal',
+    cyan: 'Cyan',
     blue: 'Blue',
     purple: 'Purple',
-    pink: 'Pink',
-    cyan: 'Cyan',
-    teal: 'Teal',
-    lime: 'Lime',
     magenta: 'Magenta',
+    pink: 'Pink',
     gray: 'Gray'
 };
 

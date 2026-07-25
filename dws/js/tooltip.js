@@ -42,32 +42,50 @@ export function showBlockTooltip(block, schedule, currentTheme) {
         .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
     const blocksToShow = matches.length ? matches : [block];
-    const lines = [];
+    const out = [];
 
-    if (projectName) lines.push(`<strong>${projectName}</strong>`);
-    if (taskName) lines.push(taskName);
-    if (taskId) lines.push(`Task ID: ${taskId}`);
+    if (projectName) out.push(`<span class="tt-title">${esc(projectName)}</span>`);
+    if (taskName) out.push(`<span>${esc(taskName)}</span>`);
+    // "ID" is capitalised here, not by CSS: the id itself must print verbatim.
+    if (taskId) out.push(`<span class="tt-meta">ID ${esc(taskId)}</span>`);
+
     if (block.description) {
-        lines.push('');
-        lines.push(block.description.replace(/\n/g, '<br>'));
-        lines.push('');
+        out.push('<span class="tt-rule"></span>');
+        out.push(`<span class="tt-desc">${esc(block.description).replace(/\n/g, '<br>')}</span>`);
     }
 
+    // One row per slice of the day, duration right-aligned (TUI table rule).
+    out.push('<span class="tt-rule"></span>');
     let grandTotalMinutes = 0;
     blocksToShow.forEach(b => {
         const dur = Math.max(0, timeToMinutes(b.end) - timeToMinutes(b.start));
         grandTotalMinutes += dur;
-        const hours = parseFloat((dur / 60).toFixed(2));
-        lines.push(`${b.start} - ${b.end} <span style="opacity:0.9">(${hours} hours)</span>`);
+        out.push(row(`${b.start}–${b.end}`, fmtHours(dur)));
     });
 
-    const grandTotalHours = parseFloat((grandTotalMinutes / 60).toFixed(2));
-    lines.push('');
-    lines.push(`<strong>Total: ${grandTotalHours} hours</strong>`);
+    out.push('<span class="tt-rule"></span>');
+    out.push(row('total', fmtHours(grandTotalMinutes), true));
 
-    tooltipEl.innerHTML = lines.join('<br>');
-    tooltipEl.style.borderLeftColor = COLOR_THEMES[currentTheme][colorName] || '#FFFFFF';
+    tooltipEl.innerHTML = out.join('');
+    tooltipEl.style.borderLeftColor = COLOR_THEMES[currentTheme][colorName] || 'var(--fg-mute)';
     _showTooltip();
+}
+
+// ── Small formatting helpers ─────────────────────────────────────
+
+function esc(str) {
+    return String(str).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+function fmtHours(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
+function row(left, right, isTotal = false) {
+    return `<span class="tt-row${isTotal ? ' tt-total' : ''}">`
+         + `<span>${esc(left)}</span><span>${esc(right)}</span></span>`;
 }
 
 export function showDayTooltip(day, schedule) {
@@ -76,10 +94,12 @@ export function showDayTooltip(day, schedule) {
         .slice()
         .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
-    const lines = [`<strong>${day}</strong>`, ''];
+    const out = [`<span class="tt-title">${esc(day)}</span>`, '<span class="tt-rule"></span>'];
 
     if (dayBlocks.length === 0) {
-        lines.push('No tasks', '', '<strong>Hours total: 0</strong>');
+        out.push('<span class="tt-meta">no tasks</span>');
+        out.push('<span class="tt-rule"></span>');
+        out.push(row('total', '0h', true));
     } else {
         const groupedTasks = new Map();
         let totalMinutesAll = 0;
@@ -91,27 +111,25 @@ export function showDayTooltip(day, schedule) {
             const key = `${(block.projectName || '').trim()}|||${(block.taskName || '').trim()}|||${(block.colorName || '').trim()}`;
             if (!groupedTasks.has(key)) {
                 const title = [(block.projectName || '').trim(), (block.taskName || '').trim()]
-                    .filter(Boolean).join(' - ') || 'Untitled task';
+                    .filter(Boolean).join(' · ') || 'untitled';
                 groupedTasks.set(key, { title, totalMinutes: 0 });
             }
             groupedTasks.get(key).totalMinutes += dur;
         });
 
-        groupedTasks.forEach(task => {
-            lines.push(`${task.title}: ${parseFloat((task.totalMinutes / 60).toFixed(2))}`);
-        });
+        groupedTasks.forEach(task => out.push(row(task.title, fmtHours(task.totalMinutes))));
 
-        lines.push('', `<strong>Hours total: ${parseFloat((totalMinutesAll / 60).toFixed(2))}</strong>`);
+        out.push('<span class="tt-rule"></span>');
+        out.push(row('total', fmtHours(totalMinutesAll), true));
     }
 
-    tooltipEl.innerHTML = lines.join('<br>');
-    tooltipEl.style.borderLeftColor = 'var(--main-color)';
+    tooltipEl.innerHTML = out.join('');
+    tooltipEl.style.borderLeftColor = 'var(--fg-mute)';
     _showTooltip();
 }
 
 function _showTooltip() {
-    tooltipEl.style.bottom = '20px';
-    tooltipEl.style.left = '20px';
+    // Position is owned by the stylesheet (it has to clear the status bar).
     tooltipEl.classList.add('fade-in');
     tooltipEl.style.display = 'block';
 }

@@ -2,15 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Deep Work Schedule</title>
+    <title>dws — deep work schedule</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Loaded for ONE glyph: the card-text icon on a block's description
+         button. Every other .bi-* is remapped to a text character in
+         styles.css §1 — see the note there before adding icons. -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+
+    <!-- ═══ Title bar ═══════════════════════════════════════════ -->
+    <div id="tuiTitlebar">
+        <span class="tui-brand">dws</span>
+        <span class="tui-titlebar-path">~/deep-work-schedule</span>
+        <span class="tui-titlebar-spacer"></span>
+        <span class="tui-titlebar-cell">grid <b id="tuiGridNote">15m</b></span>
+        <span class="tui-titlebar-cell"><span id="tuiClock">--:--:--</span></span>
+    </div>
 
     <!-- Panel Overlay -->
     <div id="panelOverlay"></div>
@@ -23,20 +34,22 @@
                 <i class="bi bi-x"></i>
             </button>
         </div>
-        <div class="panel-field">
-            <label for="prioTop3">Top 3 tasks</label>
-            <textarea id="prioTop3" class="panel-textarea" spellcheck="false" placeholder="1) &#10;2) &#10;3) "></textarea>
-        </div>
-        <div class="panel-field">
-            <label for="prioOther">Other Tasks</label>
-            <textarea id="prioOther" class="panel-textarea" spellcheck="false" placeholder="- "></textarea>
-        </div>
-        <div class="panel-field">
-            <label for="prioIdeas">Ideas</label>
-            <textarea id="prioIdeas" class="panel-textarea" spellcheck="false" placeholder="• "></textarea>
+        <div class="prio-body">
+            <div class="panel-field">
+                <label for="prioTop3">Top 3 tasks</label>
+                <textarea id="prioTop3" class="panel-textarea" spellcheck="false" placeholder="1) &#10;2) &#10;3) "></textarea>
+            </div>
+            <div class="panel-field">
+                <label for="prioOther">Other Tasks</label>
+                <textarea id="prioOther" class="panel-textarea" spellcheck="false" placeholder="- "></textarea>
+            </div>
+            <div class="panel-field">
+                <label for="prioIdeas">Ideas</label>
+                <textarea id="prioIdeas" class="panel-textarea" spellcheck="false" placeholder="&#8226; "></textarea>
+            </div>
         </div>
         <div class="panel-hint">
-            Tip: Use <kbd>Tab</kbd> to indent and <kbd>Shift</kbd>+<kbd>Tab</kbd> to de-indent.
+            <kbd>Tab</kbd> indent &#183; <kbd>Shift</kbd>+<kbd>Tab</kbd> de-indent &#183; <kbd>Esc</kbd> close
         </div>
     </div>
 
@@ -46,100 +59,155 @@
     </div>
 
     <div id="mainContent">
-        <div class="maxwidth container text-center my-5">
-          <div class="term-card">
-            <div class="term-body">
-            <!-- Time / Week Selectors -->
-            <div class="row mb-4">
-                <div class="col-md-4 mb-2">
-                    <label class="form-label">Week</label>
-                    <div class="week-nav d-flex">
-                        <button type="button" id="prevWeekBtn" class="btn week-nav-btn" title="Previous week"><i class="bi bi-chevron-left"></i></button>
-                        <span id="weekLabel" class="form-control week-label text-center"></span>
-                        <button type="button" id="nextWeekBtn" class="btn week-nav-btn" title="Next week"><i class="bi bi-chevron-right"></i></button>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-2">
-                    <label for="startTime" class="form-label">Start Time</label>
-                    <div class="prompt-field">
-                        <span class="prompt-caret cyan">›</span>
-                        <input type="time" id="startTime" class="form-control" value="08:00" step="900">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-2">
-                    <label for="endTime" class="form-label">End Time</label>
-                    <div class="prompt-field">
-                        <span class="prompt-caret magenta">›</span>
-                        <input type="time" id="endTime" class="form-control" value="18:00" step="900">
-                    </div>
-                </div>
-            </div>
+        <main class="tui-app">
 
-            <!-- Timetable -->
-            <div id="timetable-container" class="table-responsive" style="position: relative;">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th id="thMonday">Monday</th>
-                            <th id="thTuesday">Tuesday</th>
-                            <th id="thWednesday">Wednesday</th>
-                            <th id="thThursday">Thursday</th>
-                            <th id="thFriday">Friday</th>
-                        </tr>
-                    </thead>
-                    <tbody id="timetable-body"></tbody>
-                </table>
-                <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
-            </div>
+            <!-- ── Range selectors ───────────────────────────── -->
+            <section class="tui-panel" data-title="range">
+                <span class="tui-panel-note">window <b id="tuiWindowNote">—</b></span>
+                <div class="tui-fields">
+                    <div class="tui-field">
+                        <label class="form-label">Week</label>
+                        <div class="week-nav">
+                            <button type="button" id="prevWeekBtn" class="week-nav-btn" title="Previous week (Left arrow)"><i class="bi bi-chevron-left"></i></button>
+                            <span id="weekLabel" class="week-label text-center"></span>
+                            <button type="button" id="nextWeekBtn" class="week-nav-btn" title="Next week (Right arrow)"><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="tui-field">
+                        <label for="startTime" class="form-label">Start Time</label>
+                        <div class="prompt-field">
+                            <span class="prompt-caret cyan">&#8250;</span>
+                            <input type="time" id="startTime" class="form-control" value="08:00" step="900">
+                        </div>
+                    </div>
+                    <div class="tui-field">
+                        <label for="endTime" class="form-label">End Time</label>
+                        <div class="prompt-field">
+                            <span class="prompt-caret magenta">&#8250;</span>
+                            <input type="time" id="endTime" class="form-control" value="18:00" step="900">
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <!-- Action Buttons -->
-            <div class="buttonGroup mt-3">
-                <button id="copyLastWeekButton" class="brutalButton" title="Copy the previous week's blocks into this week">
-                    <i class="bi bi-files"></i> Copy Last Week
-                </button>
-                <button id="logTodayButton" class="brutalButton" title="Log every unlogged block of the whole week in one click (skips green-dot blocks)">
-                    <i class="bi bi-calendar-check" id="logTodayIcon"></i> <span id="logTodayLabel">Log Nuke</span>
-                </button>
-                <button id="exportButton" class="brutalButton">
-                    <i class="bi bi-download"></i> Export
-                </button>
-                <button id="importButton" class="brutalButton">
-                    <i class="bi bi-upload"></i> Import
-                </button>
-                <button id="wipeButton" class="brutalButton">
-                    <i class="bi bi-trash"></i> Wipe
-                </button>
-                <input type="file" id="importFileInput" accept="application/json">
-            </div>
-            </div><!-- /term-body -->
-          </div><!-- /term-card -->
-        </div>
+            <!-- ── Schedule ──────────────────────────────────── -->
+            <section class="tui-panel tui-panel--flush" data-title="schedule">
+                <span class="tui-panel-note"><b id="tuiScheduleNote">—</b></span>
+
+                <div id="timetable-container" class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th id="thMonday">Monday</th>
+                                <th id="thTuesday">Tuesday</th>
+                                <th id="thWednesday">Wednesday</th>
+                                <th id="thThursday">Thursday</th>
+                                <th id="thFriday">Friday</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable-body"></tbody>
+                    </table>
+                    <div id="currentTimeLine" class="current-time-line" style="display: none;"></div>
+                </div>
+
+                <div class="tui-actionbar">
+                    <div class="buttonGroup">
+                        <button id="copyLastWeekButton" class="brutalButton"
+                                title="Copy the previous week's blocks into this week">Copy Last Week</button>
+                        <button id="logTodayButton" class="brutalButton"
+                                title="Log every unlogged block of the whole week in one click (skips logged blocks)">
+                            <i class="bi bi-calendar-check" id="logTodayIcon"></i><span id="logTodayLabel">Log Nuke</span>
+                        </button>
+                        <button id="exportButton" class="brutalButton">Export</button>
+                        <button id="importButton" class="brutalButton">Import</button>
+                        <button id="wipeButton" class="brutalButton">Wipe</button>
+                    </div>
+                    <input type="file" id="importFileInput" accept="application/json">
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    <!-- Mode / Settings Panel -->
+    <!-- ═══ Options panel ═══════════════════════════════════════ -->
     <div class="mode-buttons">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="notifyToggle">
             <label class="form-check-label" for="notifyToggle">Notify</label>
         </div>
-        <button id="prioritizationButton" class="mode-switcher">
-            <i class="bi bi-list-task"></i> Prioritization
-        </button>
-        <button id="printButton" class="mode-switcher">
-            <i class="bi bi-printer"></i> Print
-        </button>
+        <button id="prioritizationButton" class="mode-switcher">Prioritization</button>
+        <button id="printButton" class="mode-switcher">Print</button>
         <button id="clickupSettingsButton" class="mode-switcher">
             <i class="bi bi-plug"></i> ClickUp
         </button>
         <div id="clickupTokenSection" style="display:none;">
             <input type="password" id="clickupTokenInput" class="form-control form-control-sm"
                 placeholder="Paste API token here..." autocomplete="off">
-            <button id="saveClickupTokenBtn" class="brutalButton mt-1" style="width:100%;">
+            <button id="saveClickupTokenBtn" class="brutalButton">
                 <i class="bi bi-check-lg" id="saveClickupIcon"></i>
                 <span id="saveClickupLabel">Save token</span>
             </button>
-            <small id="clickupConnectedInfo" style="display:none; opacity:0.7; margin-top:4px;"></small>
+            <small id="clickupConnectedInfo" style="display:none;"></small>
+        </div>
+    </div>
+
+    <!-- ═══ Status bar ══════════════════════════════════════════ -->
+    <footer id="tuiStatusbar">
+        <span class="sb-mode" id="tuiMode" data-mode="normal">normal</span>
+        <span class="sb-cell sb-cell--keep">wk <b id="tuiWeekCell">—</b></span>
+        <span class="sb-cell">blocks <b id="tuiBlockCell">0</b></span>
+        <span class="sb-cell">booked <b id="tuiHoursCell">0h</b></span>
+        <span class="sb-msg" id="tuiMsg"></span>
+        <span class="sb-hints">
+            <span><kbd>&#8592;&#8594;</kbd> week</span>
+            <span><kbd>esc</kbd> close</span>
+            <span><kbd>?</kbd> help</span>
+        </span>
+    </footer>
+
+    <!-- ═══ Help overlay ════════════════════════════════════════ -->
+    <div id="tuiHelp" aria-hidden="true">
+        <div class="tui-help-box">
+            <div class="tui-help-head">&#9508; keys &amp; gestures &#9500;</div>
+            <div class="tui-help-cols">
+                <div>
+                    <div class="tui-help-group">
+                        <h3>keys</h3>
+                        <div class="tui-help-row"><kbd>&#8592;</kbd><span>previous week</span></div>
+                        <div class="tui-help-row"><kbd>&#8594;</kbd><span>next week</span></div>
+                        <div class="tui-help-row"><kbd>esc</kbd><span>close the top-most layer</span></div>
+                        <div class="tui-help-row"><kbd>?</kbd><span>this screen</span></div>
+                    </div>
+                    <div class="tui-help-group">
+                        <h3>in a dialog</h3>
+                        <div class="tui-help-row"><kbd>^&#9166;</kbd><span>accept</span></div>
+                        <div class="tui-help-row"><kbd>esc</kbd><span>cancel</span></div>
+                    </div>
+                    <div class="tui-help-group">
+                        <h3>in prioritization</h3>
+                        <div class="tui-help-row"><kbd>tab</kbd><span>indent</span></div>
+                        <div class="tui-help-row"><kbd>&#8679;tab</kbd><span>de-indent</span></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="tui-help-group">
+                        <h3>on the grid</h3>
+                        <div class="tui-help-row"><kbd>drag</kbd><span>select slots &#8594; new block</span></div>
+                        <div class="tui-help-row"><kbd>click</kbd><span>edit a block</span></div>
+                        <div class="tui-help-row"><kbd>drag</kbd><span>move a block; a short gap trims it</span></div>
+                        <div class="tui-help-row"><kbd>&#8679;drag</kbd><span>copy a block</span></div>
+                        <div class="tui-help-row"><kbd>edges</kbd><span>resize a block</span></div>
+                        <div class="tui-help-row"><kbd>hover</kbd><span>day total / block total</span></div>
+                    </div>
+                    <div class="tui-help-group">
+                        <h3>everything else</h3>
+                        <div class="tui-help-row"><kbd>&#8212;</kbd><span>a labelled button. Bare letters are
+                            deliberately unbound, so nothing destructive can fire from a stray keypress.</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="tui-help-foot">esc &#183; ? &#8212; close</div>
         </div>
     </div>
 
@@ -148,7 +216,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 id="timeBlockModalLabel" class="modal-title">Create/Edit Time Block</h5>
+                    <h5 id="timeBlockModalLabel" class="modal-title">Time Block</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -165,7 +233,7 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-12">
-                                <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="modalProjectName" class="form-label mb-0">Project Name</label>
                                     <button type="button" id="toggleProjectNameButton" class="brutalButton visibility-toggle" title="Toggle project name visibility on card">
                                         <i class="bi bi-eye"></i>
@@ -173,7 +241,7 @@
                                 </div>
                                 <div class="d-flex gap-2">
                                     <input type="text" id="modalProjectName" class="form-control">
-                                    <button type="button" id="openPresetListButton" class="brutalButton" title="Open saved project/task pairs">
+                                    <button type="button" id="openPresetListButton" class="brutalButton tui-boxed" title="Open saved project/task pairs">
                                         <i class="bi bi-archive"></i>
                                     </button>
                                 </div>
@@ -182,7 +250,7 @@
 
                         <div class="row mb-3">
                             <div class="col-6">
-                                <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="modalTaskName" class="form-label mb-0">Task Name</label>
                                     <button type="button" id="toggleTaskNameButton" class="brutalButton visibility-toggle" title="Toggle task name visibility on card">
                                         <i class="bi bi-eye"></i>
@@ -194,7 +262,7 @@
                                 <label for="modalTaskId" class="form-label">Task ID</label>
                                 <div class="d-flex gap-2">
                                     <input type="text" id="modalTaskId" class="form-control">
-                                    <button type="button" id="openTaskLinkButton" class="brutalButton"
+                                    <button type="button" id="openTaskLinkButton" class="brutalButton tui-boxed"
                                         title="Open task in ClickUp" aria-label="Open task in ClickUp">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </button>
@@ -216,44 +284,45 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="modalDescription" class="form-label">Description</label>
-                            <textarea id="modalDescription" class="form-control" rows="3"></textarea>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="modalColor" class="form-label">Color</label>
+                                <div class="status-dropdown">
+                                    <button type="button" id="modalColorBtn" class="status-trigger">
+                                        <span class="status-dot color-square"></span>
+                                        <span class="status-text"></span>
+                                        <i class="bi bi-chevron-down status-chevron"></i>
+                                    </button>
+                                    <ul id="modalColorMenu" class="status-menu" role="listbox"></ul>
+                                </div>
+                                <input type="hidden" id="modalColor" required>
+                            </div>
                         </div>
 
-                        <div class="mb-3 d-flex align-items-center justify-content-between gap-3">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="modalDescription" class="form-label">Description</label>
+                                <textarea id="modalDescription" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between gap-3">
                             <button id="loggedToggleButton" type="button" class="brutalButton">
                                 <i class="bi bi-check-circle"></i>
                                 <span>Logged</span>
                             </button>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="modalColor" class="form-label">Color</label>
-                            <div class="status-dropdown">
-                                <button type="button" id="modalColorBtn" class="status-trigger">
-                                    <span class="status-dot color-square"></span>
-                                    <span class="status-text"></span>
-                                    <i class="bi bi-chevron-down status-chevron"></i>
-                                </button>
-                                <ul id="modalColorMenu" class="status-menu" role="listbox"></ul>
-                            </div>
-                            <input type="hidden" id="modalColor" required>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <div class="modal-copy-row" style="display:none;">
                         <button id="copyDescriptionButton" type="button" class="brutalButton iconBtn">
-                            <i class="bi bi-chat-left-text"></i>
                             <span class="btnLabel">Copy Description</span>
                         </button>
                         <button id="copyTaskIdButton" type="button" class="brutalButton iconBtn">
-                            <i class="bi bi-upc-scan"></i>
                             <span class="btnLabel">Copy Task ID</span>
                         </button>
                         <button id="copyTotalTimeButton" type="button" class="brutalButton iconBtn">
-                            <i class="bi bi-stopwatch"></i>
                             <span class="btnLabel">Copy Total Time</span>
                         </button>
                     </div>
@@ -269,19 +338,15 @@
                     </div>
                     <div class="modal-copy-row">
                         <button id="deleteButton" type="button" class="brutalButton iconBtn" style="display:none;">
-                            <i class="bi bi-trash"></i>
                             <span class="btnLabel">Delete</span>
                         </button>
                         <button id="syncCardButton" type="button" class="brutalButton iconBtn" style="display:none;">
-                            <i class="bi bi-arrow-repeat"></i>
                             <span class="btnLabel">Sync</span>
                         </button>
-                        <button id="cancelButton" type="button" class="brutalButton iconBtn" data-bs-dismiss="modal">
-                            <i class="bi bi-x-lg"></i>
+                        <button id="cancelButton" type="button" class="brutalButton iconBtn" data-bs-dismiss="modal" data-key="esc">
                             <span class="btnLabel">Cancel</span>
                         </button>
-                        <button id="acceptButton" type="button" class="brutalButton iconBtn">
-                            <i class="bi bi-patch-check"></i>
+                        <button id="acceptButton" type="button" class="brutalButton iconBtn" data-key="^&#9166;">
                             <span class="btnLabel">Accept</span>
                         </button>
                     </div>
@@ -303,6 +368,7 @@
 
                     <!-- 1. Fetch by ID/URL (only if configured) -->
                     <div id="cuFetchRow" class="mb-3" style="display:none;">
+                        <label class="form-label">Fetch by id / url</label>
                         <div class="d-flex gap-2">
                             <input type="text" id="cuFetchInput" class="form-control form-control-sm"
                                 placeholder="Paste task ID or ClickUp URL...">
@@ -318,14 +384,13 @@
 
                     <!-- 3. My ClickUp Tasks (only if configured) -->
                     <div id="cuTasksSection" style="display:none;">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center justify-content-between">
                             <label class="form-label mb-0">My ClickUp Tasks</label>
-                            <button type="button" id="cuRefreshBtn" class="brutalButton"
-                                style="padding:2px 8px; font-size:0.7rem; line-height:1.4;">
+                            <button type="button" id="cuRefreshBtn" class="brutalButton" title="Refresh">
                                 <i class="bi bi-arrow-repeat"></i>
                             </button>
                         </div>
-                        <div id="cuTasksLoading" style="display:none; opacity:0.7; padding:4px 0;">Loading tasks...</div>
+                        <div id="cuTasksLoading" style="display:none;">Loading tasks...</div>
                         <div id="cuTasksList" class="list-group"></div>
                     </div>
 
@@ -350,7 +415,7 @@
         </div>
         <div class="desc-panel-body">
             <div id="descPanelLoading" class="desc-panel-status">
-                <i class="bi bi-hourglass-split"></i> Loading…
+                <i class="bi bi-hourglass-split"></i> Loading&#8230;
             </div>
             <div id="descPanelError" class="desc-panel-status desc-panel-error" style="display:none;"></div>
             <div id="descPanelContent" class="desc-panel-content" style="display:none;"></div>
@@ -361,11 +426,9 @@
                 <span class="btnLabel">Refresh</span>
             </button>
             <button id="descOpenCuBtn" class="brutalButton iconBtn">
-                <i class="bi bi-box-arrow-up-right"></i>
                 <span class="btnLabel">Open in ClickUp</span>
             </button>
-            <button id="descPanelClose" class="brutalButton iconBtn">
-                <i class="bi bi-x-lg"></i>
+            <button id="descPanelClose" class="brutalButton iconBtn" data-key="esc">
                 <span class="btnLabel">Close</span>
             </button>
         </div>
@@ -377,8 +440,8 @@
     <script type="module">
         import { initHeartbeat } from './js/heartbeat.js';
         if (initHeartbeat()) {
-            // Primary instance — load the app
-            import('./js/app.js');
+            // Primary instance — load the app, then the TUI shell on top of it
+            import('./js/app.js').then(() => import('./js/tui.js'));
         }
     </script>
 </body>

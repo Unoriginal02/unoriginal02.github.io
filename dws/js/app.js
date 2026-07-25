@@ -477,6 +477,11 @@ function renderTable() {
 
     slots.forEach(time => {
         const tr = document.createElement('tr');
+        // Grid rules are drawn per hour (bright) and per half hour (faint) —
+        // the quarter rows carry none, so the grid never shouts over the data.
+        if (time.endsWith(':00')) tr.classList.add('hour');
+        else if (time.endsWith(':30')) tr.classList.add('half');
+
         const timeTd = document.createElement('td');
         timeTd.textContent = time;
         tr.appendChild(timeTd);
@@ -588,8 +593,11 @@ function renderSchedule() {
         blockDiv.style.left = `${leftPx}px`;
         blockDiv.style.width = `${widthPx}px`;
         blockDiv.style.height = `${heightPx}px`;
-        blockDiv.style.backgroundColor = 'var(--background-color)';
-        blockDiv.style.borderLeft = `8px solid ${colorHex}`;
+        // The block's colour is handed to CSS as a custom property; the
+        // stylesheet derives the left bar, the tinted fill and the title
+        // colour from it, so the palette lives in exactly one place.
+        blockDiv.style.setProperty('--block-color', colorHex);
+        blockDiv.dataset.min = adjEnd - adjStart;
 
         // Resize handles
         const topHandle = document.createElement('div');
@@ -603,13 +611,14 @@ function renderSchedule() {
         // Content
         if (block.projectName && block.showProjectName !== false) {
             const el = document.createElement('div');
-            el.style.fontWeight = 'bold';
+            el.className = 'tb-project';
             el.textContent = block.projectName;
             blockDiv.appendChild(el);
         }
 
         if (block.taskName && block.showTaskName !== false) {
             const el = document.createElement('div');
+            el.className = 'tb-task';
             el.textContent = block.taskName;
             blockDiv.appendChild(el);
         }
@@ -741,11 +750,17 @@ function positionDragGhost(e) {
     const ignoreId = isCopyDrag ? null : draggedBlock.id;
 
     const gap = getFreeGapAt(day, pointerTime, ignoreId, scheduleStart, scheduleEnd);
-    if (!gap || gap.end - gap.start < duration) { hideDragGhost(); return; }
+    // The gap only has to hold ONE slot for the drop to be legal.
+    if (!gap || gap.end - gap.start < TIME_SLOT_INTERVAL) { hideDragGhost(); return; }
 
+    // The block lands exactly where the pointer puts it and whatever hangs
+    // outside the free gap is CUT — at the head, at the tail, or both. It is
+    // never slid to fit, so dragging a block against a neighbour shortens it
+    // instead of bouncing it away. The intersection always keeps at least the
+    // slot under the pointer, which is inside the gap by definition.
     const desiredStart = cellTime + dragStartOffsetMinutes;
-    const startMinutes = Math.max(gap.start, Math.min(desiredStart, gap.end - duration));
-    const endMinutes = startMinutes + duration;
+    const startMinutes = Math.max(gap.start, desiredStart);
+    const endMinutes = Math.min(gap.end, desiredStart + duration);
 
     dragPendingDay = day;
     dragPendingStart = startMinutes;
@@ -753,9 +768,11 @@ function positionDragGhost(e) {
 
     const topGap = startMinutes <= scheduleStart ? TOP_ROW_GAP : 0;
     const topPx = ((startMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight + topGap;
-    const heightPx = (duration / TIME_SLOT_INTERVAL) * cellHeight - topGap;
+    const heightPx = ((endMinutes - startMinutes) / TIME_SLOT_INTERVAL) * cellHeight - topGap;
     const { leftPx, widthPx } = dayRects[dayIndex];
 
+    // flag a shortened drop so the ghost can say so
+    dragGhostEl.classList.toggle('is-trimmed', endMinutes - startMinutes < duration);
     dragGhostEl.style.opacity = '';
     dragGhostEl.style.top = `${topPx}px`;
     dragGhostEl.style.left = `${leftPx}px`;
@@ -1707,6 +1724,8 @@ function updateCurrentTimeLine() {
     const headerHeight = getHeaderOffset();
     const topPx = ((currentMinutes - scheduleStart) / TIME_SLOT_INTERVAL) * cellHeight + headerHeight;
     currentTimeLine.style.top = `${topPx}px`;
+    // The line labels itself with the clock time (CSS reads this as content).
+    currentTimeLine.style.setProperty('--now-label', `"${minutesToTime(currentMinutes)}"`);
 
     // Align left edge with the Monday column
     const thMon = document.getElementById('thMonday');
@@ -1728,6 +1747,11 @@ function addResizeListeners(blockDiv, block) {
     let startY = 0;
     let originalStart = 0;
     let originalEnd = 0;
+    // Geometry is measured ONCE per gesture. Reading it inside the mousemove
+    // handler forced a synchronous layout on every frame — interleaved with the
+    // style writes below, that is classic layout thrash and it made the resize
+    // stutter. None of these can change while the mouse is held down.
+    let geo = null;
 
     function startResize(e, type) {
         e.stopPropagation();
@@ -1736,6 +1760,12 @@ function addResizeListeners(blockDiv, block) {
         startY = e.clientY;
         originalStart = timeToMinutes(block.start);
         originalEnd = timeToMinutes(block.end);
+        geo = {
+            cellHeight: getCellHeight(),
+            headerHeight: getHeaderOffset(),
+            scheduleStartMin: timeToMinutes(startTimeInput.value),
+            scheduleEndMin: timeToMinutes(endTimeInput.value),
+        };
         document.body.classList.add('resizing');
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
@@ -1746,11 +1776,8 @@ function addResizeListeners(blockDiv, block) {
 
     function onMouseMove(e) {
         if (!isResizing) return;
-        const cellHeight = getCellHeight();
+        const { cellHeight, headerHeight, scheduleStartMin, scheduleEndMin } = geo;
         const deltaMinutes = Math.round((e.clientY - startY) / cellHeight * TIME_SLOT_INTERVAL);
-        const scheduleStartMin = timeToMinutes(startTimeInput.value);
-        const scheduleEndMin = timeToMinutes(endTimeInput.value);
-        const headerHeight = getHeaderOffset();
 
         let newStart = originalStart;
         let newEnd = originalEnd;
@@ -1777,9 +1804,7 @@ function addResizeListeners(blockDiv, block) {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
 
-        const cellHeight = getCellHeight();
-        const scheduleStartMin = timeToMinutes(startTimeInput.value);
-        const headerHeight = getHeaderOffset();
+        const { cellHeight, headerHeight, scheduleStartMin } = geo;
 
         let newStart = Math.round(
             (scheduleStartMin + (parseFloat(blockDiv.style.top) - headerHeight) / cellHeight * TIME_SLOT_INTERVAL)
@@ -1820,7 +1845,10 @@ function addResizeListeners(blockDiv, block) {
         }
 
         saveSchedule();
-        renderTable();
+        // Only the cards need re-laying out. renderTable() would also tear down
+        // and rebuild all 240 grid cells and their listeners, which is both
+        // wasted work and a chance to drop the frame right as the mouse lifts.
+        renderSchedule();
     }
 }
 
