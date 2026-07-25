@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Fuera de buscadores. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<title>Visor VR — Clay</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="dot"></span> Visor VR</div>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="spacer"></div>
+  <button id="backBtn" hidden>← Atrás</button>
+  <button id="reloadBtn" title="Volver a leer la carpeta de modelos">↻</button>
+  <button id="xrBtn" class="primary" disabled>Comprobando VR…</button>
+</header>
+
+<aside>
+  <div class="aside-head">Modelos</div>
+  <div id="list" class="list"></div>
+</aside>
+
+<main>
+  <div id="canvas-wrap"></div>
+
+  <div id="placeholder">
+    <div>
+      <h2>Visor de modelos 3D · VR</h2>
+      <p>Elige un modelo de la lista para abrirlo.</p>
+      <p class="drop">Formatos: <b>.glb · .gltf · .obj · .stl · .ply</b></p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="clayBtn" class="on" title="Modo maqueta: material de arcilla mate uniforme">Clay</button>
+    <button id="aoBtn" class="on" title="Oclusión ambiental horneada en los vértices">AO</button>
+    <button id="wireBtn" title="Ver la malla">Wire</button>
+    <button id="gridBtn" class="on" title="Rejilla del suelo">Rejilla</button>
+    <span class="sep"></span>
+    <button id="rotX" title="Girar 90° adelante/atrás (arregla el típico «tumbado»)">⟲X</button>
+    <button id="rotY" title="Girar 90° en horizontal">⟲Y</button>
+    <button id="rotZ" title="Inclinar 90° de lado">⟲Z</button>
+    <span class="sep"></span>
+    <button id="realBtn" title="Tamaño real 1:1 (para glTF en metros)">1:1</button>
+    <button id="fitBtn" title="Recentrar la cámara sobre el modelo">Centrar</button>
+    <button id="walkBtn" title="Recorrer el modelo en primera persona">Caminar</button>
+    <button id="cfgBtn" title="Ajustes de luz y materiales">Ajustes</button>
+  </div>
+
+  <div id="settings" hidden>
+    <h3>Luz y arcilla</h3>
+    <label>Exposición <output id="outExposure"></output>
+      <input type="range" id="rngExposure" min="0.3" max="2" step="0.05"></label>
+    <label>Oclusión (AO) <output id="outAo"></output>
+      <input type="range" id="rngAo" min="0" max="1" step="0.05"></label>
+    <label>Sombra de contacto <output id="outContact"></output>
+      <input type="range" id="rngContact" min="0" max="1" step="0.05"></label>
+    <label>Suavidad de sombra <output id="outSoft"></output>
+      <input type="range" id="rngSoft" min="0" max="12" step="0.5"></label>
+    <label>Color de la arcilla</label>
+    <div class="swatches" id="swatches"></div>
+    <h3>Rendimiento en VR</h3>
+    <label>Calidad
+      <select id="selQuality">
+        <option value="high">Alta (PC / Quest 3)</option>
+        <option value="medium" selected>Media (Quest 2)</option>
+        <option value="low">Baja (máx. fluidez)</option>
+      </select></label>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="legend">
+    <button id="legendToggle" title="Ocultar ayuda">×</button>
+    <div id="legendBody"></div>
+  </div>
+
+  <div id="walkhint">Haz clic para mirar · WASD para andar · Esc para salir</div>
+</main>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
