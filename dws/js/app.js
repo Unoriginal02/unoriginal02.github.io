@@ -1501,43 +1501,47 @@ async function imputarGranular() {
     }
 }
 
-// ── Log Today ─────────────────────────────────────────────────
-// Registers time in ClickUp for every block of today that has both a
-// task name and a task ID. Like imputarGranular, each task's entries
-// for the day are cleared first, so re-running is safe (idempotent).
-async function logToday() {
+// ── Log the Lot ───────────────────────────────────────────────
+// Registers time in ClickUp for every block of the whole visible week
+// that has both a task name and a task ID. Blocks already logged
+// (green dot) are skipped, so someone who logs at the end of the day
+// or the end of the week can clear everything in one click.
+// Like imputarGranular, each (day + task) group is cleared first, so
+// re-running is safe (idempotent).
+async function logWeek() {
     if (!isConfigured()) { alert('Connect ClickUp first (settings panel, bottom right).'); return; }
-    if (weekMondayISO !== currentWeekMondayISO()) { alert('Switch to the current week to log today.'); return; }
-
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const dayIndex = DAYS.indexOf(today);
-    if (dayIndex === -1) { alert('Today is not a weekday.'); return; }
 
     const candidates = schedule.filter(b =>
-        b.day === today && (b.taskName || '').trim() && (b.taskId || '').trim()
+        (b.taskName || '').trim() && (b.taskId || '').trim()
     );
-    if (!candidates.length) { alert('No blocks today with a task and ID assigned.'); return; }
+    if (!candidates.length) { alert('No blocks this week with a task and ID assigned.'); return; }
 
-    // Only tasks that still have something unlogged
-    const taskIds = [...new Set(
-        candidates.filter(b => !b.logged).map(b => b.taskId.trim())
-    )];
-    if (!taskIds.length) { alert('Everything is already logged for today.'); return; }
+    // Only (day + task) groups that still have something unlogged.
+    // Green-dot blocks are already logged and are skipped.
+    const groups = new Map(); // key: "day|taskId" → { day, taskId }
+    candidates.filter(b => !b.logged).forEach(b => {
+        groups.set(`${b.day}|${b.taskId.trim()}`, { day: b.day, taskId: b.taskId.trim() });
+    });
+    if (!groups.size) { alert('Everything is already logged this week.'); return; }
 
     logTodayIcon.className = 'bi bi-hourglass-split';
     logTodayButton.disabled = true;
 
     const user = getSavedUser();
     const token = getApiToken();
-    const baseDate = addDays(parseISOToLocalDate(weekMondayISO), dayIndex);
+    const monday = parseISOToLocalDate(weekMondayISO);
     const errors = [];
     let loggedCount = 0;
 
-    for (const taskId of taskIds) {
-        // re-register ALL of today's blocks for this task (mirrors imputarGranular),
+    for (const { day, taskId } of groups.values()) {
+        const dayIndex = DAYS.indexOf(day);
+        if (dayIndex === -1) continue;
+        const baseDate = addDays(monday, dayIndex);
+
+        // re-register ALL of this day's blocks for this task (mirrors imputarGranular),
         // since clearDayEntries wipes the whole day for the task
         const blocks = schedule.filter(b =>
-            b.day === today && (b.taskId || '').trim() === taskId
+            b.day === day && (b.taskId || '').trim() === taskId
         );
         try {
             await clearDayEntries(token, user?.teamId, taskId, baseDate, user?.userId);
@@ -1566,13 +1570,13 @@ async function logToday() {
         logTodayLabel.textContent = `Logged ${loggedCount}!`;
         setTimeout(() => {
             logTodayIcon.className = 'bi bi-calendar-check';
-            logTodayLabel.textContent = 'Log Today';
+            logTodayLabel.textContent = 'Log Nuke';
             logTodayButton.disabled = false;
         }, 2500);
     } else {
         alert('Some entries failed:\n' + errors.join('\n'));
         logTodayIcon.className = 'bi bi-calendar-check';
-        logTodayLabel.textContent = 'Log Today';
+        logTodayLabel.textContent = 'Log Nuke';
         logTodayButton.disabled = false;
     }
 }
@@ -2214,7 +2218,7 @@ document.getElementById('copyLastWeekButton').addEventListener('click', copyLast
 exportButton.addEventListener('click', exportSchedule);
 importButton.addEventListener('click', () => importFileInput.click());
 wipeButton.addEventListener('click', wipeSchedule);
-logTodayButton.addEventListener('click', logToday);
+logTodayButton.addEventListener('click', logWeek);
 
 acceptButton.addEventListener('click', saveBlock);
 deleteButton.addEventListener('click', deleteBlock);
