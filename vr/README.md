@@ -77,17 +77,30 @@ Extra: `?model=https://…/algo.glb` abre un modelo suelto que no esté en la ca
 ### Quest 2
 | | |
 |---|---|
-| Stick izquierdo | andar |
+| Stick izquierdo | andar (a la velocidad que toque según tu tamaño) |
 | Stick derecho | girar a saltos de 30° |
 | **Gatillo** | puntero: pulsa el panel de muñeca, o teletransporta al suelo |
-| **Agarre (grip)** | coger el modelo y moverlo/girarlo |
-| **Los dos agarres** | escalar y girar a la vez, como un pinch-zoom en 3D |
+| **Agarre (grip)** | arrastrarte por el mundo: el punto que agarras se queda pegado a la mano |
+| **Los dos agarres** | **escalarte**: separar las manos agranda el mundo, juntarlas te hace gigante |
 | Manos (sin mandos) | el **pellizco** hace de puntero y de agarre |
 
+El modelo **no se coge**: lo que se mueve al agarrar eres tú. Así se queda siempre clavado
+en su sitio, con sus sombras horneadas, y no hay forma de descolocarlo sin querer.
+
 El **panel de control va anclado a la muñeca izquierda**: gírala hacia ti, como para mirar
-el reloj, y apúntale con el otro mando. Desde ahí cambias de modelo, entras en subcarpetas,
-enciendes o apagas la arcilla, la AO, la malla y la rejilla, giras, recentras y reinicias
-— todo sin quitarte las gafas.
+el reloj (o simplemente apúntale con el otro mando, también aparece). Arriba a la derecha
+tienes a qué escala estás viendo el mundo y a cuántos hercios va la sesión.
+
+### Ponerse a escala y andar de verdad
+
+1. Con los **dos agarres**, separa o junta las manos hasta que el espacio te quede al
+   tamaño que quieres. Tus pies siguen siempre en el suelo, así que el suelo real y el
+   virtual son el mismo.
+2. Pulsa **Mundo fijo** en el panel. A partir de ahí los sticks, el teletransporte y el
+   agarre dejan de responder: puedes caminar físicamente por la habitación sin miedo a
+   mover nada de un roce.
+3. Para volver a moverlo todo, vuelve a pulsar el mismo botón. **Salir de VR**, al lado,
+   cierra la sesión sin tener que quitarte las gafas.
 
 ---
 
@@ -122,6 +135,14 @@ En *Ajustes → Calidad*. **Media** es el ajuste pensado para las Quest 2: fovea
 al 0,8, mapa de sombras de 1024 y 32 direcciones de AO. Si notas tirones con modelos
 pesados, baja a **Baja** (escala el framebuffer a 0,8 y sube la foveación al máximo).
 
+Al entrar, el visor pide **el refresco más alto que ofrezca el casco** (72 / 90 / 120 Hz
+según el modelo y lo que tengas habilitado en los ajustes del propio visor). El casco solo
+lo concede si la escena llega; los hercios reales se ven en el panel de muñeca. Si ves 90
+pero notas que va a saltos, es que no llega: baja la calidad.
+
+El mapa de sombras no se recalcula por fotograma —el modelo está quieto—, solo cuando algo
+cambia de verdad. Esa era la mayor factura fija que había.
+
 ---
 
 ## Estructura
@@ -138,8 +159,8 @@ js/clay.js            material de arcilla e inyección de AO y realce de silueta
 js/ao-bake.js         horneado de oclusión ambiental por vértice
 js/loaders.js         formatos (Draco, Meshopt y KTX2 incluidos)
 js/ui.js              interfaz de escritorio
-js/xr.js              sesión WebXR, mandos, manos y desplazamiento
-js/xr-grab.js         agarre con una y con dos manos
+js/xr.js              sesión WebXR, mandos, manos, refresco y desplazamiento
+js/xr-world.js        agarrar el mundo: arrastrarte y escalarte
 js/xr-panel.js        panel de control anclado a la muñeca
 js/main.js            orquestación
 ```

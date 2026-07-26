@@ -5,14 +5,14 @@ import * as S from './state.js';
 import {
   renderer, scene, camera, modelGroup, mount, fitView, setMode, modelBox,
 } from './viewer.js';
-import { fitLights, bakeGroundShadows, setGroundShadowsVisible } from './lighting.js';
+import { fitLights, bakeGroundShadows } from './lighting.js';
 import { applyMaterials, setCurrent } from './clay.js';
 import { bakeVertexAO } from './ao-bake.js';
 import { loadModel, disposeModel, extensionOf } from './loaders.js';
 import * as Sources from './sources.js';
 import * as UI from './ui.js';
 import { initXRButton } from './xr.js';
-import { onGrabRelease, resetTransform } from './xr-grab.js';
+import { resetPlayer } from './xr-world.js';
 import * as Panel from './xr-panel.js';
 import { rootFolder, labelFor } from './sources.js';
 
@@ -195,9 +195,10 @@ function fit() {
   fitView();
 }
 
+/** Devuelve el modelo a su sitio y a ti a tu tamaño, delante de él. */
 function reset() {
-  resetTransform();
   if (currentObject) placeOnFloor(currentObject, S.get('realScale'));
+  if (S.get('presenting')) resetPlayer();
   fitView();
   fitLights();
   bakeGroundShadows();
@@ -206,7 +207,6 @@ function reset() {
 function toggleRealScale() {
   S.set({ realScale: !S.get('realScale') });
   if (!currentObject) return;
-  resetTransform();
   placeOnFloor(currentObject, S.get('realScale'));
   fitView();
   fitLights();
@@ -228,10 +228,8 @@ mount(document.getElementById('canvas-wrap'));
 UI.init(actions);
 Panel.configure({ actions, getEntries: vrEntries });
 
-// Mientras se agarra el modelo la sombra horneada no vale; se rehornea al soltar.
-S.on('grabbing', grabbing => setGroundShadowsVisible(!grabbing && !!currentObject));
-onGrabRelease(() => { fitLights(); bakeGroundShadows(); });
-
+// El modelo ya no se agarra —lo que se mueve al agarrar eres tú—, así que sus sombras
+// horneadas siguen siendo válidas siempre y no hay que rehornear nada en marcha.
 S.on('modelName', name => UI.setPlaceholderVisible(!name));
 
 initXRButton(document.getElementById('xrBtn'));

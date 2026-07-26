@@ -31,7 +31,10 @@ const state = {
   quality: 'medium',
   mode: 'orbit',        // 'orbit' | 'walk'
   presenting: false,    // dentro de una sesión XR
-  grabbing: false,
+  grabbing: false,      // agarrando el mundo con al menos una mano
+  worldLock: false,     // mundo fijo: solo responde el panel de muñeca
+  playerScale: 1,       // tu tamaño; >1 eres un gigante, <1 estás en miniatura
+  frameRate: 0,         // hercios concedidos por el visor (0 = lo que traiga por defecto)
   modelName: null,
   activeId: null,
   aoAvailable: false,   // el modelo actual tiene AO horneada

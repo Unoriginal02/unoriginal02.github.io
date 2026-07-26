@@ -185,6 +185,7 @@ export function teleportTo(point) {
 const _land = new THREE.Vector3();
 events.addEventListener('point-end', e => {
   const input = e.detail.input;
+  if (S.get('worldLock')) return;
   if (input.isHand || input.pointerConsumed || input.grabbing) return;
   if (floorHit(input, _land)) teleportTo(_land);
 });
@@ -215,6 +216,7 @@ function readStick(input) {
 }
 
 function updateLocomotion(dt) {
+  if (S.get('worldLock')) return;         // mundo fijo: se anda con los pies de verdad
   let move = null, turn = 0;
   for (const input of inputs) {
     if (!input.connected || input.isHand) continue;
@@ -230,7 +232,9 @@ function updateLocomotion(dt) {
     if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
     _fwd.normalize();
     _right.crossVectors(_fwd, UP).normalize();
-    const speed = 2.2;
+    // La velocidad va en unidades del mundo, pero se anda en unidades tuyas: si estás en
+    // miniatura, 2,2 m/s sería teletransportarte de una punta a otra de la maqueta.
+    const speed = 2.2 * player.scale.x;
     player.position.addScaledVector(_fwd, -move.y * speed * dt);
     player.position.addScaledVector(_right, move.x * speed * dt);
   }
@@ -250,11 +254,12 @@ onFrame((dt, presenting) => {
   if (!presenting) { marker.visible = false; return; }
   updateLocomotion(dt);
 
+  const locked = S.get('worldLock');
   let showMarker = false;
   for (const input of inputs) {
     if (!input.connected) continue;
     updateHandDots(input);
-    if (input.isHand || !input.pointing || input.pointerConsumed || input.grabbing) continue;
+    if (locked || input.isHand || !input.pointing || input.pointerConsumed || input.grabbing) continue;
     if (floorHit(input, _hit)) {
       marker.position.copy(_hit);
       marker.position.y += 0.01;
@@ -302,22 +307,45 @@ async function enterVR(button) {
   }
 }
 
+/**
+ * Pide el refresco más alto que ofrezca el visor. Las Quest arrancan en 72 Hz aunque
+ * puedan dar 90 o 120: hay que pedirlo a mano, y solo se concede si la escena llega.
+ */
+async function requestHighestFrameRate(s) {
+  const rates = s.supportedFrameRates;
+  if (!rates?.length || typeof s.updateTargetFrameRate !== 'function') return;
+  const target = Math.max(...rates);
+  try {
+    await s.updateTargetFrameRate(target);
+    S.set({ frameRate: Math.round(s.frameRate || target) });
+  } catch (err) {
+    console.warn('El visor no ha aceptado', target, 'Hz:', err.message);
+    S.set({ frameRate: Math.round(s.frameRate || 0) });
+  }
+}
+
+/** Cierra la sesión (lo llama el botón del panel de muñeca). */
+export function exitVR() { session?.end(); }
+
 renderer.xr.addEventListener('sessionstart', () => {
   session = renderer.xr.getSession();
   // Foveación fija: en Quest 2 es lo que separa ir a 72 fps de ir a tirones.
   try { renderer.xr.setFoveation(S.quality().foveation); } catch { /* no soportado */ }
+  requestHighestFrameRate(session);
   controls.enabled = false;
   player.position.set(0, 0, 0);
   player.rotation.set(0, 0, 0);
+  player.scale.setScalar(1);
   standInFrontOfModel();
-  S.set({ presenting: true });
+  S.set({ presenting: true, playerScale: 1 });
   session.addEventListener('end', () => {
     session = null;
     player.position.set(0, 0, 0);
     player.rotation.set(0, 0, 0);
+    player.scale.setScalar(1);
     marker.visible = false;
     controls.enabled = S.get('mode') === 'orbit';
-    S.set({ presenting: false });
+    S.set({ presenting: false, playerScale: 1, frameRate: 0 });
   });
 });
 

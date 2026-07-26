@@ -6,12 +6,12 @@
 
 import * as THREE from 'three';
 import { player, camera, onFrame } from './viewer.js';
-import { events, inputs, inputByHand } from './xr.js';
+import { events, inputs, inputByHand, exitVR } from './xr.js';
 import * as S from './state.js';
 
 const W = 512, H = 760;
 const PANEL_W = 0.20, PANEL_H = PANEL_W * H / W;
-const ROWS = 5;                       // modelos visibles a la vez
+const ROWS = 4;                       // modelos visibles a la vez
 
 // Desplazamiento respecto al mando/muñeca. Puede querer un retoque fino según cómo
 // sujetes el mando: sube/baja el .y y el ángulo hasta que se lea cómodo.
@@ -109,8 +109,16 @@ function buildRegions() {
     x: pad + i * ((W - pad * 2 - 24) / 3 + 12), y: 266, w: (W - pad * 2 - 24) / 3, h: 58,
   }));
 
+  // Fila 4: sesión. «Mundo fijo» apaga sticks, teletransporte y agarre: solo queda este
+  // panel, para poder andar de verdad sin tocar nada sin querer.
+  const halfW = (W - pad * 2 - 12) / 2;
+  r.push({ id: 'lock', kind: 'toggle', x: pad, y: 338, w: halfW, h: 58,
+    label: S.get('worldLock') ? 'Mundo fijo' : 'Mundo libre', on: () => S.get('worldLock') });
+  r.push({ id: 'exit', kind: 'action', label: 'Salir de VR',
+    x: pad + halfW + 12, y: 338, w: halfW, h: 58 });
+
   // Lista de modelos
-  const listTop = 386;
+  const listTop = 452;
   const rowH = 62;
   const visible = entries.slice(listOffset, listOffset + ROWS);
   visible.forEach((entry, i) => r.push({
@@ -156,6 +164,13 @@ function draw() {
   ctx.textBaseline = 'middle';
   ctx.fillText('VISOR VR', 20, 36);
 
+  // A qué tamaño estás mirando el mundo, y a cuántos hercios va la sesión.
+  ctx.fillStyle = C.muted;
+  ctx.font = '500 20px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(statusLabel(), W - 20, 36);
+  ctx.textAlign = 'left';
+
   ctx.fillStyle = C.text;
   ctx.font = '600 30px system-ui, -apple-system, sans-serif';
   const name = S.get('modelName') || 'Sin modelo';
@@ -170,11 +185,13 @@ function draw() {
   ctx.font = '500 20px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   const total = entries.length;
-  ctx.fillText(total ? `Modelos ${Math.min(listOffset + 1, total)}–${Math.min(listOffset + ROWS, total)} de ${total}` : 'Catálogo vacío', 20, 356);
+  ctx.fillText(total ? `Modelos ${Math.min(listOffset + 1, total)}–${Math.min(listOffset + ROWS, total)} de ${total}` : 'Catálogo vacío', 20, 428);
 
   ctx.fillStyle = '#6a7183';
   ctx.font = '500 18px system-ui, sans-serif';
-  ctx.fillText('Gatillo: pulsar · Agarre: coger el modelo', 20, H - 26);
+  ctx.fillText(S.get('worldLock')
+    ? 'Mundo fijo · anda de verdad; aquí lo sueltas'
+    : 'Agarre: moverte · dos agarres: escalarte', 20, H - 26);
 
   texture.needsUpdate = true;
 }
@@ -230,6 +247,13 @@ function drawEntry(region) {
 
 function clip(text, max) {
   return text.length > max ? text.slice(0, max - 1) + '…' : text;
+}
+
+/** «Mundo ×2.4 · 90 Hz». Escalarte cambia el número, no siempre la etiqueta. */
+function statusLabel() {
+  const zoom = 1 / (S.get('playerScale') || 1);
+  const hz = S.get('frameRate');
+  return `Mundo ×${zoom < 10 ? zoom.toFixed(1) : Math.round(zoom)}` + (hz ? ` · ${hz} Hz` : '');
 }
 
 // ---------- Anclaje a la muñeca ----------
@@ -328,6 +352,8 @@ function activate(region) {
     case 'fit': actions.fit?.(); break;
     case 'reset': actions.reset?.(); break;
     case 'real': actions.toggleRealScale?.(); break;
+    case 'lock': S.toggle('worldLock'); break;
+    case 'exit': exitVR(); break;
     case 'up': listOffset = Math.max(0, listOffset - ROWS); break;
     case 'down': listOffset += ROWS; break;
   }
@@ -367,7 +393,18 @@ onFrame((dt, presenting) => {
   if (dirty) { dirty = false; draw(); }
 });
 
-S.on(['clay', 'ao', 'wire', 'grid', 'realScale', 'modelName', 'activeId'], () => { dirty = true; });
+S.on(['clay', 'ao', 'wire', 'grid', 'realScale', 'modelName', 'activeId', 'worldLock'],
+     () => { dirty = true; });
+
+// Escalarte cambia `playerScale` en cada fotograma; repintar el lienzo entero por un
+// decimal que ni se mueve es tirar milisegundos. Solo cuando cambia lo que se lee.
+let lastLabel = statusLabel();
+S.on(['playerScale', 'frameRate'], () => {
+  const label = statusLabel();
+  if (label === lastLabel) return;
+  lastLabel = label;
+  dirty = true;
+});
 
 draw();
 export { panel };

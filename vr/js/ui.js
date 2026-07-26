@@ -17,7 +17,7 @@ const el = {
 const LEGEND = {
   orbit: '<b>Ratón</b> orbitar · rueda zoom · <b>Caminar</b> para recorrerlo por dentro<br>' +
          '<b>En VR</b> stick izq. andar · stick der. girar · gatillo teletransporte<br>' +
-         '<b>Agarre</b> coger el modelo · con las dos manos, escalar y girar',
+         '<b>Agarre</b> arrastrarte por el mundo · con los dos, escalarte y girar',
   walk: '<b>Caminar</b> · haz clic para mirar<br>' +
         '<span class="k">W A S D</span> mover · <span class="k">Espacio / C</span> subir y bajar · ' +
         '<span class="k">Shift</span> correr · <span class="k">Esc</span> salir',
