@@ -14,9 +14,9 @@ import * as UI from './ui.js';
 import { initXRButton } from './xr.js';
 import { onGrabRelease, resetTransform } from './xr-grab.js';
 import * as Panel from './xr-panel.js';
-import { rootFolder } from './sources.js';
+import { rootFolder, labelFor } from './sources.js';
 
-// ---------- Fuente de modelos: la carpeta del repositorio ----------
+// ---------- Fuente de modelos: la carpeta de Google Drive ----------
 
 let stack = [];             // [{ path, name }] — carpeta raíz y subcarpetas abiertas
 let items = [];
@@ -40,8 +40,8 @@ function refreshList() {
     onPick: pick,
     emptyHtml: listError
       ? `<b>No se ha podido leer la lista</b><br><br>${listError}`
-      : `La carpeta <code>${stack[stack.length - 1]?.path || rootFolder()}</code> está vacía.` +
-        '<br><br>Sube tus modelos ahí en github.com y pulsa ↻.',
+      : `La carpeta <b>${stack[stack.length - 1]?.name || 'de Drive'}</b> está vacía.` +
+        '<br><br>Sube ahí tus modelos desde Google Drive y pulsa ↻.',
   });
   Panel.refresh();
 }
@@ -60,12 +60,14 @@ function goUp() {
 
 /** Lee la carpeta que esté arriba de la pila. */
 async function openFolder() {
-  if (!stack.length) stack = [{ path: rootFolder(), name: rootFolder() }];
+  if (!stack.length) stack = [{ path: rootFolder(), name: 'Modelos' }];
   const folder = stack[stack.length - 1];
   Panel.resetScroll();
-  UI.status('Leyendo la lista de modelos…', 'load');
+  UI.status('Leyendo la carpeta de Drive…', 'load');
   try {
     items = await Sources.listFolder(folder.path);
+    // Drive nos dice cómo se llama la carpeta: mejor eso que un identificador.
+    folder.name = labelFor(folder.path) || folder.name;
     listError = '';
     UI.status('');
   } catch (err) {
