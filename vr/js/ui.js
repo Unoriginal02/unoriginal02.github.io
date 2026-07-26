@@ -15,11 +15,13 @@ const el = {
 };
 
 const LEGEND = {
-  orbit: '<b>Ratón</b> orbitar · rueda zoom · <b>Caminar</b> para recorrerlo por dentro<br>' +
-         '<b>En VR</b> stick izq. andar · stick der. girar · gatillo teletransporte<br>' +
-         '<b>Agarre</b> arrastrarte por el mundo · con los dos, escalarte y girar',
+  orbit: '<b>Ratón</b> orbitar · rueda zoom · <span class="k">Espacio / C</span> subir y bajar plantas<br>' +
+         '<b>Caminar</b> para recorrerlo por dentro y subir escaleras<br>' +
+         '<b>En VR</b> stick izq. andar · stick der. girar y <b>subir/bajar</b> · gatillo teletransporte<br>' +
+         '<b>Agarre</b> arrastrarte por el mundo (también hacia arriba) · con los dos, escalarte',
   walk: '<b>Caminar</b> · haz clic para mirar<br>' +
         '<span class="k">W A S D</span> mover · <span class="k">Espacio / C</span> subir y bajar · ' +
+        '<span class="k">F</span> pisar el suelo de debajo<br>' +
         '<span class="k">Shift</span> correr · <span class="k">Esc</span> salir',
 };
 

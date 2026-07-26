@@ -69,7 +69,8 @@ Extra: `?model=https://…/algo.glb` abre un modelo suelto que no esté en la ca
 | | |
 |---|---|
 | Ratón / rueda | orbitar y acercar |
-| Caminar | primera persona: `WASD`, `Espacio`/`C` subir y bajar, `Shift` correr, `Esc` salir |
+| `Espacio` / `C` | subir y bajar (también `Q`/`E` y `AvPág`/`RePág`): orbitando sube el punto de mira, así que se puede ir planta por planta |
+| Caminar | primera persona: `WASD`, `Espacio`/`C` subir y bajar, `F` plantarte en el suelo que tengas debajo, `Shift` correr, `Esc` salir |
 | ⟲X ⟲Y ⟲Z | giros de 90° para enderezar modelos tumbados (Z-up vs Y-up) |
 | 1:1 | tamaño real, sin normalizar (para glTF en metros) |
 | Ajustes | exposición, fuerza de la AO, sombra de contacto, suavidad y color de la arcilla |
@@ -78,9 +79,10 @@ Extra: `?model=https://…/algo.glb` abre un modelo suelto que no esté en la ca
 | | |
 |---|---|
 | Stick izquierdo | andar (a la velocidad que toque según tu tamaño) |
-| Stick derecho | girar a saltos de 30° |
-| **Gatillo** | puntero: pulsa el panel de muñeca, o teletransporta al suelo |
-| **Agarre (grip)** | arrastrarte por el mundo: el punto que agarras se queda pegado a la mano |
+| Stick derecho, en horizontal | girar a saltos de 30° |
+| Stick derecho, en vertical | **subir y bajar**: sube el suelo que pisas, para cambiar de planta |
+| **Gatillo** | puntero: pulsa el panel de muñeca, o teletransporta a donde apuntes |
+| **Agarre (grip)** | arrastrarte por el mundo, la vertical incluida: el punto que agarras se queda pegado a la mano, así que tirar hacia abajo te iza |
 | **Los dos agarres** | **escalarte**: separar las manos agranda el mundo, juntarlas te hace gigante |
 | Manos (sin mandos) | el **pellizco** hace de puntero y de agarre |
 
@@ -89,13 +91,25 @@ en su sitio, con sus sombras horneadas, y no hay forma de descolocarlo sin quere
 
 El **panel de control va anclado a la muñeca izquierda**: gírala hacia ti, como para mirar
 el reloj (o simplemente apúntale con el otro mando, también aparece). Arriba a la derecha
-tienes a qué escala estás viendo el mundo y a cuántos hercios va la sesión.
+tienes a qué escala estás viendo el mundo, a qué altura estás y a cuántos hercios va la
+sesión. **Reiniciar** te devuelve al suelo (altura 0) y a tamaño real.
+
+### Subir a la planta de arriba
+
+El teletransporte del gatillo **aterriza en superficies de verdad**, no solo en el suelo:
+apunta a un peldaño, al descansillo o al forjado de la planta de arriba y te deja de pie
+encima. El marcador lleva un mástil hasta el suelo para que se vea a qué altura vas a caer;
+si apuntas a una pared o a un techo inclinado no aparece, porque eso no se pisa.
+
+Y si prefieres ir volando, el **stick derecho hacia arriba** te eleva y hacia abajo te baja;
+con hand tracking, ese trabajo lo hace el arrastre vertical del pellizco.
 
 ### Ponerse a escala y andar de verdad
 
 1. Con los **dos agarres**, separa o junta las manos hasta que el espacio te quede al
-   tamaño que quieres. Tus pies siguen siempre en el suelo, así que el suelo real y el
-   virtual son el mismo.
+   tamaño que quieres. Escalarte no te sube ni te baja: te quedas a la altura que tuvieras,
+   así que si estás en el suelo (altura 0) el suelo real y el virtual son el mismo. Si has
+   subido a otra planta, sigues pisando esa.
 2. Pulsa **Mundo fijo** en el panel. A partir de ahí los sticks, el teletransporte y el
    agarre dejan de responder: puedes caminar físicamente por la habitación sin miedo a
    mover nada de un roce.

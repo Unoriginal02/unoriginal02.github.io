@@ -34,6 +34,7 @@ const state = {
   grabbing: false,      // agarrando el mundo con al menos una mano
   worldLock: false,     // mundo fijo: solo responde el panel de muñeca
   playerScale: 1,       // tu tamaño; >1 eres un gigante, <1 estás en miniatura
+  elevation: 0,         // altura del suelo que pisas sobre el suelo virtual, en metros
   frameRate: 0,         // hercios concedidos por el visor (0 = lo que traiga por defecto)
   modelName: null,
   activeId: null,

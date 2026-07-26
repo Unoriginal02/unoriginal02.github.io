@@ -191,7 +191,7 @@ function draw() {
   ctx.font = '500 18px system-ui, sans-serif';
   ctx.fillText(S.get('worldLock')
     ? 'Mundo fijo · anda de verdad; aquí lo sueltas'
-    : 'Agarre: moverte · dos agarres: escalarte', 20, H - 26);
+    : 'Stick der. arriba/abajo: cambiar de planta', 20, H - 26);
 
   texture.needsUpdate = true;
 }
@@ -249,11 +249,14 @@ function clip(text, max) {
   return text.length > max ? text.slice(0, max - 1) + '…' : text;
 }
 
-/** «Mundo ×2.4 · 90 Hz». Escalarte cambia el número, no siempre la etiqueta. */
+/** «Mundo ×2.4 · +3,2 m · 90 Hz». Escalarte cambia el número, no siempre la etiqueta. */
 function statusLabel() {
   const zoom = 1 / (S.get('playerScale') || 1);
   const hz = S.get('frameRate');
-  return `Mundo ×${zoom < 10 ? zoom.toFixed(1) : Math.round(zoom)}` + (hz ? ` · ${hz} Hz` : '');
+  const y = S.get('elevation');
+  return `Mundo ×${zoom < 10 ? zoom.toFixed(1) : Math.round(zoom)}`
+    + (Math.abs(y) >= 0.1 ? ` · ${y > 0 ? '+' : ''}${y.toFixed(1).replace('.', ',')} m` : '')
+    + (hz ? ` · ${hz} Hz` : '');
 }
 
 // ---------- Anclaje a la muñeca ----------
@@ -399,7 +402,7 @@ S.on(['clay', 'ao', 'wire', 'grid', 'realScale', 'modelName', 'activeId', 'world
 // Escalarte cambia `playerScale` en cada fotograma; repintar el lienzo entero por un
 // decimal que ni se mueve es tirar milisegundos. Solo cuando cambia lo que se lee.
 let lastLabel = statusLabel();
-S.on(['playerScale', 'frameRate'], () => {
+S.on(['playerScale', 'frameRate', 'elevation'], () => {
   const label = statusLabel();
   if (label === lastLabel) return;
   lastLabel = label;

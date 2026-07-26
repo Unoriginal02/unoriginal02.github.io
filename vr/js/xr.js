@@ -3,11 +3,12 @@
 // Reparto de botones (Quest 2):
 //   gatillo (trigger)  → puntero: pulsa el panel de muñeca, o teletransporta al suelo
 //   agarre  (grip)     → coger el modelo; con los dos a la vez, escalar y girar
-//   stick izquierdo    → andar          stick derecho → giro a saltos de 30°
+//   stick izquierdo    → andar
+//   stick derecho      → en horizontal, giro a saltos de 30°; en vertical, subir y bajar
 // Con hand tracking (sin mandos), el pellizco hace de puntero y de agarre.
 
 import * as THREE from 'three';
-import { renderer, scene, camera, player, onFrame, standInFrontOfModel, controls } from './viewer.js';
+import { renderer, scene, camera, player, modelGroup, onFrame, standInFrontOfModel, controls } from './viewer.js';
 import * as S from './state.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -150,12 +151,23 @@ function updateHandDots(input) {
 
 // ---------- Teletransporte ----------
 
-const marker = new THREE.Mesh(
+// El marcador lleva un mástil hasta el suelo virtual: apuntando a la planta de arriba,
+// el aro solo no dice a qué altura vas a caer.
+const marker = new THREE.Group();
+const markerRing = new THREE.Mesh(
   new THREE.RingGeometry(0.16, 0.22, 24),
   new THREE.MeshBasicMaterial({ color: 0x5b8cff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthTest: false })
 );
-marker.rotation.x = -Math.PI / 2;
-marker.renderOrder = 5;
+markerRing.rotation.x = -Math.PI / 2;
+markerRing.renderOrder = 5;
+marker.add(markerRing);
+
+const markerStem = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -1, 0)]),
+  new THREE.LineBasicMaterial({ color: 0x5b8cff, transparent: true, opacity: 0.35, depthTest: false })
+);
+markerStem.renderOrder = 5;
+marker.add(markerStem);
 marker.visible = false;
 scene.add(marker);
 
@@ -163,21 +175,67 @@ const _mat = new THREE.Matrix4();
 const _origin = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 
-/** Punto del suelo (y=0) al que apunta un mando, o null si no apunta hacia abajo. */
-export function floorHit(input, target = new THREE.Vector3()) {
+// Un plano de más de 60° de inclinación no es suelo: es pared o techo, y no se pisa.
+const WALKABLE = 0.4;
+const aimRay = new THREE.Raycaster();
+const _normalMatrix = new THREE.Matrix3();
+const _faceNormal = new THREE.Vector3();
+
+/** Rayo del mando en coordenadas del mundo, sobre `_origin` y `_dir`. */
+function aimRayFrom(input) {
   _mat.identity().extractRotation(input.controller.matrixWorld);
   _origin.setFromMatrixPosition(input.controller.matrixWorld);
   _dir.set(0, 0, -1).applyMatrix4(_mat).normalize();
+}
+
+/**
+ * Sitio al que te llevaría el teletransporte: la primera superficie PISABLE del modelo
+ * que cruce el rayo —un peldaño, el forjado de la planta de arriba— y, si no cruza
+ * ninguna, el suelo virtual de y=0. Es lo que permite subir de planta apuntando.
+ */
+export function aimHit(input, target = new THREE.Vector3()) {
+  aimRayFrom(input);
+
+  if (modelGroup.children.length) {
+    aimRay.set(_origin, _dir);
+    aimRay.near = 0.2;
+    aimRay.far = 200;
+    for (const hit of aimRay.intersectObject(modelGroup, true)) {
+      if (!hit.face) continue;                    // nubes de puntos y líneas: no son suelo
+      _normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+      _faceNormal.copy(hit.face.normal).applyMatrix3(_normalMatrix).normalize();
+      if (_faceNormal.y < WALKABLE) continue;
+      return target.copy(hit.point);
+    }
+  }
+
+  return floorHit(target);
+}
+
+/** Punto del suelo virtual (y=0), con el rayo ya calculado. Null si no apunta hacia abajo. */
+function floorHit(target) {
   if (_dir.y >= -0.05) return null;
   const t = -_origin.y / _dir.y;
   if (t < 0.2 || t > 60) return null;
   return target.copy(_origin).addScaledVector(_dir, t);
 }
 
+/**
+ * Te planta con los pies en ese punto. La altura la lleva la plataforma (`player.position.y`),
+ * que es el plano del suelo bajo tus pies; la cámara ya va a la altura de tus ojos por
+ * encima de él, así que basta con igualarla a la del punto.
+ */
 export function teleportTo(point) {
   const head = camera.getWorldPosition(new THREE.Vector3());
   player.position.x += point.x - head.x;
   player.position.z += point.z - head.z;
+  player.position.y = point.y;
+  reportElevation();
+}
+
+/** Publica la altura para el panel, redondeada: si no, repintaría el lienzo cada fotograma. */
+export function reportElevation() {
+  S.set({ elevation: Math.round(player.position.y * 10) / 10 });
 }
 
 // Al soltar el gatillo se salta al punto marcado. Si el panel se quedó el gesto, o si
@@ -187,7 +245,7 @@ events.addEventListener('point-end', e => {
   const input = e.detail.input;
   if (S.get('worldLock')) return;
   if (input.isHand || input.pointerConsumed || input.grabbing) return;
-  if (floorHit(input, _land)) teleportTo(_land);
+  if (aimHit(input, _land)) teleportTo(_land);
 });
 
 // ---------- Desplazamiento con los sticks ----------
@@ -217,12 +275,13 @@ function readStick(input) {
 
 function updateLocomotion(dt) {
   if (S.get('worldLock')) return;         // mundo fijo: se anda con los pies de verdad
-  let move = null, turn = 0;
+  let move = null, turn = 0, rise = 0;
   for (const input of inputs) {
     if (!input.connected || input.isHand) continue;
     const stick = readStick(input);
     if (!stick) continue;
-    if (input.handedness === 'right') turn = stick.x;
+    // El stick derecho reparte los dos ejes: en horizontal gira, en vertical sube y baja.
+    if (input.handedness === 'right') { turn = stick.x; rise = -stick.y; }
     else move = stick;
   }
 
@@ -237,6 +296,13 @@ function updateLocomotion(dt) {
     const speed = 2.2 * player.scale.x;
     player.position.addScaledVector(_fwd, -move.y * speed * dt);
     player.position.addScaledVector(_right, move.x * speed * dt);
+  }
+
+  // Subir y bajar: sube la plataforma entera, que es el plano del suelo bajo tus pies.
+  // Con esto se recorre una casa de varias plantas sin depender del teletransporte.
+  if (Math.abs(rise) > DEADZONE) {
+    player.position.y += rise * 1.6 * player.scale.x * dt;
+    reportElevation();
   }
 
   if (Math.abs(turn) > 0.7) {
@@ -260,9 +326,12 @@ onFrame((dt, presenting) => {
     if (!input.connected) continue;
     updateHandDots(input);
     if (locked || input.isHand || !input.pointing || input.pointerConsumed || input.grabbing) continue;
-    if (floorHit(input, _hit)) {
+    if (aimHit(input, _hit)) {
       marker.position.copy(_hit);
       marker.position.y += 0.01;
+      // El mástil baja hasta y=0 (y se esconde si ya estás en el suelo).
+      markerStem.scale.y = Math.max(0.001, marker.position.y);
+      markerStem.visible = marker.position.y > 0.05;
       showMarker = true;
     }
   }
@@ -337,7 +406,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   player.rotation.set(0, 0, 0);
   player.scale.setScalar(1);
   standInFrontOfModel();
-  S.set({ presenting: true, playerScale: 1 });
+  S.set({ presenting: true, playerScale: 1, elevation: 0 });
   session.addEventListener('end', () => {
     session = null;
     player.position.set(0, 0, 0);
@@ -345,7 +414,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     player.scale.setScalar(1);
     marker.visible = false;
     controls.enabled = S.get('mode') === 'orbit';
-    S.set({ presenting: false, playerScale: 1, frameRate: 0 });
+    S.set({ presenting: false, playerScale: 1, frameRate: 0, elevation: 0 });
   });
 });
 

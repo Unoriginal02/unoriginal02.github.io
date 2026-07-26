@@ -169,14 +169,35 @@ export function standInFrontOfModel(distance) {
 
 // ---------- Modo caminar (escritorio, teclado + ratón) ----------
 
+const EYE = 1.6;                 // altura de los ojos sobre el suelo que estés pisando
+const WALKABLE = 0.4;            // más inclinado que esto es pared o techo: no se pisa
+
 const keys = Object.create(null);
 
+/** Con el foco en un control de los ajustes, el teclado es suyo. */
+function typing(target) {
+  const tag = target?.tagName;
+  return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || !!target?.isContentEditable;
+}
+
+const RISE_KEYS = new Set(['Space', 'KeyE', 'PageUp', 'KeyC', 'KeyQ', 'PageDown']);
+
 addEventListener('keydown', e => {
-  if (S.get('mode') !== 'walk' || !walk.isLocked) return;
+  if (renderer.xr.isPresenting || typing(e.target)) return;
+  // Andando hace falta tener el ratón capturado; orbitando basta con no estar escribiendo.
+  if (S.get('mode') === 'walk' && !walk.isLocked) return;
   keys[e.code] = true;
-  if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'KeyF' && S.get('mode') === 'walk') snapToFloorBelow();
+  if (RISE_KEYS.has(e.code)) {
+    // Un botón de la barra con el foco se queda el Espacio y se vuelve a pulsar solo.
+    if (document.activeElement?.tagName === 'BUTTON') document.activeElement.blur();
+    e.preventDefault();
+  }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
+// Si la ventana pierde el foco con una tecla pulsada, el `keyup` no llega nunca y te
+// quedarías subiendo solo para siempre.
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 renderer.domElement.addEventListener('click', () => {
   if (S.get('mode') === 'walk' && !renderer.xr.isPresenting) walk.lock();
@@ -190,7 +211,7 @@ export function setMode(mode) {
     player.position.set(0, 0, 0);
     player.rotation.set(0, 0, 0);
     standInFrontOfModel();
-    camera.position.set(0, 1.6, 0);
+    camera.position.set(0, EYE, 0);
     camera.rotation.set(0, 0, 0);
   } else {
     walk.unlock();
@@ -201,6 +222,55 @@ export function setMode(mode) {
   }
 }
 
+/**
+ * Te deja de pie sobre la primera superficie pisable que haya bajo tus pies: sube volando
+ * con Espacio hasta pasar el forjado y pulsa F para plantarte en la planta de arriba.
+ * Si no hay nada debajo, vuelve al suelo virtual de y=0.
+ */
+const downRay = new THREE.Raycaster();
+const _down = new THREE.Vector3(0, -1, 0);
+const _eye = new THREE.Vector3();
+const _nm = new THREE.Matrix3();
+const _n = new THREE.Vector3();
+
+export function snapToFloorBelow() {
+  camera.getWorldPosition(_eye);
+  let floorY = 0;
+  if (modelGroup.children.length) {
+    downRay.set(_eye, _down);
+    downRay.near = 0.02;
+    downRay.far = 500;
+    for (const hit of downRay.intersectObject(modelGroup, true)) {
+      if (!hit.face) continue;
+      _nm.getNormalMatrix(hit.object.matrixWorld);
+      _n.copy(hit.face.normal).applyMatrix3(_nm).normalize();
+      if (_n.y < WALKABLE) continue;      // techo o pared vista desde arriba
+      floorY = hit.point.y;
+      break;
+    }
+  }
+  camera.position.y = floorY - player.position.y + EYE;
+}
+
+/** Cuánto se pide subir (+1) o bajar (−1) con el teclado. */
+function riseInput() {
+  const up = keys['Space'] || keys['KeyE'] || keys['PageUp'];
+  const down = keys['KeyC'] || keys['KeyQ'] || keys['PageDown'];
+  return (up ? 1 : 0) - (down ? 1 : 0);
+}
+
+// Orbitando también se sube y se baja: se lleva la cámara y su punto de mira a la vez, que
+// es lo que hace falta para mirar la planta de arriba sin perder el encuadre.
+onFrame((dt, presenting) => {
+  if (presenting || S.get('mode') === 'walk') return;
+  const rise = riseInput();
+  if (!rise) return;
+  // Proporcional a lo lejos que estés: a un metro de la maqueta, 2 m/s la perdería de vista.
+  const step = rise * camera.position.distanceTo(controls.target) * 0.7 * dt;
+  camera.position.y += step;
+  controls.target.y += step;
+});
+
 onFrame((dt, presenting) => {
   if (presenting || S.get('mode') !== 'walk' || !walk.isLocked) return;
   let speed = 2.2 * dt;
@@ -209,8 +279,8 @@ onFrame((dt, presenting) => {
   if (keys['KeyS'] || keys['ArrowDown']) walk.moveForward(-speed);
   if (keys['KeyA'] || keys['ArrowLeft']) walk.moveRight(-speed);
   if (keys['KeyD'] || keys['ArrowRight']) walk.moveRight(speed);
-  if (keys['Space']) camera.position.y += speed;
-  if (keys['KeyC']) camera.position.y -= speed;
+  // Subir y bajar: Espacio/C, o Q/E y AvPág/RePág para quien tenga esa costumbre.
+  camera.position.y += riseInput() * speed;
 });
 
 // ---------- Reacciones al estado ----------

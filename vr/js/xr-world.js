@@ -9,13 +9,17 @@
 // clavado donde está —con sus sombras horneadas intactas— y lo que cambia es dónde estás
 // y de qué tamaño eres. Por eso ya no hace falta rehornear nada al soltar.
 //
-// La altura queda siempre pegada al suelo virtual (y = 0): la idea es ponerse a una
-// escala y andar de verdad por dentro, y para eso el suelo real y el virtual tienen que
-// ser el mismo. Sin eso, al escalar te quedarías flotando o enterrado.
+// El arrastre a una mano es en las tres direcciones, la vertical incluida: tirando hacia
+// abajo te izas, que es la forma de subir a la planta de arriba sin soltar el mundo.
+// Escalarse a dos manos, en cambio, mantiene la altura: si al ponerte a escala te subiera
+// o te bajara, el suelo real y el virtual dejarían de coincidir y no podrías andar.
+//
+// La altura vive en `player.position.y`, el plano del suelo bajo tus pies. «Reiniciar» en
+// el panel te devuelve al suelo virtual (y = 0).
 
 import * as THREE from 'three';
 import { player, onFrame, standInFrontOfModel } from './viewer.js';
-import { events } from './xr.js';
+import { events, reportElevation } from './xr.js';
 import * as S from './state.js';
 
 const MIN_SCALE = 0.02;    // ~3 cm de alto: dentro de una maqueta
@@ -24,6 +28,7 @@ const MAX_SCALE = 60;      // gigante mirando la maqueta desde arriba
 let active = [];           // inputs agarrando ahora mismo
 let startScale = 1;
 let startYaw = 0;
+let startElevation = 0;    // altura al empezar el gesto: escalarse no debe cambiarla
 const startA = new THREE.Vector3();
 const startB = new THREE.Vector3();
 const startAnchor = new THREE.Vector3();   // punto del MUNDO que se agarró
@@ -54,6 +59,7 @@ function begin() {
   if (!active.length) return;
   startScale = player.scale.x;
   startYaw = player.rotation.y;
+  startElevation = player.position.y;
 
   localHand(active[0], startA);
   if (active.length === 1) {
@@ -76,7 +82,8 @@ function update() {
     // Escala y giro se quedan como están: solo te desplazas.
     localHand(active[0], _handA);
     _world.copy(_handA).multiplyScalar(player.scale.x).applyQuaternion(player.quaternion);
-    player.position.set(startAnchor.x - _world.x, 0, startAnchor.z - _world.z);
+    player.position.subVectors(startAnchor, _world);
+    reportElevation();
     return;
   }
 
@@ -93,9 +100,11 @@ function update() {
   player.rotation.set(0, startYaw + startSpanAngle - yawOf(_span), 0);
   player.scale.setScalar(scale);
 
-  // El punto medio entre las manos se queda donde estaba: es el centro del gesto.
+  // El punto medio entre las manos se queda donde estaba: es el centro del gesto. En
+  // vertical no, a propósito: escalarse mantiene la altura con la que entraste al gesto, o
+  // ponerse a escala para andar de verdad te dejaría flotando sobre el suelo de la sala.
   _world.copy(_mid).multiplyScalar(scale).applyQuaternion(player.quaternion);
-  player.position.set(startAnchor.x - _world.x, 0, startAnchor.z - _world.z);
+  player.position.set(startAnchor.x - _world.x, startElevation, startAnchor.z - _world.z);
 
   S.set({ playerScale: scale });
 }
@@ -137,7 +146,7 @@ export function resetPlayer() {
   active = [];
   player.scale.setScalar(1);
   standInFrontOfModel();
-  S.set({ grabbing: false, playerScale: 1 });
+  S.set({ grabbing: false, playerScale: 1, elevation: 0 });
 }
 
 export function isGrabbing() { return active.length > 0; }
