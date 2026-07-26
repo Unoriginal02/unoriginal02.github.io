@@ -247,10 +247,15 @@ function anchorFor(input) {
   return input.grip;
 }
 
+/** ¿Hay muñeca a la que anclarse? Se guarda aparte de `panel.visible`, porque se puede
+ *  apuntar al panel aunque no lo estés mirando de frente. */
+let anchored = false;
+
 function updateAnchor() {
   const left = inputByHand('left') || inputs.find(i => i.connected);
   const anchor = anchorFor(left);
-  if (!anchor) { panel.visible = false; return false; }
+  anchored = !!anchor;
+  if (!anchor) { panel.visible = false; return null; }
 
   const cfg = left.isHand ? OFFSET_HAND : OFFSET_CONTROLLER;
   _offset.makeRotationX(cfg.rotX);
@@ -264,12 +269,11 @@ function updateAnchor() {
   panel.scale.setScalar(1);
   panel.updateMatrixWorld();
 
-  // Solo se muestra cuando lo tienes girado hacia ti, como mirar un reloj.
+  // Se enciende cuando lo tienes girado hacia ti, como mirar un reloj.
   _normal.set(0, 0, 1).applyQuaternion(panel.getWorldQuaternion(new THREE.Quaternion()));
   panel.getWorldPosition(_panelPos);
   camera.getWorldPosition(_toCamera).sub(_panelPos).normalize();
-  panel.visible = _normal.dot(_toCamera) > 0.25;
-  return panel.visible;
+  return _normal.dot(_toCamera) > 0.15;
 }
 
 // ---------- Puntero ----------
@@ -295,7 +299,9 @@ function pointerRayFrom(input) {
 }
 
 function hitTest(input) {
-  if (!panel.visible || !pointerRayFrom(input)) return null;
+  // Se prueba contra el panel esté encendido o no: apuntarle es motivo suficiente para
+  // que aparezca, y así no hay que acertar antes el ángulo exacto de la muñeca.
+  if (!anchored || !pointerRayFrom(input)) return null;
   raycaster.set(_origin, _dir);
   raycaster.far = 3;
   const hit = raycaster.intersectObject(panel, false)[0];
@@ -339,10 +345,12 @@ events.addEventListener('point-start', e => {
 
 onFrame((dt, presenting) => {
   if (!presenting) { panel.visible = false; cursor.visible = false; return; }
-  if (!updateAnchor()) { cursor.visible = false; hovered = null; return; }
+  const facing = updateAnchor();
+  if (facing === null) { cursor.visible = false; hovered = null; return; }
 
   const input = pointerInput();
   const hit = input ? hitTest(input) : null;
+  panel.visible = facing || !!hit;
   const nextHovered = hit?.region || null;
   if (nextHovered?.id !== hovered?.id) { hovered = nextHovered; dirty = true; }
 

@@ -20,6 +20,11 @@ renderer.shadowMap.enabled = true;
 // VSM es el único tipo cuyo `radius` difumina de verdad: es lo que da la sombra
 // blanda de un clay render en lugar del borde duro del mapa de sombras clásico.
 renderer.shadowMap.type = THREE.VSMShadowMap;
+// El modelo está quieto casi siempre: recalcular el mapa de sombras cada fotograma es
+// una pasada entera de escena más el desenfoque VSM tirados a la basura. Se recalcula a
+// mano (invalidateShadows) cuando algo cambia de verdad.
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 
@@ -50,6 +55,40 @@ const clock = new THREE.Clock();
 /** Registra una función que se llama cada fotograma: fn(dt, presenting). */
 export function onFrame(fn) { frameCallbacks.add(fn); return () => frameCallbacks.delete(fn); }
 
+// Dentro de VR el `requestAnimationFrame` de la ventana NO se dispara: los fotogramas los
+// pide la sesión XR. Todo lo que quiera trocear trabajo entre fotogramas tiene que esperar
+// a este bucle, o se queda colgado en cuanto te pones las gafas.
+const waiters = [];
+
+/** Promesa que se resuelve en el siguiente fotograma, dentro y fuera de VR. */
+export function nextFrame() { return new Promise(resolve => waiters.push(resolve)); }
+
+/**
+ * Ejecuta trabajo que pinta en render targets propios. Dentro de una sesión XR hay que
+ * apagar `xr.enabled` mientras dura: si no, three cambia tu cámara por la estéreo del
+ * casco y las pasadas acaban en el framebuffer del visor.
+ */
+export function offscreen(fn) {
+  const wasEnabled = renderer.xr.enabled;
+  const wasAuto = renderer.shadowMap.autoUpdate;
+  const wasNeeded = renderer.shadowMap.needsUpdate;
+  renderer.xr.enabled = false;
+  // Estas pasadas esconden media escena y ponen un overrideMaterial: si de paso se
+  // recalculara el mapa de sombras, saldría hecho con esa escena falsa.
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = false;
+  try {
+    return fn();
+  } finally {
+    renderer.xr.enabled = wasEnabled;
+    renderer.shadowMap.autoUpdate = wasAuto;
+    renderer.shadowMap.needsUpdate = wasNeeded;
+  }
+}
+
+/** Pide un recálculo del mapa de sombras en el próximo fotograma. */
+export function invalidateShadows() { renderer.shadowMap.needsUpdate = true; }
+
 export function mount(el) {
   wrap = el;
   wrap.appendChild(renderer.domElement);
@@ -69,6 +108,7 @@ export function resize() {
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const presenting = renderer.xr.isPresenting;
+  if (waiters.length) waiters.splice(0).forEach(resolve => resolve());
   for (const fn of frameCallbacks) fn(dt, presenting);
   if (!presenting && controls.enabled && S.get('mode') === 'orbit') controls.update();
   renderer.render(scene, camera);
@@ -102,9 +142,11 @@ export function fitView() {
 
   controls.target.copy(c);
   camera.position.set(c.x + r * 1.5, c.y + r * 0.9, c.z + r * 1.9);
-  // Rango de profundidad ajustado al modelo: ni z-fighting ni recorte.
-  camera.near = Math.max(r / 500, 0.01);
-  camera.far = r * 60 + 50;
+  // Rango de profundidad ajustado al modelo, pero con el plano cercano acotado: three
+  // pasa este near/far a la sesión XR, y un near minúsculo con un far lejano deja el
+  // buffer de profundidad sin precisión — en las gafas eso es parpadeo de superficies.
+  camera.near = THREE.MathUtils.clamp(r / 500, 0.05, 0.5);
+  camera.far = r * 30 + 80;
   camera.updateProjectionMatrix();
   controls.update();
 }

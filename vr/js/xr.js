@@ -100,7 +100,15 @@ function buildInput(index) {
 }
 
 function startPoint(input) { input.pointing = true; input.pointerConsumed = false; emit('point-start', input); }
-function endPoint(input)   { if (!input.pointing) return; input.pointing = false; emit('point-end', input); }
+function endPoint(input) {
+  if (!input.pointing) return;
+  input.pointing = false;
+  emit('point-end', input);
+  // Se limpia DESPUÉS de avisar: quien escuche todavía necesita saber si el panel se
+  // quedó el gesto. Y hay que limpiarlo, o el agarre de ese mando se queda muerto hasta
+  // el siguiente disparo al aire.
+  input.pointerConsumed = false;
+}
 function startGrab(input)  { input.grabbing = true; emit('grab-start', input); }
 function endGrab(input)    { if (!input.grabbing) return; input.grabbing = false; emit('grab-end', input); }
 
@@ -171,6 +179,15 @@ export function teleportTo(point) {
   player.position.x += point.x - head.x;
   player.position.z += point.z - head.z;
 }
+
+// Al soltar el gatillo se salta al punto marcado. Si el panel se quedó el gesto, o si
+// estabas agarrando el modelo, no hay teletransporte.
+const _land = new THREE.Vector3();
+events.addEventListener('point-end', e => {
+  const input = e.detail.input;
+  if (input.isHand || input.pointerConsumed || input.grabbing) return;
+  if (floorHit(input, _land)) teleportTo(_land);
+});
 
 // ---------- Desplazamiento con los sticks ----------
 

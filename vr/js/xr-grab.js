@@ -9,7 +9,7 @@
 // dos manos se combinan sin pelearse.
 
 import * as THREE from 'three';
-import { modelGroup, onFrame } from './viewer.js';
+import { modelGroup, onFrame, invalidateShadows } from './viewer.js';
 import { events, inputs } from './xr.js';
 import * as S from './state.js';
 
@@ -103,8 +103,9 @@ function updateGrab() {
 
 events.addEventListener('grab-start', e => {
   const input = e.detail.input;
-  // Si el puntero ya lo ha consumido (has pulsado el panel), no se agarra.
-  if (input.pointerConsumed) return;
+  // Si el puntero ESTÁ pulsando el panel ahora mismo, no se agarra. Ojo: mirar solo
+  // `pointerConsumed` dejaba el agarre de ese mando muerto después de tocar el panel.
+  if (input.pointing && input.pointerConsumed) return;
   if (active.includes(input)) return;
   active.push(input);
   beginGrab();
@@ -125,7 +126,11 @@ events.addEventListener('grab-end', e => {
 
 onFrame((dt, presenting) => {
   if (!presenting) { if (active.length) { active = []; S.set({ grabbing: false }); } return; }
+  if (!active.length) return;
   updateGrab();
+  // Mientras el modelo se mueve, su auto-sombra sí tiene que seguirle fotograma a
+  // fotograma; el resto del tiempo el mapa de sombras se queda como está.
+  invalidateShadows();
 });
 
 /** Devuelve el modelo a su sitio: centrado, apoyado en el suelo y a escala 1. */

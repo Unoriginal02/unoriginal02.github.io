@@ -84,9 +84,15 @@ async function explain(response, what) {
     );
   }
   if (response.status === 401 || response.status === 403) {
-    const reason = /API key not valid|API_KEY/i.test(detail)
-      ? 'La clave de API no es válida, o no tiene permiso desde este dominio.'
-      : /has not been used|disabled/i.test(detail)
+    // El navegador manda como «referer» solo el origen (https://usuario.github.io/), nunca
+    // la ruta: si la clave se restringió con subcarpeta, no va a coincidir jamás.
+    const reason = /referer|referrer/i.test(detail)
+      ? 'La clave de API no admite este dominio. En la consola de Google, restricción de ' +
+        `aplicación → Sitios web, añade <code>${location.origin}/*</code> tal cual ` +
+        '(el origen entero, sin subcarpetas: el navegador no manda la ruta).'
+      : /API key not valid|API_KEY_INVALID|expired/i.test(detail)
+      ? 'La clave de API no es válida. Revisa que esté copiada entera en js/config.js.'
+      : /has not been used|not been enabled|disabled|SERVICE_DISABLED/i.test(detail)
       ? 'La Google Drive API no está habilitada en el proyecto de la clave.'
       : 'La carpeta no es pública: compártela como «Cualquier persona con el enlace».';
     return new Error(reason + (detail ? `<br><br>${detail}` : ''));

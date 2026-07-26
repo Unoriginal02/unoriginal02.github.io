@@ -131,9 +131,13 @@ async function install(object, entry) {
   // La AO se hornea después de mostrar el modelo: se ve enseguida y va apareciendo
   // el detalle en los recovecos, en vez de esperar con la pantalla en blanco.
   const q = S.quality();
+  // Dentro de las gafas el horneado compite con los 72 fps y cada lectura de píxeles es
+  // una parada en seco: menos direcciones y menos resolución. La AO sale algo más basta,
+  // pero se carga sin que parezca que se ha colgado.
+  const inVR = S.get('presenting');
   const baked = await bakeVertexAO(object, renderer, {
-    directions: q.aoDirs,
-    size: q.aoSize,
+    directions: inVR ? Math.min(q.aoDirs, 16) : q.aoDirs,
+    size: inVR ? Math.min(q.aoSize, 384) : q.aoSize,
     onProgress: f => UI.status('Calculando oclusión ambiental…', 'load', f),
   });
   S.set({ aoAvailable: baked });

@@ -7,7 +7,7 @@
 // posible. Y como el modelo está quieto, se calcula una vez y en VR sale gratis.
 
 import * as THREE from 'three';
-import { renderer, scene, modelGroup, modelBox } from './viewer.js';
+import { renderer, scene, modelGroup, modelBox, offscreen, invalidateShadows } from './viewer.js';
 import * as S from './state.js';
 
 // ---------- Fondo de estudio ----------
@@ -128,6 +128,7 @@ export function fitLights() {
   cam.near = r * 0.2;
   cam.far = r * 9 + 2;
   cam.updateProjectionMatrix();
+  invalidateShadows();
 }
 
 // ---------- Sombras de suelo horneadas ----------
@@ -298,8 +299,15 @@ function placePlane(plane, texture, centerX, centerZ, width, depth, groundY, lif
   plane.visible = plane.material.opacity > 0.01;
 }
 
-/** Hornea las dos sombras de suelo. Cuesta unos milisegundos, una sola vez. */
-export function bakeGroundShadows() {
+/**
+ * Hornea las dos sombras de suelo. Cuesta unos milisegundos, una sola vez.
+ * Va entero dentro de `offscreen`: son pasadas a texturas propias y, si se hacen con la
+ * XR encendida, three las pinta con la cámara del casco y se lleva por delante el
+ * fotograma que se estaba montando.
+ */
+export const bakeGroundShadows = (...args) => offscreen(() => bakeGroundShadowsNow(...args));
+
+function bakeGroundShadowsNow() {
   const box = modelBox();
   if (box.isEmpty()) { castPlane.visible = contactPlane.visible = false; return; }
 
@@ -364,6 +372,8 @@ S.on('contactOpacity', v => {
     plane.visible = !!plane.material.map && plane.material.opacity > 0.01;
   }
 });
-S.on('shadowSoftness', applySoftness);
+S.on('shadowSoftness', () => { applySoftness(); invalidateShadows(); });
 S.on('grid', v => { grid.visible = v; });
+// Cambiar de material (arcilla, malla) cambia lo que proyecta sombra.
+S.on(['clay', 'wire', 'clayColor'], invalidateShadows);
 S.on('quality', () => { applyShadowSize(); fitLights(); bakeGroundShadows(); });

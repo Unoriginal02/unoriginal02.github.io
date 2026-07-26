@@ -9,6 +9,7 @@
 // ponderando por el coseno respecto a su normal. Es una AO de hemisferio de verdad.
 
 import * as THREE from 'three';
+import { nextFrame, offscreen } from './viewer.js';
 
 // Desempaquetado de packDepthToRGBA(): el canal R lleva los bits ALTOS y el A los
 // bajos. Invertir el orden hace que casi todo dé "ocluido" y el modelo salga negro.
@@ -29,7 +30,8 @@ function fibonacciSphere(n) {
   return dirs;
 }
 
-function nextFrame() { return new Promise(r => requestAnimationFrame(r)); }
+// Nota: la espera entre pasadas va por el bucle del visor (viewer.nextFrame), no por
+// requestAnimationFrame: dentro de VR el de la ventana no se dispara y esto se colgaría.
 
 /**
  * @param {THREE.Object3D} root     modelo ya colocado en la escena
@@ -115,10 +117,14 @@ export async function bakeVertexAO(root, renderer, opts = {}) {
       cam.updateMatrixWorld(true);
       cam.updateProjectionMatrix();
 
-      renderer.setRenderTarget(rt);
-      renderer.clear();
-      renderer.render(depthScene, cam);
-      renderer.readRenderTargetPixels(rt, 0, 0, size, size, pixels);
+      // Pintar y leer con la XR apagada: dentro de las gafas, three usaría la cámara
+      // estéreo del casco en vez de esta ortográfica y saldría basura (o parpadeo).
+      offscreen(() => {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+        renderer.render(depthScene, cam);
+        renderer.readRenderTargetPixels(rt, 0, 0, size, size, pixels);
+      });
 
       for (let mi = 0; mi < meshes.length; mi++) {
         const mesh = meshes[mi];
@@ -149,10 +155,14 @@ export async function bakeVertexAO(root, renderer, opts = {}) {
       }
 
       onProgress((d + 1) / dirs.length);
-      if (d % 4 === 3) await nextFrame();          // no bloquear la pestaña
+      // Leer píxeles de la GPU para la CPU es una parada en seco. En pantalla se pueden
+      // encadenar cuatro; dentro de las gafas hay que soltar el fotograma en cada una o
+      // se nota como un tirón.
+      const chunk = renderer.xr.isPresenting ? 1 : 4;
+      if (d % chunk === chunk - 1) await nextFrame();
     }
   } finally {
-    renderer.setRenderTarget(prevTarget);
+    offscreen(() => renderer.setRenderTarget(prevTarget));
     renderer.setClearColor(prevClear, prevAlpha);
     renderer.shadowMap.autoUpdate = prevShadowAuto;
     rt.dispose();
