@@ -17,7 +17,12 @@
       <span class="logo-text">DITHERPUNK</span>
       <span class="logo-bracket">]</span>
     </div>
-    <div class="header-sub">OXM-1 // IMAGE PROCESSOR v1.0</div>
+    <div class="header-sub">OXM-1 // IMAGE PROCESSOR v2.0</div>
+    <div class="header-actions">
+      <button class="hdr-btn" id="undoBtn" title="Undo (Ctrl+Z)" disabled>↶ UNDO</button>
+      <button class="hdr-btn" id="redoBtn" title="Redo (Ctrl+Shift+Z)" disabled>↷ REDO</button>
+      <button class="hdr-btn hdr-btn-accent" id="randomizeBtn" title="Randomize everything (R)">⚄ RANDOMIZE</button>
+    </div>
     <div class="header-status">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">READY</span>
@@ -47,97 +52,72 @@
           </div>
         </section>
 
+        <!-- Presets -->
+        <section class="ctrl-section">
+          <div class="ctrl-section-label">// PRESETS
+            <span class="info-tip" data-tip="Save the entire configuration — every slider, the palette and the whole effect stack — under a name. Presets are stored in your browser and can be exported as JSON to share.">?</span>
+          </div>
+          <div class="custom-select-wrap">
+            <select id="presetSelect" class="custom-select">
+              <option value="">— SELECT PRESET —</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="btn-retro btn-sm" id="presetSaveBtn" title="Save current settings as a preset">SAVE</button>
+            <button class="btn-retro btn-sm" id="presetDeleteBtn" title="Delete the selected preset">DELETE</button>
+            <button class="btn-retro btn-sm" id="presetExportBtn" title="Copy preset JSON to clipboard">EXPORT</button>
+            <button class="btn-retro btn-sm" id="presetImportBtn" title="Import preset JSON">IMPORT</button>
+          </div>
+        </section>
+
         <!-- Color Mode -->
         <section class="ctrl-section">
           <div class="ctrl-section-label">// COLOR MODE
-            <span class="info-tip" data-tip="Determines how colors are mapped. Full Color uses a 180-color LAB palette. 1-Bit Mono maps to pure black/white. 1-Bit Film uses the darkest/brightest colors from the selected film simulation. Film Sim maps each pixel to the nearest color in the selected palette.">?</span>
+            <span class="info-tip" data-tip="FULL COLOR uses a 180-color LAB palette. 1-BIT MONO maps to black/white. 1-BIT FILM uses the darkest and brightest colors of the film palette. FILM SIM maps each pixel to the nearest color of a film palette. CUSTOM does the same against a palette you build yourself.">?</span>
           </div>
-          <div class="segmented-group" role="group" aria-label="Color mode">
+          <div class="segmented-group segmented-wrap" role="group" aria-label="Color mode">
             <button class="seg-btn active" data-mode="fullcolor" id="modeFullColor">FULL COLOR</button>
             <button class="seg-btn" data-mode="mono" id="modeMono">1-BIT MONO</button>
             <button class="seg-btn" data-mode="film" id="modeFilm">1-BIT FILM</button>
             <button class="seg-btn" data-mode="filmcolor" id="modeFilmColor">FILM SIM</button>
+            <button class="seg-btn" data-mode="ramp" id="modeRamp">CUSTOM</button>
           </div>
+          <!-- paletteSource / extractCount / rampDistribution, generated -->
+          <div id="colorControls"></div>
         </section>
 
-        <!-- Dither Type -->
+        <!-- Ramp palette builder -->
+        <section class="ctrl-section" id="rampSection" style="display:none">
+          <div class="ctrl-section-label">// CUSTOM PALETTE
+            <span class="info-tip" data-tip="Add as many colors as you like. By default every pixel maps to the perceptually nearest color in this palette, exactly like Film Sim. Switch MATCHING to LUMINANCE BANDS if you instead want each color to own a slice of the image's tonal range, dark to light.">?</span>
+          </div>
+          <div class="ramp-list" id="rampList"></div>
+          <div class="btn-row">
+            <button class="btn-retro btn-sm" id="rampAddBtn">+ ADD COLOR</button>
+            <button class="btn-retro btn-sm" id="rampFromPaletteBtn" title="Fill from the selected film palette">FROM PALETTE</button>
+            <button class="btn-retro btn-sm" id="rampFromImageBtn" title="Fill from colors extracted from the image">FROM IMAGE</button>
+          </div>
+          <div class="ramp-preview" id="rampPreview"></div>
+        </section>
+
+        <!-- Dither -->
         <section class="ctrl-section">
           <div class="ctrl-section-label">// DITHER ALGORITHM
-            <span class="info-tip" data-tip="Error diffusion spreads quantization error to neighboring pixels for smooth gradients. Ordered dithering uses a threshold matrix for a more structured pattern.">?</span>
+            <span class="info-tip" data-tip="Error diffusion spreads quantization error to neighbouring pixels. Ordered dithering uses a threshold matrix. Modulation drives the threshold with a travelling waveform.">?</span>
           </div>
-          <div class="custom-select-wrap">
-            <select id="ditherSelect" class="custom-select">
-              <optgroup label="── ERROR DIFFUSION ──">
-                <option value="floyd-steinberg">Floyd-Steinberg</option>
-                <option value="stucki">Stucki</option>
-                <option value="atkinson">Atkinson</option>
-                <option value="jjn">Jarvis-Judice-Ninke</option>
-                <option value="burkes">Burkes</option>
-                <option value="sierra">Sierra</option>
-                <option value="sierra2">Sierra Two-Row</option>
-                <option value="sierra-lite">Sierra Lite</option>
-              </optgroup>
-              <optgroup label="── ORDERED ──">
-                <option value="bayer2">Bayer 2×2</option>
-                <option value="bayer4">Bayer 4×4</option>
-                <option value="bayer8">Bayer 8×8</option>
-                <option value="void-cluster">Void and Cluster</option>
-                <option value="bluenoise">Blue Noise 64×64</option>
-                <option value="halftone">Halftone</option>
-              </optgroup>
-            </select>
-          </div>
+          <div id="ditherControls"></div>
         </section>
 
         <!-- Adjustments -->
         <section class="ctrl-section">
           <div class="ctrl-section-label">// ADJUSTMENTS</div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="pixelationSlider" class="slider-label">PIXELATION
-                <span class="info-tip" data-tip="Scales the image down before processing. Lower values = more pixelated. Can go all the way to a single pixel.">?</span>
-              </label>
-              <span class="slider-value" id="pixelationValue">0.25</span>
-            </div>
-            <input type="range" id="pixelationSlider" class="custom-range" min="0.001" max="0.95" step="0.001" value="0.25" />
-          </div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="ditherThresholdSlider" class="slider-label">DITHER STRENGTH
-                <span class="info-tip" data-tip="For ordered dithering: controls how strongly the Bayer threshold perturbs each pixel before quantization — higher = more visible pattern. For error diffusion: pixels close to a palette color snap flat without diffusion.">?</span>
-              </label>
-              <span class="slider-value" id="ditherThresholdValue">0.50</span>
-            </div>
-            <input type="range" id="ditherThresholdSlider" class="custom-range" min="0" max="1" step="0.01" value="0.50" />
-          </div>
-
-          <div class="slider-row" id="halftoneCellRow" style="display:none">
-            <div class="slider-header">
-              <label for="halftoneCellSlider" class="slider-label">HALFTONE CELL SIZE
-                <span class="info-tip" data-tip="Controls the dot size in halftone mode. Larger values = bigger, more visible dots.">?</span>
-              </label>
-              <span class="slider-value" id="halftoneCellValue">8</span>
-            </div>
-            <input type="range" id="halftoneCellSlider" class="custom-range" min="2" max="24" step="1" value="8" />
-          </div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="biasSlider" class="slider-label">BIAS
-                <span class="info-tip" data-tip="Applies a power-curve tone adjustment before quantization. 0.5 = neutral. Below 0.5 darkens, above 0.5 brightens.">?</span>
-              </label>
-              <span class="slider-value" id="biasValue">0.50</span>
-            </div>
-            <input type="range" id="biasSlider" class="custom-range" min="0.01" max="0.99" step="0.01" value="0.50" />
-          </div>
+          <div id="adjustmentControls"></div>
         </section>
 
         <!-- Film Simulation -->
         <section class="ctrl-section" id="filmSection">
           <div class="ctrl-section-label">// FILM SIMULATION
-            <span class="info-tip" data-tip="Select a film palette. Active in 1-Bit Film mode. Each palette defines the color range used for dithering.">?</span>
+            <span class="info-tip" data-tip="Select a film palette. Used by 1-BIT FILM and by FILM SIM when the palette source is FILM PALETTE.">?</span>
           </div>
 
           <div class="film-load-row">
@@ -166,12 +146,39 @@
           </div>
         </section>
 
+        <!-- Effects stack -->
+        <section class="ctrl-section">
+          <div class="ctrl-section-label">// EFFECTS STACK
+            <span class="info-tip" data-tip="Effects run top to bottom. The DITHER stage is one of them — drag effects above it to process the image before quantization, or below it to glitch the dithered result.">?</span>
+          </div>
+          <div class="effect-stack" id="effectStack"></div>
+          <div class="add-effect-row">
+            <div class="custom-select-wrap">
+              <select id="addEffectSelect" class="custom-select"></select>
+            </div>
+            <button class="btn-retro btn-sm" id="addEffectBtn">+ ADD</button>
+          </div>
+        </section>
+
+        <!-- Export -->
+        <section class="ctrl-section">
+          <div class="ctrl-section-label">// EXPORT</div>
+          <div id="exportControls"></div>
+        </section>
+
         <!-- Actions -->
         <section class="ctrl-section">
           <div class="ctrl-section-label">// ACTIONS</div>
+          <div id="bypassControl"></div>
           <div class="action-row">
-            <button class="btn-retro" id="downloadBtn" disabled>EXPORT PNG</button>
+            <button class="btn-retro" id="downloadBtn" disabled>EXPORT IMAGE</button>
             <button class="btn-retro btn-secondary" id="resetBtn">RESET</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn-retro btn-danger" id="resetAllBtn"
+              title="Clear every setting, effect and palette, and show the uploaded image untouched">
+              RESET ALL — SHOW IMAGE AS IS
+            </button>
           </div>
         </section>
 
@@ -201,7 +208,6 @@
             <div class="placeholder-text">LOAD AN IMAGE TO BEGIN</div>
           </div>
 
-          <!-- Processed view -->
           <div class="canvas-view" id="viewProcessedWrap" style="display:none">
             <div class="canvas-frame processing" id="canvasFrame">
               <canvas id="outputCanvas"></canvas>
@@ -214,14 +220,12 @@
             </div>
           </div>
 
-          <!-- Original view -->
           <div class="canvas-view" id="viewOriginalWrap" style="display:none">
             <div class="canvas-frame">
               <canvas id="originalCanvas"></canvas>
             </div>
           </div>
 
-          <!-- Split view -->
           <div class="canvas-view split-view" id="viewSplitWrap" style="display:none">
             <div class="canvas-frame split-frame">
               <canvas id="splitOriginalCanvas"></canvas>
@@ -242,7 +246,26 @@
   <!-- Tooltip -->
   <div class="tooltip-popup" id="tooltipPopup"></div>
 
+  <!-- Modal (preset save / import) -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title" id="modalTitle">TITLE</div>
+      <input type="text" class="modal-input" id="modalInput" />
+      <textarea class="modal-textarea" id="modalTextarea" rows="8" style="display:none"></textarea>
+      <div class="modal-actions">
+        <button class="btn-retro btn-sm" id="modalOk">OK</button>
+        <button class="btn-retro btn-sm btn-secondary" id="modalCancel">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="rng.js"></script>
+  <script src="color.js"></script>
+  <script src="state.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
