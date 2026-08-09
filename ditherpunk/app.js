@@ -676,7 +676,15 @@ function activePalette() {
    ============================================================ */
 
 function initWorker() {
-  session.worker = new Worker('worker.js');
+  // Cache-bust the worker.
+  //
+  // The worker script is a separate cache entry from the page, and reloading
+  // the page — even hard-reloading it — does not reliably refetch it. The
+  // failure mode is nasty: the UI updates because app.js and state.js are
+  // fresh, so a new control appears and does nothing, and it reads as a bug in
+  // the effect rather than as a stale worker. One extra request per page load
+  // is a fair price for never debugging that again.
+  session.worker = new Worker('worker.js?v=' + Date.now());
   session.worker.onmessage = onWorkerResult;
   session.worker.onerror = err => {
     console.error('Worker error:', err);
@@ -1477,7 +1485,8 @@ async function init() {
   buildGroup(els.colorControls, ['paletteSource', 'extractCount', 'customMatch', 'rampDistribution']);
   buildGroup(els.ditherControls, ['ditherType', 'serpentine', 'modWave', 'modFrequency', 'modAmplitude', 'modAngle']);
   buildGroup(els.adjustmentControls,
-    ['pixelation', 'brightness', 'contrast', 'blur', 'ditherThreshold', 'halftoneCellSize', 'bias', 'seed']);
+    ['pixelation', 'sampling', 'sampleDetail', 'sampleShape', 'sampleIters',
+     'brightness', 'contrast', 'blur', 'ditherThreshold', 'halftoneCellSize', 'bias', 'seed']);
   buildGroup(els.exportControls, ['exportFormat', 'exportQuality', 'exportScale', 'exportMatte']);
   buildGroup(els.bypassControl, ['bypass']);
 

@@ -37,6 +37,48 @@ const EFFECTS = [
     note: 'Quantization stage. Reorder it to change what runs before vs. after dithering.',
   },
   {
+    id: 'pixelart', label: 'PIXEL ART',
+    note: 'The cleanup a pixel artist does by hand once the image is on the grid. Normally sits before DITHER, so the dither is handed clean shapes and a drawn outline instead of having to spread error across mush; every pass knows which palette the image is heading for, so what it draws survives the quantization. After DITHER also works, and reads more like tidying the finished sprite. CLEAN ORPHANS, FIX JAGGIES and OUTLINE only ever use a colour the image has or is about to have; EDGE SNAP below 1 and AA STEPS above 0 mix intermediate shades on purpose, because that is what anti-aliasing is — set them to 1 and 0 to stay strictly on those colours.',
+    params: [
+      { id: 'snap', label: 'EDGE SNAP', type: 'float', min: 0, max: 1, step: 0.01, default: 0.6, decimals: 2,
+        random: { min: 0.3, max: 1 },
+        tip: 'De-antialiasing. A pixel stranded between the two on either side of it is anti-aliasing, so it gets pushed toward whichever one it already leans to — at 1 it commits fully and the edge goes hard. This clears the blend pixels a downscale strands along every edge. Pixels already committed to a side never move, so small features survive full strength.' },
+      { id: 'orphans', label: 'CLEAN ORPHANS', type: 'bool', default: true,
+        tip: 'Removes lone pixels left over from resampling. Only low-contrast strays: a pair survives, and so does any pixel that differs sharply from its surroundings — at this size that is how an eye or a highlight is spelled, and it is also what keeps the pass from eating a dither placed above it.' },
+      { id: 'jaggies', label: 'FIX JAGGIES', type: 'float', min: 0, max: 1, step: 0.01, default: 0.4, decimals: 2,
+        random: { min: 0, max: 0.8 },
+        tip: 'Regularizes the staircase along edges: a run of 2,2,1,2 becomes 2,2,2,2. Compares each run against the median of its neighbours, so curves keep their changing rhythm and only genuine breaks get fixed. Past 0.5 it also corrects single-pixel breaks.' },
+      { id: 'aaSteps', label: 'AA STEPS', type: 'int', min: 0, max: 4, step: 1, default: 2,
+        format: v => (v >= 4 ? 'OFF' : String(v)),
+        random: { min: 0, max: 4 },
+        tip: 'How many intermediate shades an edge may use. 0 is a hard edge. Straight lines and true 45° diagonals are always forced hard — they read as clean on their own, and anti-aliasing only softens them.' },
+      { id: 'outline', label: 'OUTLINE', type: 'enum', default: 'off',
+        options: [
+          { value: 'off',    label: 'OFF' },
+          { value: 'dark',   label: 'DARK' },
+          { value: 'selout', label: 'SEL-OUT' },
+        ],
+        random: ['off', 'off', 'dark', 'selout'],
+        tip: 'DARK inks every edge. SEL-OUT splits them by how much each edge faces away from the light: the shadowed side takes DARKNESS, the lit side takes HIGHLIGHT — an outline that describes form instead of just tracing the silhouette.' },
+      { id: 'outlineDarkness', label: 'OUTLINE DARKNESS', type: 'float', min: 0, max: 1, step: 0.01, default: 0.5, decimals: 2,
+        random: { min: 0.2, max: 0.8 },
+        visibleWhen: params => params.outline !== 'off',
+        tip: 'Black laid over the shadowed side, as an overlay at this opacity — 0.1 is a 10% black layer. Overlay multiplies against what is underneath, so a red rim goes to a darker red instead of washing toward grey.' },
+      { id: 'outlineHighlight', label: 'OUTLINE HIGHLIGHT', type: 'float', min: 0, max: 1, step: 0.01, default: 0, decimals: 2,
+        random: { min: 0, max: 0.35 },
+        visibleWhen: params => params.outline === 'selout',
+        tip: 'White laid over the lit side, the same way. Off by default: a highlight on every edge is what turns a figure into confetti, so bring it in only once DETAIL has the line where you want it.' },
+      { id: 'outlineWidth', label: 'OUTLINE WIDTH', type: 'int', min: 1, max: 4, step: 1, default: 1,
+        random: { min: 1, max: 2 },
+        visibleWhen: params => params.outline !== 'off',
+        tip: 'Thickness in pixels. The line grows inward from the edge, never across it, so it stays on the form instead of bleeding into whatever is behind it.' },
+      { id: 'lightAngle', label: 'LIGHT ANGLE', type: 'float', min: 0, max: 360, step: 1, default: 135, decimals: 0,
+        random: { min: 0, max: 360 },
+        visibleWhen: params => params.outline === 'selout',
+        tip: 'Where the light comes from. 0° is the right, 90° straight up; 135° is the top-left key light most pixel art assumes.' },
+    ],
+  },
+  {
     id: 'chromatic', label: 'CHROMATIC ABERRATION', params: [
       { id: 'amount', label: 'AMOUNT', type: 'float', min: 0, max: 24, step: 0.1, default: 3, decimals: 1, random: { min: 1, max: 9 } },
       { id: 'angle',  label: 'ANGLE',  type: 'float', min: 0, max: 360, step: 1, default: 0, decimals: 0, random: { min: 0, max: 360 } },
@@ -54,14 +96,13 @@ const EFFECTS = [
     // Screen-space effect: applied after upscaling so the lines stay a fixed
     // thickness on screen instead of being multiplied by the pixel blocks.
     outputSpace: true,
-    note: 'Runs in screen space after upscaling, so line spacing is in real pixels and does not change with PIXELATION.',
+    note: 'Runs in screen space after upscaling. The line period is locked to the pixel size, so there is exactly one scan line per pixelated row and the dark gaps always fall on pixel boundaries — change PIXELATION to change the spacing. THICKNESS sets how much of each pixel row the line covers.',
     params: [
       { id: 'orientation', label: 'ORIENTATION', type: 'enum', default: 'horizontal',
         options: [
           { value: 'horizontal', label: 'HORIZONTAL' },
           { value: 'vertical',   label: 'VERTICAL' },
         ] },
-      { id: 'spacing',   label: 'SPACING',   type: 'int',   min: 2, max: 32, step: 1, default: 4, random: { min: 2, max: 8 } },
       { id: 'thickness', label: 'THICKNESS', type: 'int',   min: 1, max: 12, step: 1, default: 1, random: { min: 1, max: 3 } },
       { id: 'strength',  label: 'STRENGTH',  type: 'float', min: 0, max: 1, step: 0.01, default: 0.45, decimals: 2, random: { min: 0.2, max: 0.8 } },
       // Aperture-grille stripes are a separate physical feature of a CRT and
@@ -282,6 +323,39 @@ const PARAMS = [
     format: v => (v < 0.01 ? Number(v).toFixed(4) : Number(v).toFixed(2)),
     random: { min: 0.05, max: 0.6 },
     tip: 'Scales the image down before processing. Lower values = more pixelated. Can go all the way to a single pixel.',
+  },
+  {
+    id: 'sampling', group: 'adjustments', label: 'SAMPLING', type: 'enum',
+    default: 'box',
+    options: [
+      { value: 'box',        label: 'BOX AVERAGE' },
+      { value: 'nearest',    label: 'NEAREST' },
+      { value: 'detail',     label: 'DETAIL' },
+      { value: 'superpixel', label: 'SUPERPIXEL' },
+    ],
+    random: ['box', 'detail', 'superpixel'],
+    tip: 'How each output pixel picks its colour when the image is scaled down. BOX AVERAGE is a plain block mean — safe, but small features dissolve into anti-aliased mush. NEAREST takes the block\'s centre pixel: crisp and classic, but noisy. DETAIL weights each source pixel by how far it sits from the block mean, so thin highlights and edges survive instead of being averaged away. SUPERPIXEL lets each output cell change shape to follow the image, so a face or an outline lands inside one pixel instead of being split across four — the slowest and the closest to how a pixel artist would place them.',
+  },
+  {
+    id: 'sampleDetail', group: 'adjustments', label: 'DETAIL BIAS', type: 'float',
+    min: 0, max: 1, step: 0.01, default: 0.5, decimals: 2,
+    visibleWhen: s => s.sampling === 'detail',
+    random: { min: 0.25, max: 0.9 },
+    tip: 'How hard outlier pixels outvote the block average. 0 is identical to BOX AVERAGE; higher keeps fine detail but eventually reads as sharpening.',
+  },
+  {
+    id: 'sampleShape', group: 'adjustments', label: 'CELL RIGIDITY', type: 'float',
+    min: 0, max: 1, step: 0.01, default: 0.45, decimals: 2,
+    visibleWhen: s => s.sampling === 'superpixel',
+    random: { min: 0.2, max: 0.7 },
+    tip: 'How much each cell is allowed to deform to follow the image. Low lets cells chase edges and features; high pins them to the grid and converges back on BOX AVERAGE.',
+  },
+  {
+    id: 'sampleIters', group: 'adjustments', label: 'CELL PASSES', type: 'int',
+    min: 1, max: 10, step: 1, default: 4,
+    visibleWhen: s => s.sampling === 'superpixel',
+    random: { min: 2, max: 6 },
+    tip: 'Refinement passes for the superpixel fit. More passes settle the cells tighter around features; cost is linear, and large images are capped automatically.',
   },
   {
     id: 'brightness', group: 'adjustments', label: 'BRIGHTNESS', type: 'float',
@@ -727,7 +801,7 @@ const Store = (() => {
 // ── Randomize (G4) ──────────────────────────────────────────
 const Randomizer = (() => {
   // Effects that read well when stacked at random.
-  const POOL = ['chromatic', 'glow', 'scanlines', 'noise', 'pixelsort', 'databend', 'wave', 'jpeg'];
+  const POOL = ['pixelart', 'chromatic', 'glow', 'scanlines', 'noise', 'pixelsort', 'databend', 'wave', 'jpeg'];
 
   function pick(rng, arr) { return arr[Math.floor(rng() * arr.length) % arr.length]; }
 
@@ -912,7 +986,7 @@ const Presets = (() => {
       effects: [
         makeEffect('dither'),
         { id: 'glow',      enabled: true, params: { radius: 5, threshold: 0.4, strength: 1 } },
-        { id: 'scanlines', enabled: true, params: { spacing: 3, strength: 0.5, mask: 0.35 } },
+        { id: 'scanlines', enabled: true, params: { strength: 0.5, mask: 0.35 } },
       ] } },
     { name: 'DATA CORRUPTION', factory: true, settings: {
       colorMode: 'fullcolor', ditherType: 'atkinson', pixelation: 0.4, serpentine: true,
@@ -921,6 +995,21 @@ const Presets = (() => {
         makeEffect('dither'),
         { id: 'pixelsort', enabled: true, params: { lower: 0.3, upper: 0.95, maxRun: 96, vertical: false, reverse: false } },
         { id: 'databend',  enabled: true, params: { amount: 0.25, chunk: 32 } },
+      ] } },
+    // The full pixel-art path: an adaptive palette pulled from the image, cells
+    // that reshape themselves around features, and the canonical cleanup after
+    // quantization. Dither strength is low on purpose — at this resolution the
+    // dither is there to break flat areas, not to carry the shading.
+    { name: 'PIXEL ART', factory: true, settings: {
+      colorMode: 'filmcolor', paletteSource: 'extracted', extractCount: 16,
+      ditherType: 'floyd-steinberg', ditherThreshold: 0.35,
+      pixelation: 0.14, sampling: 'superpixel', sampleShape: 0.35, sampleIters: 5,
+      effects: [
+        { id: 'pixelart', enabled: true, params: {
+          snap: 0.7, orphans: true, jaggies: 0.5, aaSteps: 1,
+          outline: 'selout', outlineDarkness: 0.55,
+          outlineHighlight: 0, outlineWidth: 1, lightAngle: 135 } },
+        makeEffect('dither'),
       ] } },
     { name: 'RISO DUOTONE', factory: true, settings: {
       colorMode: 'ramp', ditherType: 'mod-wave', modWave: 'sine', modFrequency: 10,

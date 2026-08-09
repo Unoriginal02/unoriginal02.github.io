@@ -86,35 +86,8 @@
           <div id="colorControls"></div>
         </section>
 
-        <!-- Ramp palette builder -->
-        <section class="ctrl-section" id="rampSection" style="display:none">
-          <div class="ctrl-section-label">// CUSTOM PALETTE
-            <span class="info-tip" data-tip="Add as many colors as you like. By default every pixel maps to the perceptually nearest color in this palette, exactly like Film Sim. Switch MATCHING to LUMINANCE BANDS if you instead want each color to own a slice of the image's tonal range, dark to light.">?</span>
-          </div>
-          <div class="ramp-list" id="rampList"></div>
-          <div class="btn-row">
-            <button class="btn-retro btn-sm" id="rampAddBtn">+ ADD COLOR</button>
-            <button class="btn-retro btn-sm" id="rampFromPaletteBtn" title="Fill from the selected film palette">FROM PALETTE</button>
-            <button class="btn-retro btn-sm" id="rampFromImageBtn" title="Fill from colors extracted from the image">FROM IMAGE</button>
-          </div>
-          <div class="ramp-preview" id="rampPreview"></div>
-        </section>
-
-        <!-- Dither -->
-        <section class="ctrl-section">
-          <div class="ctrl-section-label">// DITHER ALGORITHM
-            <span class="info-tip" data-tip="Error diffusion spreads quantization error to neighbouring pixels. Ordered dithering uses a threshold matrix. Modulation drives the threshold with a travelling waveform.">?</span>
-          </div>
-          <div id="ditherControls"></div>
-        </section>
-
-        <!-- Adjustments -->
-        <section class="ctrl-section">
-          <div class="ctrl-section-label">// ADJUSTMENTS</div>
-          <div id="adjustmentControls"></div>
-        </section>
-
-        <!-- Film Simulation -->
+        <!-- Film Simulation — sits right under COLOR MODE, since picking a
+             palette is part of choosing the colour mode, not a later step. -->
         <section class="ctrl-section" id="filmSection">
           <div class="ctrl-section-label">// FILM SIMULATION
             <span class="info-tip" data-tip="Select a film palette. Used by 1-BIT FILM and by FILM SIM when the palette source is FILM PALETTE.">?</span>
@@ -144,6 +117,34 @@
             <div class="palette-strip" id="paletteStrip"></div>
             <div class="palette-strip-label" id="paletteStripLabel"></div>
           </div>
+        </section>
+
+        <!-- Ramp palette builder -->
+        <section class="ctrl-section" id="rampSection" style="display:none">
+          <div class="ctrl-section-label">// CUSTOM PALETTE
+            <span class="info-tip" data-tip="Add as many colors as you like. By default every pixel maps to the perceptually nearest color in this palette, exactly like Film Sim. Switch MATCHING to LUMINANCE BANDS if you instead want each color to own a slice of the image's tonal range, dark to light.">?</span>
+          </div>
+          <div class="ramp-list" id="rampList"></div>
+          <div class="btn-row">
+            <button class="btn-retro btn-sm" id="rampAddBtn">+ ADD COLOR</button>
+            <button class="btn-retro btn-sm" id="rampFromPaletteBtn" title="Fill from the selected film palette">FROM PALETTE</button>
+            <button class="btn-retro btn-sm" id="rampFromImageBtn" title="Fill from colors extracted from the image">FROM IMAGE</button>
+          </div>
+          <div class="ramp-preview" id="rampPreview"></div>
+        </section>
+
+        <!-- Dither -->
+        <section class="ctrl-section">
+          <div class="ctrl-section-label">// DITHER ALGORITHM
+            <span class="info-tip" data-tip="Error diffusion spreads quantization error to neighbouring pixels. Ordered dithering uses a threshold matrix. Modulation drives the threshold with a travelling waveform.">?</span>
+          </div>
+          <div id="ditherControls"></div>
+        </section>
+
+        <!-- Adjustments -->
+        <section class="ctrl-section">
+          <div class="ctrl-section-label">// ADJUSTMENTS</div>
+          <div id="adjustmentControls"></div>
         </section>
 
         <!-- Effects stack -->
