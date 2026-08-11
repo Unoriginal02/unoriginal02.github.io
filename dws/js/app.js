@@ -99,9 +99,12 @@ const exportButton = document.getElementById('exportButton');
 const importButton = document.getElementById('importButton');
 const wipeButton = document.getElementById('wipeButton');
 const importFileInput = document.getElementById('importFileInput');
-const logTodayButton = document.getElementById('logTodayButton');
-const logTodayIcon = document.getElementById('logTodayIcon');
-const logTodayLabel = document.getElementById('logTodayLabel');
+const logWeekButton = document.getElementById('logWeekButton');
+const logWeekIcon = document.getElementById('logWeekIcon');
+const logWeekLabel = document.getElementById('logWeekLabel');
+const logDayButton = document.getElementById('logDayButton');
+const logDayIcon = document.getElementById('logDayIcon');
+const logDayLabel = document.getElementById('logDayLabel');
 
 const timeBlockModalElement = document.getElementById('timeBlockModal');
 const timeBlockModal = new bootstrap.Modal(timeBlockModalElement);
@@ -202,6 +205,17 @@ const prioTextareas = [prioTop3, prioOther, prioIdeas];
 
 function currentWeekMondayISO() {
     return toISODateLocal(startOfWeekMonday(new Date()));
+}
+
+/**
+ * The weekday name of "today" when today is one of the columns actually on
+ * screen, else null — i.e. null at the weekend and null while the user is
+ * looking at any week other than the current one.
+ */
+function visibleToday() {
+    if (weekMondayISO !== currentWeekMondayISO()) return null;
+    const name = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    return DAYS.includes(name) ? name : null;
 }
 
 function oldestAllowedMondayISO() {
@@ -471,9 +485,8 @@ function renderTable() {
     const start = startTimeInput.value || '08:00';
     const end = endTimeInput.value || '18:00';
     const slots = generateTimeSlots(start, end, TIME_SLOT_INTERVAL);
-    const isCurrentWeek = weekMondayISO === currentWeekMondayISO();
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayIndex = isCurrentWeek ? DAYS.indexOf(today) : -1; // -1 if not a weekday or viewing a past week
+    // -1 when today is not a weekday or the user is viewing another week
+    const todayIndex = DAYS.indexOf(visibleToday());
 
     slots.forEach(time => {
         const tr = document.createElement('tr');
@@ -1519,19 +1532,22 @@ async function imputarGranular() {
 }
 
 // ── Log the Lot ───────────────────────────────────────────────
-// Registers time in ClickUp for every block of the whole visible week
-// that has both a task name and a task ID. Blocks already logged
-// (green dot) are skipped, so someone who logs at the end of the day
-// or the end of the week can clear everything in one click.
-// Like imputarGranular, each (day + task) group is cleared first, so
+// Registers time in ClickUp for every block in SCOPE that has both a task name
+// and a task ID. Blocks already logged (green dot) are skipped, so someone who
+// logs at the end of the day or the end of the week can clear everything in one
+// click. Like imputarGranular, each (day + task) group is cleared first, so
 // re-running is safe (idempotent).
-async function logWeek() {
+//
+// One engine, two entry points — logWeek() and logDay() differ only in which
+// blocks they hand in and which button they drive. The clear-then-re-register
+// dance is subtle enough that it must not exist in two copies.
+async function logScope({ blocks, where, button, icon, label, idleIcon, idleLabel }) {
     if (!isConfigured()) { alert('Connect ClickUp first (settings panel, bottom right).'); return; }
 
-    const candidates = schedule.filter(b =>
+    const candidates = blocks.filter(b =>
         (b.taskName || '').trim() && (b.taskId || '').trim()
     );
-    if (!candidates.length) { alert('No blocks this week with a task and ID assigned.'); return; }
+    if (!candidates.length) { alert(`No blocks ${where} with a task and ID assigned.`); return; }
 
     // Only (day + task) groups that still have something unlogged.
     // Green-dot blocks are already logged and are skipped.
@@ -1539,10 +1555,10 @@ async function logWeek() {
     candidates.filter(b => !b.logged).forEach(b => {
         groups.set(`${b.day}|${b.taskId.trim()}`, { day: b.day, taskId: b.taskId.trim() });
     });
-    if (!groups.size) { alert('Everything is already logged this week.'); return; }
+    if (!groups.size) { alert(`Everything is already logged ${where}.`); return; }
 
-    logTodayIcon.className = 'bi bi-hourglass-split';
-    logTodayButton.disabled = true;
+    icon.className = 'bi bi-hourglass-split';
+    button.disabled = true;
 
     const user = getSavedUser();
     const token = getApiToken();
@@ -1556,8 +1572,10 @@ async function logWeek() {
         const baseDate = addDays(monday, dayIndex);
 
         // re-register ALL of this day's blocks for this task (mirrors imputarGranular),
-        // since clearDayEntries wipes the whole day for the task
-        const blocks = schedule.filter(b =>
+        // since clearDayEntries wipes the whole day for the task. This reads the
+        // full schedule on purpose, NOT the scoped list: the wipe is day-wide, so
+        // anything of that day left out of the scope would be silently dropped.
+        const dayBlocks = schedule.filter(b =>
             b.day === day && (b.taskId || '').trim() === taskId
         );
         try {
@@ -1566,7 +1584,7 @@ async function logWeek() {
             errors.push(`${taskId}: ${err.message || 'could not clear existing entries'}`);
             continue;
         }
-        const results = await Promise.allSettled(blocks.map(block => {
+        const results = await Promise.allSettled(dayBlocks.map(block => {
             const [h, m] = block.start.split(':').map(Number);
             const d = new Date(baseDate);
             d.setHours(h, m, 0, 0);
@@ -1574,7 +1592,7 @@ async function logWeek() {
             return registerTime(token, taskId, user?.teamId, d.getTime(), durationMs, block.description || '', user?.userId);
         }));
         results.forEach((result, i) => {
-            if (result.status === 'fulfilled') { blocks[i].logged = true; loggedCount++; }
+            if (result.status === 'fulfilled') { dayBlocks[i].logged = true; loggedCount++; }
             else errors.push(`${taskId}: ${result.reason?.message || 'unknown error'}`);
         });
     }
@@ -1582,20 +1600,45 @@ async function logWeek() {
     saveSchedule();
     renderSchedule();
 
+    const reset = () => {
+        icon.className = idleIcon;
+        label.textContent = idleLabel;
+        button.disabled = false;
+    };
+
     if (errors.length === 0) {
-        logTodayIcon.className = 'bi bi-check-circle';
-        logTodayLabel.textContent = `Logged ${loggedCount}!`;
-        setTimeout(() => {
-            logTodayIcon.className = 'bi bi-calendar-check';
-            logTodayLabel.textContent = 'Log Nuke';
-            logTodayButton.disabled = false;
-        }, 2500);
+        icon.className = 'bi bi-check-circle';
+        label.textContent = `Logged ${loggedCount}!`;
+        setTimeout(reset, 2500);
     } else {
         alert('Some entries failed:\n' + errors.join('\n'));
-        logTodayIcon.className = 'bi bi-calendar-check';
-        logTodayLabel.textContent = 'Log Nuke';
-        logTodayButton.disabled = false;
+        reset();
     }
+}
+
+/** Every block of the visible week. */
+function logWeek() {
+    return logScope({
+        blocks: schedule,
+        where: 'this week',
+        button: logWeekButton, icon: logWeekIcon, label: logWeekLabel,
+        idleIcon: 'bi bi-calendar-check', idleLabel: "Log'em all"
+    });
+}
+
+/** Today's column alone — only meaningful while today is actually on screen. */
+function logDay() {
+    const day = visibleToday();
+    if (!day) {
+        alert('Today is not one of the columns on screen — switch to the current week (weekdays only).');
+        return;
+    }
+    return logScope({
+        blocks: schedule.filter(b => b.day === day),
+        where: `on ${day}`,
+        button: logDayButton, icon: logDayIcon, label: logDayLabel,
+        idleIcon: 'bi bi-calendar-day', idleLabel: 'Log Today'
+    });
 }
 
 // ── Export / Import ───────────────────────────────────────────
@@ -2246,7 +2289,8 @@ document.getElementById('copyLastWeekButton').addEventListener('click', copyLast
 exportButton.addEventListener('click', exportSchedule);
 importButton.addEventListener('click', () => importFileInput.click());
 wipeButton.addEventListener('click', wipeSchedule);
-logTodayButton.addEventListener('click', logWeek);
+logDayButton.addEventListener('click', logDay);
+logWeekButton.addEventListener('click', logWeek);
 
 acceptButton.addEventListener('click', saveBlock);
 deleteButton.addEventListener('click', deleteBlock);

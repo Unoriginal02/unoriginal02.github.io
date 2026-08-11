@@ -115,9 +115,13 @@
                     <div class="buttonGroup">
                         <button id="copyLastWeekButton" class="brutalButton"
                                 title="Copy the previous week's blocks into this week">Copy Last Week</button>
-                        <button id="logTodayButton" class="brutalButton"
+                        <button id="logDayButton" class="brutalButton"
+                                title="Log every unlogged block of today's column only (skips logged blocks)">
+                            <i class="bi bi-calendar-day" id="logDayIcon"></i><span id="logDayLabel">Log Today</span>
+                        </button>
+                        <button id="logWeekButton" class="brutalButton"
                                 title="Log every unlogged block of the whole week in one click (skips logged blocks)">
-                            <i class="bi bi-calendar-check" id="logTodayIcon"></i><span id="logTodayLabel">Log Nuke</span>
+                            <i class="bi bi-calendar-check" id="logWeekIcon"></i><span id="logWeekLabel">Log'em all</span>
                         </button>
                         <button id="exportButton" class="brutalButton">Export</button>
                         <button id="importButton" class="brutalButton">Import</button>

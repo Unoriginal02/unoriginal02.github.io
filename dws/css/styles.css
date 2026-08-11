@@ -40,9 +40,17 @@
     /* ── Rules (stand-ins for box-drawing characters) ─────────── */
     --border:    #3a4060;   /* unfocused frame                    */
     --border-hi: #58628c;   /* focused frame / dialog frame       */
-    --grid-h:    #333955;   /* hour rule                          */
-    --grid-h2:   #292e45;   /* half-hour rule                     */
-    --grid-v:    #313650;   /* column rule                        */
+
+    /* Grid rules keep their hierarchy — hour clear, half-hour a whisper — but
+       every one of them is a translucent LIGHT, never an opaque dark. An opaque
+       dark only looks like a line where the surface behind it happens to be
+       lighter: it vanished into the plain columns and inverted into a dark line
+       over today's tinted column. A light tint ALWAYS lightens whatever it sits
+       on, so the same rule reads the same everywhere. The whisper is a dim
+       light, not a dark. */
+    --grid-h:    rgba(215, 221, 248, 0.30);  /* hour rule       — clear   */
+    --grid-h2:   rgba(215, 221, 248, 0.15);  /* every quarter   — whisper */
+    --grid-v:    rgba(215, 221, 248, 0.26);  /* column rule               */
 
     /* ── ANSI 16 ──────────────────────────────────────────────── */
     --red:     #f7768e;
@@ -413,8 +421,11 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
 .brutalButton:hover[data-key]::before,
 .brutalButton:focus-visible[data-key]::before { color: var(--term-bg); }
 
+/* The glyph tracks whatever ink the button's own hover lands on. Pinning it to
+   the reverse-video colour blacked out every control whose hover keeps a dark
+   background (the framed .tui-boxed wells, the visibility eye). */
 .brutalButton:hover .bi,
-.brutalButton:focus-visible .bi { color: var(--term-bg); }
+.brutalButton:focus-visible .bi { color: inherit; }
 
 .brutalButton:disabled {
     color: var(--fg-mute);
@@ -423,6 +434,22 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
 }
 
 .brutalButton:disabled[data-key]::before { color: var(--fg-mute); }
+
+/* :hover still matches a DISABLED button, so reverse video used to fire on one
+   — and since :disabled keeps the background transparent, only the ink flipped:
+   dark-on-dark. That is where the in-flight spinner went black, because the
+   pointer is by definition still on the button you just pressed. */
+.brutalButton:disabled:hover,
+.brutalButton:disabled:focus-visible {
+    background: transparent;
+    color: var(--fg-mute);
+}
+
+.brutalButton:disabled:hover .bi,
+.brutalButton:disabled:focus-visible .bi { color: inherit; }
+
+.brutalButton:disabled:hover .bi-hourglass-split,
+.brutalButton:disabled:focus-visible .bi-hourglass-split { color: var(--warn); }
 
 /* Destructive → red reverse video */
 #wipeButton:hover, #wipeButton:focus-visible,
@@ -434,12 +461,14 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
 #deleteButton:hover[data-key]::before { color: var(--term-bg); }
 
 /* Confirming actions → green reverse video */
-#logTodayButton:hover:not(:disabled),
+#logDayButton:hover:not(:disabled),
+#logWeekButton:hover:not(:disabled),
 #acceptButton:hover, #acceptButton:focus-visible {
     background: var(--ok);
     color: var(--term-bg);
 }
-#logTodayButton:hover:not(:disabled)[data-key]::before,
+#logDayButton:hover:not(:disabled)[data-key]::before,
+#logWeekButton:hover:not(:disabled)[data-key]::before,
 #acceptButton:hover[data-key]::before { color: var(--term-bg); }
 
 /* Framed variant: a real box, for isolated icon-only controls */
@@ -451,6 +480,16 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
 }
 
 .brutalButton.tui-boxed { padding: 4px 1.25ch; }
+
+/* Hover has to repaint the frame as well. The resting .tui-boxed background sits
+   later in the sheet than .brutalButton:hover at the same specificity, so it was
+   winning the tie and the well stayed dark under reverse-video ink. */
+.brutalButton.tui-boxed:hover:not(:disabled),
+.brutalButton.tui-boxed:focus-visible:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--term-bg);
+}
 
 /* ── Action bar (bottom of the schedule panel) ─────────────────── */
 .tui-actionbar {
@@ -724,14 +763,15 @@ table, .table {
     min-width: 120px;
 }
 
-/* Horizontal rules: hour = visible, half hour = a whisper, quarters = none.
-   EVERY row carries the same transparent 1px top border and only its COLOUR
-   changes — the row box must stay geometrically identical on all rows or the
+/* Horizontal rules: hour = visible, every quarter below it = a whisper. The
+   whisper is the DEFAULT, so the half hour and the quarters share it and the
+   grid reads at its true 15-minute pitch; only the hour steps up.
+   EVERY row carries the same 1px top border and only its COLOUR changes — the
+   row box must stay geometrically identical on all rows or the
    absolutely-positioned blocks (pitch = --cell-height) drift off the grid.
    For the same reason the closing rule is an inset shadow, not a border. */
-.table tbody tr > td { border-top: 1px solid transparent; }
+.table tbody tr > td { border-top: 1px solid var(--grid-h2); }
 .table tbody tr.hour > td { border-top-color: var(--grid-h); }
-.table tbody tr.half > td { border-top-color: var(--grid-h2); }
 .table tbody tr:first-child > td { border-top-color: transparent; }
 .table tbody tr:last-child > td { box-shadow: inset 0 -1px 0 var(--grid-h); }
 
@@ -854,7 +894,10 @@ table, .table {
 }
 
 .time-block .tb-task {
-    color: var(--fg-dim);
+    /* Translucent white, not a flat grey: the block's own tint shows through, so
+       the secondary line reads as part of the card instead of sitting on top of
+       it — and it stays legible whatever colour the block is. */
+    color: rgba(255, 255, 255, 0.62);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1024,7 +1067,14 @@ body.dragging .time-slot.current-day:hover { background-color: var(--main-color-
 
 .mode-switcher.active-mode { color: var(--fg); }
 .mode-switcher.active-mode::after { content: '\2022'; color: var(--accent); }
-.mode-switcher:hover.active-mode::after { color: var(--term-bg); }
+
+/* The active state is brighter ink, and it sits after the hover rule at equal
+   specificity — so hovering the ACTIVE switcher left near-white text on the
+   accent wash. Reverse video outranks the active marker, label and bullet both. */
+.mode-switcher:hover.active-mode,
+.mode-switcher:focus-visible.active-mode,
+.mode-switcher:hover.active-mode::after,
+.mode-switcher:focus-visible.active-mode::after { color: var(--term-bg); }
 
 .status-live {
     display: inline-block;
