@@ -96,6 +96,7 @@ const thThursday = document.getElementById('thThursday');
 const thFriday = document.getElementById('thFriday');
 
 const exportButton = document.getElementById('exportButton');
+const exportTemplateButton = document.getElementById('exportTemplateButton');
 const importButton = document.getElementById('importButton');
 const wipeButton = document.getElementById('wipeButton');
 const importFileInput = document.getElementById('importFileInput');
@@ -1643,6 +1644,36 @@ function logDay() {
 
 // ── Export / Import ───────────────────────────────────────────
 
+// Marker written into template files so the shared importer can tell a
+// one-week template apart from a full multi-week backup.
+const TEMPLATE_TYPE = 'dws-week-template';
+
+// The fields that make up a block minus the week-specific ones (id, logged):
+// what a template is allowed to carry.
+function templateBlockFields(block) {
+    const { day, start, end, projectName, taskName, taskId, description,
+            colorName, showProjectName, showTaskName } = block;
+    return { day, start, end, projectName, taskName, taskId, description,
+             colorName, showProjectName, showTaskName };
+}
+
+function downloadJSON(filename, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function savedStamp() {
+    const now = new Date();
+    const savedTime = [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map(num => String(num).padStart(2, '0')).join('-');
+    return `${toISODateLocal(now)}_${savedTime}`;
+}
+
 function exportSchedule() {
     weeks[weekMondayISO] = schedule;
     const data = {
@@ -1656,20 +1687,89 @@ function exportSchedule() {
         weekMondayISO
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-
-    const now = new Date();
-    const savedDate = toISODateLocal(now);
-    const savedTime = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join('-');
     const weekKeys = Object.keys(weeks).filter(iso => weeks[iso].length).sort();
     const rangeStr = weekKeys.length ? `${weekKeys[0]} to ${weekKeys[weekKeys.length - 1]}` : 'empty';
 
-    a.download = `DWS WEEKS ${rangeStr} - Saved on ${savedDate}_${savedTime}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJSON(`DWS WEEKS ${rangeStr} - Saved on ${savedStamp()}.json`, data);
+}
+
+// Export just the week on screen as a reusable template: no ids, no logged
+// marks and no Monday date, so it can land on any week it is imported into.
+function exportWeekTemplate() {
+    weeks[weekMondayISO] = schedule;
+
+    if (!schedule.length) {
+        alert('This week has no blocks to export as a template.');
+        return;
+    }
+
+    const data = {
+        type: TEMPLATE_TYPE,
+        version: 1,
+        startTime: startTimeInput.value,
+        endTime: endTimeInput.value,
+        savedFromWeek: weekMondayISO,
+        blocks: schedule.map(templateBlockFields)
+    };
+
+    downloadJSON(`DWS TEMPLATE - Saved on ${savedStamp()}.json`, data);
+}
+
+function isWeekTemplate(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    if (obj.type === TEMPLATE_TYPE) return true;
+    // Tolerate a hand-made file: a bare list of blocks with no week data.
+    return Array.isArray(obj.blocks) && !obj.weeks && !obj.schedule;
+}
+
+/**
+ * Apply a template to the CURRENT week — never to the week being viewed and
+ * never to the week it was exported from. Blocks that would overlap something
+ * already placed this week are skipped and copies start unlogged, exactly like
+ * Copy Last Week.
+ */
+async function importWeekTemplate(tpl) {
+    const blocks = Array.isArray(tpl.blocks) ? tpl.blocks : [];
+    if (!blocks.length) throw new Error('Template contains no blocks.');
+
+    // Keep the grid wide enough to show the template's blocks.
+    if (tpl.startTime) startTimeInput.value = tpl.startTime;
+    if (tpl.endTime) endTimeInput.value = tpl.endTime;
+
+    // Move the view to the current week, which is where the template lands.
+    weeks[weekMondayISO] = schedule;
+    weekMondayISO = currentWeekMondayISO();
+    pruneOldWeeks();
+    schedule = weeks[weekMondayISO] || (weeks[weekMondayISO] = []);
+
+    let nextId = Date.now();
+    let added = 0;
+    let skipped = 0;
+    blocks.forEach(block => {
+        if (!DAYS.includes(block.day) || !block.start || !block.end) { skipped++; return; }
+        if (checkConflict(block.day, block.start, block.end)) { skipped++; return; }
+        const clean = templateBlockFields(block);
+        if (!clean.colorName) clean.colorName = 'gray';
+        if (clean.projectName === undefined) clean.projectName = '';
+        if (clean.showProjectName === undefined) clean.showProjectName = true;
+        if (clean.showTaskName === undefined) clean.showTaskName = true;
+        schedule.push({ ...clean, id: nextId++, logged: false });
+        added++;
+    });
+
+    migrateBlockFields(schedule);
+    updateWeekNav();
+    await saveSchedule();
+    renderTable();
+    updateWeekHeaderLabels();
+
+    const weekStr = formatEuroDate(parseISOToLocalDate(weekMondayISO));
+    if (!added) {
+        alert(`Nothing imported into the week of ${weekStr} — every template block overlaps a block already there.`);
+        return;
+    }
+    alert(`Template imported into the week of ${weekStr}: ${added} block(s)`
+        + (skipped ? `, ${skipped} skipped (overlap or invalid).` : '.'));
 }
 
 function importSchedule(file) {
@@ -1677,6 +1777,8 @@ function importSchedule(file) {
     reader.onload = async function (e) {
         try {
             const imported = JSON.parse(e.target.result);
+            if (isWeekTemplate(imported)) { await importWeekTemplate(imported); return; }
+
             const hasWeeks = imported && imported.weeks && typeof imported.weeks === 'object';
             if (!imported || (!hasWeeks && !Array.isArray(imported.schedule))) throw new Error('Invalid schedule format.');
 
@@ -2287,6 +2389,7 @@ nextWeekBtn.addEventListener('click', () => shiftWeek(1));
 document.getElementById('copyLastWeekButton').addEventListener('click', copyLastWeek);
 
 exportButton.addEventListener('click', exportSchedule);
+exportTemplateButton.addEventListener('click', exportWeekTemplate);
 importButton.addEventListener('click', () => importFileInput.click());
 wipeButton.addEventListener('click', wipeSchedule);
 logDayButton.addEventListener('click', logDay);
