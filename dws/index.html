@@ -127,6 +127,8 @@
                         <button id="exportTemplateButton" class="brutalButton"
                                 title="Export only the week on screen as a reusable template (no dates, no logged marks)">Export Template</button>
                         <button id="importButton" class="brutalButton">Import</button>
+                        <button id="pasteDayButton" class="brutalButton"
+                                title="Paste the tasks copied from DWS Companion; they replace whatever is in their slots">Paste Day</button>
                         <button id="wipeButton" class="brutalButton">Wipe</button>
                     </div>
                     <input type="file" id="importFileInput" accept="application/json">
@@ -359,6 +361,25 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Paste Day Modal (DWS Companion) -->
+    <div class="modal fade" id="pasteDayModal" tabindex="-1" aria-labelledby="pasteDayModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pasteDayModalLabel">Paste Day</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="pasteDayInput">Paste what DWS Companion copied</label>
+                    <textarea id="pasteDayInput" class="form-control form-control-sm" rows="8" spellcheck="false"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="pasteDayConfirm" class="brutalButton">Import</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -136,6 +136,11 @@ const openPresetListButton  = document.getElementById('openPresetListButton');
 const presetList            = document.getElementById('presetList');
 const taskPickerModalElement = document.getElementById('taskPickerModal');
 const taskPickerModal        = new bootstrap.Modal(taskPickerModalElement);
+const pasteDayButton         = document.getElementById('pasteDayButton');
+const pasteDayModalElement   = document.getElementById('pasteDayModal');
+const pasteDayModal          = new bootstrap.Modal(pasteDayModalElement);
+const pasteDayInput          = document.getElementById('pasteDayInput');
+const pasteDayConfirm        = document.getElementById('pasteDayConfirm');
 
 const clickupSettingsButton  = document.getElementById('clickupSettingsButton');
 const clickupTokenSection    = document.getElementById('clickupTokenSection');
@@ -1777,6 +1782,8 @@ function importSchedule(file) {
     reader.onload = async function (e) {
         try {
             const imported = JSON.parse(e.target.result);
+            // A companion paste saved to a file: same as Paste Day, not a template.
+            if (imported && imported.type === DAY_IMPORT_TYPE) { await importDayBlocks(imported); return; }
             if (isWeekTemplate(imported)) { await importWeekTemplate(imported); return; }
 
             const hasWeeks = imported && imported.weeks && typeof imported.weeks === 'object';
@@ -1828,6 +1835,79 @@ function importSchedule(file) {
         }
     };
     reader.readAsText(file);
+}
+
+// ── Paste Day (DWS Companion) ─────────────────────────────────
+// The companion copies to the clipboard one 15-minute block per task, each
+// with its own date. Every block lands on its date's week and day and REPLACES
+// whatever overlaps its slot — the opposite of templates, which skip overlaps.
+
+const DAY_IMPORT_TYPE = 'dws-day-import';
+
+async function importDayBlocks(data) {
+    const blocks = data && data.type === DAY_IMPORT_TYPE && Array.isArray(data.blocks) ? data.blocks : null;
+    if (!blocks || !blocks.length) throw new Error('This is not a DWS Companion export.');
+
+    weeks[weekMondayISO] = schedule;
+    pruneOldWeeks();
+    const oldest = oldestAllowedMondayISO();
+    const newest = currentWeekMondayISO();
+
+    let nextId = Date.now();
+    let added = 0, replaced = 0, skipped = 0, lastISO = null;
+    let earliest = timeToMinutes(startTimeInput.value), latest = timeToMinutes(endTimeInput.value);
+
+    [...blocks]
+        .sort((a, b) => `${a.fecha} ${a.start}`.localeCompare(`${b.fecha} ${b.start}`))
+        .forEach(block => {
+            const iso = block.fecha ? toISODateLocal(startOfWeekMonday(parseISOToLocalDate(block.fecha))) : '';
+            if (!DAYS.includes(block.day) || !block.start || !block.end || iso < oldest || iso > newest) {
+                skipped++;
+                return;
+            }
+            const start = timeToMinutes(block.start);
+            const end = timeToMinutes(block.end);
+            // getAutoColorForNewBlock reads `schedule`, so point it at the target week.
+            const before = (weeks[iso] || []).length;
+            schedule = (weeks[iso] || []).filter(b =>
+                b.day !== block.day || end <= timeToMinutes(b.start) || start >= timeToMinutes(b.end));
+            replaced += before - schedule.length;
+            // Same fields as a block made here; the id, and the colour when the
+            // companion sends none, are picked the way a new block gets them.
+            schedule.push({
+                id: nextId++, day: block.day, start: block.start, end: block.end,
+                projectName: block.projectName || '', taskName: block.taskName || '',
+                taskId: block.taskId || '', description: block.description || '',
+                colorName: AVAILABLE_COLORS.includes(block.colorName)
+                    ? block.colorName : getAutoColorForNewBlock(block.day, block.start),
+                logged: block.logged === true,
+                showProjectName: block.showProjectName !== false,
+                showTaskName: block.showTaskName !== false
+            });
+            weeks[iso] = schedule;
+            lastISO = iso;
+            earliest = Math.min(earliest, start);
+            latest = Math.max(latest, end);
+            added++;
+        });
+
+    // Show the week the blocks went to, with the grid wide enough to see them.
+    weekMondayISO = lastISO || weekMondayISO;
+    schedule = weeks[weekMondayISO] || (weeks[weekMondayISO] = []);
+    startTimeInput.value = minutesToTime(earliest);
+    endTimeInput.value = minutesToTime(latest);
+    updateWeekNav();
+    await saveSchedule();
+    renderTable();
+    updateWeekHeaderLabels();
+
+    if (!added) {
+        alert(`Nothing imported: ${skipped} block(s) fall on a weekend or outside the stored weeks.`);
+        return;
+    }
+    alert(`Imported ${added} block(s)`
+        + (replaced ? `, replacing ${replaced} existing block(s)` : '')
+        + (skipped ? `; ${skipped} skipped (weekend or outside the stored weeks).` : '.'));
 }
 
 function wipeSchedule() {
@@ -2391,6 +2471,26 @@ document.getElementById('copyLastWeekButton').addEventListener('click', copyLast
 exportButton.addEventListener('click', exportSchedule);
 exportTemplateButton.addEventListener('click', exportWeekTemplate);
 importButton.addEventListener('click', () => importFileInput.click());
+pasteDayButton.addEventListener('click', () => {
+    pasteDayInput.value = '';
+    pasteDayModal.show();
+});
+pasteDayModalElement.addEventListener('shown.bs.modal', () => pasteDayInput.focus());
+pasteDayConfirm.addEventListener('click', async () => {
+    let data;
+    try {
+        data = JSON.parse(pasteDayInput.value);
+    } catch {
+        alert('That text is not valid JSON. Copy again from DWS Companion.');
+        return;
+    }
+    try {
+        await importDayBlocks(data);
+        pasteDayModal.hide();
+    } catch (err) {
+        alert('Failed to paste day: ' + err.message);
+    }
+});
 wipeButton.addEventListener('click', wipeSchedule);
 logDayButton.addEventListener('click', logDay);
 logWeekButton.addEventListener('click', logWeek);
