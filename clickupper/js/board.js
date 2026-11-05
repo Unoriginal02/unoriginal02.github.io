@@ -1,0 +1,309 @@
+// Vista Tablero: una columna por proyecto, con tareas y subtareas, y la columna + al final.
+import { h, fmtMin, parseEstimacion, siguienteNombre } from './util.js';
+import { state, guardar } from './store.js';
+import * as m from './model.js';
+import { aviso, error, popover, cerrarPopover, dialogo, buscador, tareaPorId } from './ui.js';
+
+const raiz = () => document.getElementById('columnas');
+let redibujar = () => {};
+let buscando = false;         // la columna + está abierta
+let resaltar = null;          // tarea a la que llevar la vista tras añadirla
+
+export function iniciar(alCambiar) { redibujar = alCambiar; arrastreColumnas(raiz()); }
+
+// Colaboración con el registro: arrastrar una tarea lleva su id.
+export const TIPO_ARRASTRE = 'application/x-clickupper-task';
+const TIPO_COLUMNA = 'application/x-clickupper-col';
+
+/** Reordenar proyectos arrastrando su cabecera. El orden se guarda en este navegador, no en ClickUp. */
+function arrastreColumnas(r) {
+    const cols = () => [...r.querySelectorAll('.col[data-lista]')];
+    const limpiar = () => cols().forEach(c => c.classList.remove('ins-antes', 'ins-despues'));
+    // La columna delante de la que caería. Van en orden de lectura: fila de arriba y luego la de abajo.
+    const siguiente = (x, y) => {
+        const todas = cols();
+        if (!todas.length) return null;
+        const yy = Math.max(todas[0].getBoundingClientRect().top, Math.min(y, todas.at(-1).getBoundingClientRect().bottom - 1));
+        return todas.find(c => {
+            const b = c.getBoundingClientRect();
+            return yy < b.bottom && (b.top > yy || x < b.left + b.width / 2);
+        }) || null;
+    };
+    r.addEventListener('dragover', e => {
+        if (!e.dataTransfer.types.includes(TIPO_COLUMNA)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        limpiar();
+        const sig = siguiente(e.clientX, e.clientY);
+        if (sig) sig.classList.add('ins-antes');
+        else cols().at(-1)?.classList.add('ins-despues');
+        const b = r.getBoundingClientRect();
+        if (e.clientX < b.left + 60) r.scrollLeft -= 30;
+        else if (e.clientX > b.right - 60) r.scrollLeft += 30;
+    });
+    r.addEventListener('dragleave', e => { if (!r.contains(e.relatedTarget)) limpiar(); });
+    r.addEventListener('dragend', limpiar);
+    r.addEventListener('drop', e => {
+        const id = e.dataTransfer.getData(TIPO_COLUMNA);
+        if (!id) return;
+        e.preventDefault();
+        const destino = siguiente(e.clientX, e.clientY)?.dataset.lista ?? null;
+        limpiar();
+        accion(m.moverProyecto(id, destino));
+    });
+}
+
+// Iconos de la tarjeta, siempre visibles para que nada se mueva al pasar el ratón.
+function icono(...formas) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const s = document.createElementNS(ns, 'svg');
+    s.setAttribute('viewBox', '0 0 16 16');
+    s.setAttribute('class', 'ico-svg');
+    for (const [tag, attrs] of formas) {
+        const f = document.createElementNS(ns, tag);
+        for (const [k, v] of Object.entries(attrs)) f.setAttribute(k, v);
+        s.append(f);
+    }
+    return s;
+}
+const icoUsuario = () => icono(['circle', { cx: 8, cy: 5, r: 3 }], ['path', { d: 'M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5' }]);
+const icoMas = () => icono(['path', { d: 'M8 3v10M3 8h10' }]);
+const icoRegistrar = () => icono(['path', { d: 'M2.5 8h11M9 3.5 13.5 8 9 12.5' }]);
+
+async function accion(p, ok) {
+    try { await p; if (ok) aviso(ok, 'bien'); }
+    catch (e) { error(e); }
+    redibujar();
+}
+
+// ── Tarjeta ──────────────────────────────────────────────────────────────
+function chipEstado(t, lista) {
+    return h('button', {
+        class: 'chip estado', style: `--c:${t.status?.color || 'var(--fg-mute)'}`, title: 'Cambiar estado',
+        onclick: e => {
+            e.stopPropagation();
+            const ops = [...(lista.statuses || [])].sort((a, b) => a.orderindex - b.orderindex);
+            popover(e.currentTarget, h('div', { class: 'menu' }, ops.map(s => h('button', {
+                class: `menu-fila ${s.status === t.status?.status ? 'on' : ''}`, style: `--c:${s.color}`,
+                onclick: () => { cerrarPopover(); accion(m.cambiarEstado(t, s), `Estado: ${s.status}`); },
+            }, h('i', { class: 'punto' }), s.status))));
+        },
+    }, t.status?.status || '—');
+}
+
+function chipEstimacion(t) {
+    return h('button', {
+        class: `chip est ${t.time_estimate ? '' : 'vacio'}`, title: 'Cambiar el tiempo estimado',
+        onclick: e => { e.stopPropagation(); editarEstimacion(e.currentTarget, t); },
+    }, t.time_estimate ? `estimado ${fmtMin(t.time_estimate / 60000)}` : '+ tiempo estimado');
+}
+
+function chipImputado(t, lista, etiqueta = '') {
+    const total = m.imputadoDe(t, lista);
+    if (!total) return false;
+    const propio = +t.time_spent || 0;
+    return h('span', {
+        class: 'chip imp',
+        title: `Imputado en ClickUp, por cualquier persona${total !== propio ? `. ${fmtMin(propio / 60000)} en esta tarea y ${fmtMin((total - propio) / 60000)} en sus subtareas` : ''}`,
+    }, `${etiqueta}${fmtMin(total / 60000)}`);
+}
+
+function editarEstimacion(ancla, t) {
+    const inp = h('input', {
+        class: 'campo', placeholder: '2h, 1h30, 45m…', spellcheck: 'false',
+        value: t.time_estimate ? fmtMin(t.time_estimate / 60000).replace(' ', '') : '',
+        onkeydown: e => {
+            if (e.key !== 'Enter') return;
+            const ms = parseEstimacion(inp.value);
+            if (ms === undefined) { aviso('No entiendo ese tiempo. Prueba con 2h, 1h30 o 45m.', 'mal'); return; }
+            cerrarPopover();
+            accion(m.cambiarEstimacion(t, ms), ms === null ? 'Estimación borrada' : `Estimación: ${fmtMin(ms / 60000)}`);
+        },
+    });
+    popover(ancla, h('div', { class: 'pop-campo' }, h('label', {}, 'Tiempo estimado'), inp, h('small', {}, 'Enter para guardar · vacío para borrar')));
+    inp.select();
+}
+
+function botonAsignar(t) {
+    const mia = m.esMia(t);
+    const texto = mia ? 'Asignada a ti: pulsa para quitarte' : 'Sin asignar a ti: pulsa para asignártela';
+    return h('button', {
+        class: `ico usuario ${mia ? 'on' : ''}`, title: texto, 'aria-label': texto, 'aria-pressed': String(mia),
+        onclick: e => { e.stopPropagation(); accion(m.asignarme(t, !mia), mia ? 'Ya no la tienes asignada' : 'Asignada a ti'); },
+    }, icoUsuario());
+}
+
+function composer(ancla, lista, padre) {
+    const hermanas = padre ? lista.tasks.filter(t => t.parent === padre.id).sort((a, b) => +b.date_created - +a.date_created) : [];
+    const inp = h('input', {
+        class: 'campo', spellcheck: 'false', placeholder: padre ? 'Nombre de la subtarea' : 'Nombre de la tarea',
+        value: hermanas[0] ? siguienteNombre(hermanas[0].name) : '',
+        onkeydown: e => {
+            if (e.key !== 'Enter' || !inp.value.trim()) return;
+            const nombre = inp.value.trim();
+            cerrarPopover();
+            accion(m.crearTarea(lista, nombre, padre), `Creada: ${nombre}`);
+        },
+    });
+    popover(ancla, h('div', { class: 'pop-campo' },
+        h('label', {}, padre ? `Subtarea de ${padre.name}` : `Tarea nueva en ${lista.name}`), inp, h('small', {}, 'Enter para crear')));
+    inp.select();
+}
+
+function tarjeta(nodo, lista) {
+    const { t, hijos } = nodo;
+    const plegada = state.prefs.plegadas.includes(t.id);
+    const el = h('article', {
+        class: `tarea ${nodo.nivel === 0 ? 'raiz' : ''} ${m.esCerrada(t) ? 'cerrada' : ''} ${resaltar === t.id ? 'resaltada' : ''}`,
+        draggable: 'true', 'data-id': t.id, style: `--nivel:${nodo.nivel}`,
+        ondragstart: e => {
+            e.dataTransfer.setData(TIPO_ARRASTRE, t.id);
+            e.dataTransfer.effectAllowed = 'copy';
+            document.body.classList.add('arrastrando');
+        },
+        ondragend: () => document.body.classList.remove('arrastrando'),
+    },
+        h('div', { class: 'tarea-l1' },
+            hijos.length
+                ? h('button', {
+                    class: 'plegar', title: plegada ? 'Mostrar subtareas' : 'Ocultar subtareas',
+                    onclick: () => {
+                        const p = state.prefs;
+                        p.plegadas = plegada ? p.plegadas.filter(x => x !== t.id) : [...p.plegadas, t.id];
+                        guardar('prefs'); redibujar();
+                    },
+                }, plegada ? '▸' : '▾')
+                : nodo.nivel === 0 && h('span', { class: 'plegar' }),
+            h('button', { class: 'tarea-nombre', title: 'Ver el detalle', onclick: () => detalle(t, lista) }, t.name),
+        ),
+        h('div', { class: 'tarea-l2' },
+            chipEstado(t, lista), chipImputado(t, lista),
+            h('span', { class: 'acciones' },
+                botonAsignar(t),
+                // Desde aquí, las subtareas no crean subtareas.
+                nodo.nivel === 0 && h('button', { class: 'ico sub', title: 'Crear una subtarea', 'aria-label': 'Crear una subtarea', onclick: e => composer(e.currentTarget, lista, t) }, icoMas()),
+                h('button', { class: 'ico registrar', title: 'Añadir al registro de este día (o arrástrala)', 'aria-label': 'Añadir al registro', onclick: () => registrar?.(t.id) }, icoRegistrar()),
+            ),
+        ),
+    );
+    return [el, plegada ? [] : hijos.map(x => tarjeta(x, lista))];
+}
+
+let registrar = null;
+export const alRegistrar = fn => { registrar = fn; };
+
+// ── Detalle de una tarea ─────────────────────────────────────────────────
+function detalle(t, lista) {
+    const desc = h('div', { class: 'desc' }, 'Cargando la descripción…');
+    const pinta = () => cuerpo.replaceChildren(
+        h('div', { class: 'det-ruta' }, `${lista.name} · ${m.rutaDe(t, lista)}`),
+        h('div', { class: 'det-fila' },
+            chipEstado(t, lista), chipEstimacion(t), chipImputado(t, lista, 'imputado '),
+            botonAsignar(t),
+            h('span', { class: 'hueco' }),
+            h('a', { class: 'btn', href: t.url || `https://app.clickup.com/t/${t.id}`, target: '_blank', rel: 'noopener' }, 'abrir en clickup ↗')),
+        h('div', { class: 'det-gente' }, (t.assignees || []).length
+            ? `Asignada a: ${t.assignees.map(a => a.username || a.initials).join(', ')}`
+            : 'Sin asignar'),
+        desc,
+    );
+    const cuerpo = h('div', { class: 'detalle' });
+    pinta();
+    dialogo(t.name, cuerpo);
+    tareaPorId(t.id).then(r => {
+        const txt = (r.markdown_description || r.description || r.text_content || '').trim();
+        desc.textContent = txt || 'Esta tarea no tiene descripción.';
+        desc.classList.toggle('vacia', !txt);
+    }).catch(e => { desc.textContent = e.message; });
+    detalleAbierto = pinta;
+}
+let detalleAbierto = null;
+
+// ── Columnas ─────────────────────────────────────────────────────────────
+function columna(lista) {
+    const nodos = m.arbol(lista);
+    const url = `https://app.clickup.com/${state.user.teamId}/v/li/${lista.id}`;
+    return h('section', { class: 'col', 'data-lista': lista.id },
+        h('header', {
+            class: 'col-cab', draggable: 'true', title: 'Arrastra para cambiar de sitio',
+            ondragstart: e => {
+                e.dataTransfer.setData(TIPO_COLUMNA, lista.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.currentTarget.closest('.col').classList.add('col-movida');
+            },
+            ondragend: e => e.currentTarget.closest('.col')?.classList.remove('col-movida'),
+        },
+            h('a', { class: 'col-nombre', draggable: 'false', href: url, target: '_blank', rel: 'noopener', title: `${lista.carpeta ? `${lista.carpeta} · ` : ''}Abrir en ClickUp` }, lista.name),
+            h('button', { class: 'icono', title: 'Crear tarea en este proyecto', onclick: e => composer(e.currentTarget, lista, null) }, '+'),
+            h('button', { class: 'icono', title: 'Quitar esta columna del tablero', onclick: () => accion(m.ocultarProyecto(lista.id), `${lista.name} fuera del tablero. Vuelve con el botón +.`) }, '×'),
+        ),
+        h('div', { class: 'col-cuerpo' },
+            nodos.length ? nodos.map(n => tarjeta(n, lista)) : h('p', { class: 'col-vacia' },
+                state.prefs.vista === 'mias' ? 'Nada asignado a ti aquí. Cambia a Todas para verlo todo.' : 'Este proyecto no tiene tareas abiertas.')),
+    );
+}
+
+function columnaMas() {
+    if (!buscando) {
+        return h('section', { class: 'col col-mas' },
+            h('button', { class: 'mas', title: 'Añadir un proyecto o una tarea', onclick: () => { buscando = true; redibujar(); } }, '+'));
+    }
+    return h('section', { class: 'col col-buscar' },
+        h('header', { class: 'col-cab' }, h('span', { class: 'col-nombre' }, 'Añadir al tablero'),
+            h('button', { class: 'icono', title: 'Cerrar', onclick: () => { buscando = false; redibujar(); } }, '×')),
+        buscador({ placeholder: 'Proyecto, tarea, ID o enlace', alElegir: añadirDesdeBuscador }),
+    );
+}
+
+async function añadirDesdeBuscador(f) {
+    aviso('Cargando…');
+    try {
+        let listId = f.listId || f.id, tareaId = null;
+        if (f.tipo !== 'proyecto') {
+            tareaId = f.id;
+            if (f.tipo === 'porId') listId = (await tareaPorId(f.id)).list?.id;
+        }
+        if (!listId) throw new Error('Esa tarea no tiene proyecto.');
+        await m.añadirProyecto(listId);
+        buscando = false;
+        resaltar = tareaId;
+        aviso(`${state.tablero[listId].name} en el tablero. Viendo Todas: asígnate lo que te toque.`, 'bien');
+        redibujar();
+        const destino = tareaId ? raiz().querySelector(`[data-id="${CSS.escape(tareaId)}"]`) : null;
+        (destino || raiz().querySelector(`[data-lista="${CSS.escape(listId)}"]`))
+            ?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+        setTimeout(() => { resaltar = null; }, 100);
+    } catch (e) { error(e); }
+}
+
+// ── Pintado ──────────────────────────────────────────────────────────────
+export function pintar() {
+    const r = raiz();
+    // El buscador abierto se conserva tal cual, para no perder lo tecleado.
+    const antesX = r.scrollLeft;
+    const scrolls = new Map([...r.querySelectorAll('.col')].map(c => [c.dataset.lista, c.querySelector('.col-cuerpo')?.scrollTop]));
+    const buscadorVivo = buscando ? r.querySelector('.col-buscar') : null;
+    const cols = m.columnas().map(columna);
+    r.replaceChildren(...cols, buscadorVivo || columnaMas());
+    const dosFilas = state.prefs.filas === 2;
+    r.classList.toggle('dos-filas', dosFilas);
+    r.style.gridTemplateColumns = dosFilas ? `repeat(${Math.ceil((cols.length + 1) / 2)}, auto)` : '';
+    if (!cols.length && !buscando && !Object.keys(state.tablero).length) {
+        r.prepend(h('p', { class: 'tablero-vacio' }, 'Aún no hay proyectos. Si acabas de conectar, se están cargando.'));
+    }
+    r.scrollLeft = antesX;
+    r.querySelectorAll('.col').forEach(c => {
+        const b = c.querySelector('.col-cuerpo');
+        if (b && scrolls.get(c.dataset.lista)) b.scrollTop = scrolls.get(c.dataset.lista);
+    });
+    detalleAbierto = document.querySelector('dialog.dlg') ? detalleAbierto : null;
+    detalleAbierto?.();
+}
+
+/** Los botones globales de la vista: Mis cosas / Todas y filas de columnas. */
+export function pintarControles() {
+    const p = state.prefs;
+    document.querySelectorAll('[data-vista]').forEach(b => b.classList.toggle('on', b.dataset.vista === p.vista));
+    document.querySelectorAll('[data-filas]').forEach(b => b.classList.toggle('on', +b.dataset.filas === p.filas));
+}
+
