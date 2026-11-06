@@ -145,26 +145,34 @@ export function panelesTarea(id) {
         )) : [h('span', { class: 'dim' }, 'Sin archivos.')]));
     }
 
+    async function subirTanda(archivos, carpetas) {
+        botonSubir.disabled = true;
+        notaAdj.classList.remove('mal');
+        try {
+            for (const f of archivos) {
+                notaAdj.textContent = `Subiendo ${f.name}…`;
+                await api.subirAdjunto(id, f);
+            }
+            notaAdj.textContent = '';
+            const hecho = archivos.length === 1 ? `Subido: ${archivos[0].name}` : `${archivos.length} archivos subidos`;
+            aviso(carpetas ? `${hecho}. Las carpetas no se suben.` : hecho, 'bien');
+        } catch (err) {
+            notaAdj.textContent = err.message;
+            notaAdj.classList.add('mal');
+        }
+        botonSubir.disabled = false;
+        cargarTarea({ soloAdjuntos: true }).catch(() => {});
+    }
+    // Lo que se suelta mientras otra tanda sube espera su turno.
+    let cola = Promise.resolve();
+    const subir = (archivos, carpetas = 0) => { cola = cola.then(() => subirTanda(archivos, carpetas)); };
+
     const selector = h('input', {
         type: 'file', multiple: true, hidden: true,
-        onchange: async () => {
+        onchange: () => {
             const archivos = [...selector.files];
             selector.value = '';
-            botonSubir.disabled = true;
-            notaAdj.classList.remove('mal');
-            try {
-                for (const f of archivos) {
-                    notaAdj.textContent = `Subiendo ${f.name}…`;
-                    await api.subirAdjunto(id, f);
-                }
-                notaAdj.textContent = '';
-                aviso(archivos.length === 1 ? `Subido: ${archivos[0].name}` : `${archivos.length} archivos subidos`, 'bien');
-            } catch (err) {
-                notaAdj.textContent = err.message;
-                notaAdj.classList.add('mal');
-            }
-            botonSubir.disabled = false;
-            cargarTarea({ soloAdjuntos: true }).catch(() => {});
+            subir(archivos);
         },
     });
     const botonSubir = h('button', { class: 'btn', onclick: () => selector.click() }, '+ Subir archivo');
@@ -214,7 +222,33 @@ export function panelesTarea(id) {
     });
     cargarComentarios();
 
+    /** Soltar archivos en cualquier punto de la tarea abierta. Arrastrar texto sigue funcionando como siempre. */
+    function aceptarArchivos(d) {
+        const traeArchivos = e => e.dataTransfer?.types.includes('Files');
+        const acoger = e => {
+            if (!traeArchivos(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            d.classList.add('soltando');
+        };
+        d.append(h('div', { class: 'soltar-aviso' }, 'Suelta los archivos para subirlos a esta tarea'));
+        d.addEventListener('dragenter', acoger);
+        d.addEventListener('dragover', acoger);
+        d.addEventListener('dragleave', e => { if (!d.contains(e.relatedTarget)) d.classList.remove('soltando'); });
+        d.addEventListener('drop', e => {
+            if (!traeArchivos(e)) return;
+            e.preventDefault();
+            d.classList.remove('soltando');
+            const elementos = [...e.dataTransfer.items].filter(i => i.kind === 'file');
+            const archivos = elementos.filter(i => !i.webkitGetAsEntry?.()?.isDirectory).map(i => i.getAsFile()).filter(Boolean);
+            const carpetas = elementos.length - archivos.length;
+            if (archivos.length) subir(archivos, carpetas);
+            else aviso('Las carpetas no se suben. Suelta los archivos de dentro.', 'mal');
+        });
+    }
+
     return {
+        aceptarArchivos,
         el: h('div', { class: 'det-paneles' },
             seccionDesc,
             h('section', { class: 'det-sec' }, cabecera('Archivos', botonSubir, selector), listaAdj, notaAdj),

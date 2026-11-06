@@ -325,6 +325,9 @@ body.arrastrando .reg-hueco { border-color: var(--accent); background: color-mix
 .md-sep { width: 1px; height: 14px; margin: 0 4px; background: var(--border); }
 .md-editor { display: block; resize: vertical; line-height: 1.5; }
 
+.soltar-aviso { display: none; position: fixed; inset: 0; z-index: 20; align-items: center; justify-content: center; font-weight: 700; color: var(--accent); background: rgba(19, 20, 28, .85); outline: 2px dashed var(--accent); outline-offset: -12px; pointer-events: none; }
+.dlg.soltando .soltar-aviso { display: flex; }
+
 .adj { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-size: var(--fs-micro); }
 .adj-nombre { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-ui); color: var(--accent); }
 .adj-nombre:hover { text-decoration: underline; }

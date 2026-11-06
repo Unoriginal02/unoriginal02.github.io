@@ -237,7 +237,7 @@ function detalle(t, lista) {
     const cab = h('div', { class: 'detalle' });
     pinta();
     const paneles = panelesTarea(t.id);
-    dialogo(t.name, [cab, paneles.el], { clase: 'dlg-detalle', puedeCerrar: paneles.puedeCerrar });
+    paneles.aceptarArchivos(dialogo(t.name, [cab, paneles.el], { clase: 'dlg-detalle', puedeCerrar: paneles.puedeCerrar }));
     detalleAbierto = pinta;
 }
 let detalleAbierto = null;
