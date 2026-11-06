@@ -56,25 +56,56 @@ export function rutaDe(t, lista) {
     return partes.join(' / ');
 }
 
-/** Columnas del tablero: proyectos con algo mío y los añadidos a mano (al final), menos los ocultos.
- *  Primero van los que se han colocado arrastrando, en ese orden. */
+/** Proyectos que caben apilados en una columna. */
+export const MAX_PILA = 4;
+
+/** Columnas del tablero, cada una con sus proyectos de arriba abajo: los que tienen algo mío y los añadidos
+ *  a mano (al final), menos los ocultos. Primero van las colocadas arrastrando, en ese orden.
+ *  `orden` guarda una lista por columna; lo guardado antes de las pilas trae ids sueltos, que valen como columna de uno. */
 export function columnas() {
     const { añadidos, ocultos, orden } = state.prefs;
     const l = Object.values(state.tablero).filter(x => !ocultos.includes(x.id));
     const mias = l.filter(x => !añadidos.includes(x.id)).sort((a, b) => a.name.localeCompare(b.name));
     const extra = añadidos.map(id => l.find(x => x.id === id)).filter(Boolean);
-    const pos = l => { const i = orden.indexOf(l.id); return i < 0 ? orden.length : i; };
-    return [...mias, ...extra].sort((a, b) => pos(a) - pos(b));
+    const colocadas = orden.map(c => [c].flat().map(id => l.find(x => x.id === id)).filter(Boolean)).filter(c => c.length);
+    const dentro = new Set(colocadas.flat());
+    return [...colocadas, ...[...mias, ...extra].filter(x => !dentro.has(x)).map(x => [x])];
 }
 
-/** Coloca un proyecto justo antes de otro (null: al final). */
-export function moverProyecto(id, antesDe) {
-    if (id === antesDe) return;
-    const ids = columnas().map(l => l.id).filter(x => x !== id);
-    const i = antesDe ? ids.indexOf(antesDe) : -1;
-    ids.splice(i < 0 ? ids.length : i, 0, id);
-    state.prefs.orden = ids;
+function guardarColumnas(cols) {
+    state.prefs.orden = cols.filter(c => c.length);
     return guardar('prefs');
+}
+
+/** Saca un proyecto a su propia columna, delante de la columna donde está `antesDe` (null: al final). */
+export function moverAColumna(id, antesDe) {
+    const cols = columnas().map(c => c.map(l => l.id));
+    const i = antesDe ? cols.findIndex(c => c.includes(antesDe)) : -1;
+    const sin = cols.map(c => c.filter(x => x !== id));
+    sin.splice(i < 0 ? sin.length : i, 0, [id]);
+    return guardarColumnas(sin);
+}
+
+/** Pone un proyecto en la columna donde está `con`, delante de `antesDe` (null: abajo del todo). */
+export function apilarProyecto(id, con, antesDe = null) {
+    const cols = columnas().map(c => c.map(l => l.id));
+    const destino = cols.find(c => c.includes(con));
+    if (!destino || (!destino.includes(id) && destino.length >= MAX_PILA)) return;
+    const propia = destino.filter(x => x !== id);
+    const i = antesDe && antesDe !== id ? propia.indexOf(antesDe) : -1;
+    propia.splice(i < 0 ? propia.length : i, 0, id);
+    return guardarColumnas(cols.map(c => (c === destino ? propia : c.filter(x => x !== id))));
+}
+
+/** Mueve la columna entera donde está `id`, delante de la columna donde está `antesDe` (null: al final). */
+export function moverPila(id, antesDe) {
+    const cols = columnas().map(c => c.map(l => l.id));
+    const propia = cols.find(c => c.includes(id));
+    if (!propia || propia.includes(antesDe)) return;
+    const resto = cols.filter(c => c !== propia);
+    const i = antesDe ? resto.findIndex(c => c.includes(antesDe)) : -1;
+    resto.splice(i < 0 ? resto.length : i, 0, propia);
+    return guardarColumnas(resto);
 }
 
 /** Tiempo imputado en ms: el de la tarea y el de sus subtareas, cerradas incluidas, como lo suma ClickUp en pantalla
@@ -145,7 +176,7 @@ export function ocultarProyecto(id) {
     const p = state.prefs;
     p.añadidos = p.añadidos.filter(x => x !== id);
     p.ocultos = [...new Set([...p.ocultos, id])];
-    p.orden = p.orden.filter(x => x !== id);
+    p.orden = p.orden.map(c => [c].flat().filter(x => x !== id)).filter(c => c.length);
     return guardar('prefs');
 }
 

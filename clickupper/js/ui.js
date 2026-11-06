@@ -70,12 +70,14 @@ export function selectorHora(ancla, valor, alElegir) {
 }
 
 // ── Diálogos ─────────────────────────────────────────────────────────────
-export function dialogo(titulo, cuerpo, { clase = '', alCerrar } = {}) {
+export function dialogo(titulo, cuerpo, { clase = '', alCerrar, puedeCerrar } = {}) {
+    const intentar = async () => { if (!puedeCerrar || await puedeCerrar()) d.close(); };
     const d = h('dialog', { class: `dlg ${clase}` },
-        h('header', {}, h('span', {}, titulo), h('button', { class: 'icono', title: 'Cerrar', onclick: () => d.close() }, '×')),
+        h('header', {}, h('span', {}, titulo), h('button', { class: 'icono', title: 'Cerrar', onclick: intentar }, '×')),
         h('div', { class: 'dlg-cuerpo' }, cuerpo));
     d.addEventListener('close', () => { d.remove(); alCerrar?.(); });
-    d.addEventListener('pointerdown', e => { if (e.target === d) d.close(); });
+    d.addEventListener('pointerdown', e => { if (e.target === d) intentar(); });
+    if (puedeCerrar) d.addEventListener('cancel', e => { e.preventDefault(); intentar(); });
     document.body.append(d);
     d.showModal();
     return d;

@@ -21,7 +21,7 @@ body {
 }
 main { flex: 1; min-height: 0; }
 main[hidden] { display: none !important; }
-button, input { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 button:disabled { cursor: default; }
 a { color: inherit; text-decoration: none; }
@@ -65,16 +65,27 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 #tablero-zona { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 #tablero-barra { display: flex; align-items: center; gap: 14px; padding: 8px 12px; }
 #columnas { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 10px; padding: 0 12px 10px; overflow-x: auto; }
-#columnas.dos-filas { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); justify-content: start; }
 .tablero-vacio { align-self: center; color: var(--fg-mute); padding: 0 20px; }
 
 .col { width: var(--col); flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border: 1px solid var(--border); }
 .col { position: relative; }
 .col[data-lista] .col-cab { cursor: grab; }
-.col.col-movida { opacity: .45; }
-.col.ins-antes::before, .col.ins-despues::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
-.col.ins-antes::before { left: -7px; }
-.col.ins-despues::after { right: -7px; }
+.col.col-movida, .pila.col-movida { opacity: .45; }
+.asa-pila { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 22px; margin-left: -6px; flex: none; color: var(--fg-mute); cursor: grab; }
+.asa-pila:hover { background: var(--bg-sel); color: var(--fg); }
+.punto-asa { fill: currentColor; stroke: none; }
+/* Una pila es una columna con 1 a 4 proyectos, a partes iguales. */
+.pila { position: relative; width: var(--col); flex: none; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.pila > .col { width: auto; flex: 1 1 0; }
+.pila.ins-antes::before, .pila.ins-despues::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); z-index: 3; }
+.pila.ins-antes::before { left: -7px; }
+.pila.ins-despues::after { right: -7px; }
+/* La parte de abajo donde cae al apilar. */
+.pila.soltar-abajo::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--zona); background: color-mix(in srgb, var(--accent) 16%, transparent); border-top: 2px solid var(--accent); pointer-events: none; z-index: 3; }
+/* El sitio entre proyectos de la misma pila. */
+.col.ins-arriba::before, .col.ins-abajo::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 3; }
+.col.ins-arriba::before { top: -4px; }
+.col.ins-abajo::after { bottom: -4px; }
 .col-cab { display: flex; align-items: center; gap: 2px; padding: 5px 6px 5px 10px; background: var(--bg-alt); border-bottom: 1px solid var(--border); }
 .col-nombre { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 a.col-nombre:hover { color: var(--accent); }
@@ -128,6 +139,9 @@ body.arrastrando #registro { outline: 1px dashed var(--accent); outline-offset: 
 .reg-total { color: var(--fg-dim); }
 .reg-lista { flex: 1; min-height: 0; overflow-y: auto; }
 .reg-vacio { padding: 24px 16px; margin: 0; color: var(--fg-mute); text-align: center; }
+/* El sitio de una entrada más, siempre al final; se marca al arrastrar una tarea. */
+.reg-hueco { height: 76px; margin: 6px; border: 1px dashed transparent; }
+body.arrastrando .reg-hueco { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .reg-pie { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border); }
 .reg-fila { display: flex; gap: 8px; padding: 7px 8px 7px 7px; border-left: 3px solid var(--c); border-bottom: 1px solid var(--bg-alt); }
 .reg-horas { flex: none; display: flex; flex-direction: column; align-items: center; align-self: flex-start; }
@@ -278,5 +292,45 @@ body.arrastrando #registro { outline: 1px dashed var(--accent); outline-offset: 
 .det-ruta { color: var(--fg-mute); font-size: var(--fs-micro); margin-bottom: 8px; overflow-wrap: anywhere; }
 .det-fila { display: flex; align-items: center; gap: 8px; font-size: var(--fs-micro); }
 .det-gente { margin-top: 8px; color: var(--fg-dim); font-size: var(--fs-micro); }
-.desc { margin-top: 12px; padding: 10px; max-height: 45vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-input); border: 1px solid var(--border); }
+.dlg-detalle { width: min(820px, calc(100vw - 32px)); max-height: 90vh; }
+.det-sec { margin-top: 16px; }
+.det-sec-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; min-height: 22px; }
+.det-sec-titulo { font-weight: 700; color: var(--fg-dim); }
+.det-nota { margin-top: 4px; color: var(--fg-mute); font-size: var(--fs-micro); }
+.det-nota:empty { display: none; }
+.det-nota.mal { color: var(--red); }
+.desc { padding: 10px; max-height: 45vh; overflow: auto; background: var(--bg-input); border: 1px solid var(--border); }
 .desc.vacia { color: var(--fg-mute); }
+
+/* Texto con formato: el tamaño va contenido, como el resto de la app. */
+.md { overflow-wrap: anywhere; }
+.md p { margin: 0; }
+.md .md-blanco { height: .8em; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { margin: .7em 0 .25em; line-height: 1.3; }
+.md > :first-child { margin-top: 0; }
+.md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 15px; }
+.md h4, .md h5, .md h6 { font-size: var(--fs-ui); } .md h6 { color: var(--fg-dim); }
+.md a { color: var(--accent); text-decoration: underline; }
+.md code { padding: 0 3px; background: var(--bg-sel); }
+.md pre { margin: 4px 0; padding: 8px 10px; overflow-x: auto; background: var(--bg-alt); border: 1px solid var(--border); }
+.md blockquote { margin: 0; padding: 1px 0 1px 10px; border-left: 3px solid var(--border-hi); color: var(--fg-dim); }
+.md hr { margin: 10px 0; }
+.md-li { display: flex; gap: 6px; padding-left: calc(var(--n) * 18px); }
+.md-marca { flex: none; min-width: 2ch; color: var(--fg-mute); }
+
+.md-edicion { display: flex; flex-direction: column; }
+.md-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; padding: 2px; background: var(--bg-alt); border: 1px solid var(--border); border-bottom: 0; }
+.md-barra button { min-width: 26px; padding: 1px 5px; text-align: center; color: var(--fg-dim); font-size: var(--fs-micro); }
+.md-barra button:hover { background: var(--fg); color: var(--term-bg); }
+.md-sep { width: 1px; height: 14px; margin: 0 4px; background: var(--border); }
+.md-editor { display: block; resize: vertical; line-height: 1.5; }
+
+.adj { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-size: var(--fs-micro); }
+.adj-nombre { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-ui); color: var(--accent); }
+.adj-nombre:hover { text-decoration: underline; }
+.adj .dim { flex: none; }
+
+.com-lista { margin-bottom: 10px; }
+.com { padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border); }
+.com + .com { margin-top: 6px; }
+.com-cab { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4px; font-size: var(--fs-micro); }

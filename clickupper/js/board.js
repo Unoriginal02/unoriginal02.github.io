@@ -3,53 +3,81 @@ import { h, fmtMin, parseEstimacion, siguienteNombre } from './util.js';
 import { state, guardar } from './store.js';
 import * as m from './model.js';
 import { aviso, error, popover, cerrarPopover, dialogo, buscador, tareaPorId } from './ui.js';
+import { panelesTarea } from './detalle.js';
 
 const raiz = () => document.getElementById('columnas');
 let redibujar = () => {};
 let buscando = false;         // la columna + está abierta
 let resaltar = null;          // tarea a la que llevar la vista tras añadirla
 
-export function iniciar(alCambiar) { redibujar = alCambiar; arrastreColumnas(raiz()); }
+export function iniciar(alCambiar) { redibujar = alCambiar; arrastreProyectos(document.getElementById('tablero-zona')); }
 
 // Colaboración con el registro: arrastrar una tarea lleva su id.
 export const TIPO_ARRASTRE = 'application/x-clickupper-task';
 const TIPO_COLUMNA = 'application/x-clickupper-col';
 
-/** Reordenar proyectos arrastrando su cabecera. El orden se guarda en este navegador, no en ClickUp. */
-function arrastreColumnas(r) {
-    const cols = () => [...r.querySelectorAll('.col[data-lista]')];
-    const limpiar = () => cols().forEach(c => c.classList.remove('ins-antes', 'ins-despues'));
-    // La columna delante de la que caería. Van en orden de lectura: fila de arriba y luego la de abajo.
-    const siguiente = (x, y) => {
-        const todas = cols();
-        if (!todas.length) return null;
-        const yy = Math.max(todas[0].getBoundingClientRect().top, Math.min(y, todas.at(-1).getBoundingClientRect().bottom - 1));
-        return todas.find(c => {
-            const b = c.getBoundingClientRect();
-            return yy < b.bottom && (b.top > yy || x < b.left + b.width / 2);
-        }) || null;
+let arrastrado = null;         // { id, x, y, entera } del proyecto que se está arrastrando, o de su pila entera
+
+/** Dónde caería un proyecto soltado aquí. Por la parte de arriba se mueve de columna; en la parte de abajo de otra
+ *  se apila, y esa parte mengua con cada proyecto: la mitad, el tercio y el cuarto de abajo. Dentro de su propia
+ *  columna se reordena, y la cabecera de arriba es la salida. Una pila entera solo cambia de sitio: nunca se apila. */
+function destinoDe(zona, id, x, y, entera) {
+    const pilas = [...zona.querySelectorAll('.pila')];
+    const pila = pilas.find(p => { const b = p.getBoundingClientRect(); return x >= b.left && x < b.right; });
+    if (pila && !entera) {
+        const cols = [...pila.querySelectorAll('.col[data-lista]')];
+        const ids = cols.map(c => c.dataset.lista);
+        const b = pila.getBoundingClientRect();
+        if (ids.includes(id) && ids.length > 1) {
+            if (y >= cols[0].querySelector('.col-cab').getBoundingClientRect().bottom) {
+                const sig = cols.find(c => { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; });
+                return { tipo: 'pila', con: id, antesDe: sig?.dataset.lista ?? null, marca: sig ? [sig, 'ins-arriba'] : [cols.at(-1), 'ins-abajo'] };
+            }
+        } else if (!ids.includes(id) && ids.length < m.MAX_PILA) {
+            const parte = b.height / (ids.length + 1);
+            if (y >= b.bottom - parte) {
+                pila.style.setProperty('--zona', `${parte}px`);
+                return { tipo: 'pila', con: ids[0], antesDe: null, marca: [pila, 'soltar-abajo'] };
+            }
+        }
+    }
+    const sig = pilas.find(p => { const b = p.getBoundingClientRect(); return x < b.left + b.width / 2; });
+    return {
+        tipo: 'columna', antesDe: sig?.querySelector('.col[data-lista]').dataset.lista ?? null,
+        marca: sig ? [sig, 'ins-antes'] : [pilas.at(-1), 'ins-despues'],
     };
-    r.addEventListener('dragover', e => {
-        if (!e.dataTransfer.types.includes(TIPO_COLUMNA)) return;
+}
+
+/** Colocar proyectos arrastrando su cabecera. Se guarda en este navegador, no en ClickUp. */
+function arrastreProyectos(zona) {
+    const r = raiz();
+    const limpiar = () => zona.querySelectorAll('.pila, .col').forEach(c => c.classList.remove('ins-antes', 'ins-despues', 'soltar-abajo', 'ins-arriba', 'ins-abajo'));
+    zona.addEventListener('dragover', e => {
+        if (!arrastrado || !e.dataTransfer.types.includes(TIPO_COLUMNA)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         limpiar();
-        const sig = siguiente(e.clientX, e.clientY);
-        if (sig) sig.classList.add('ins-antes');
-        else cols().at(-1)?.classList.add('ins-despues');
+        const { marca } = destinoDe(zona, arrastrado.id, e.clientX, e.clientY, arrastrado.entera);
+        marca[0]?.classList.add(marca[1]);
         const b = r.getBoundingClientRect();
         if (e.clientX < b.left + 60) r.scrollLeft -= 30;
         else if (e.clientX > b.right - 60) r.scrollLeft += 30;
     });
-    r.addEventListener('dragleave', e => { if (!r.contains(e.relatedTarget)) limpiar(); });
-    r.addEventListener('dragend', limpiar);
-    r.addEventListener('drop', e => {
+    zona.addEventListener('dragleave', e => { if (!zona.contains(e.relatedTarget)) limpiar(); });
+    zona.addEventListener('dragend', () => { limpiar(); arrastrado = null; });
+    zona.addEventListener('drop', e => {
         const id = e.dataTransfer.getData(TIPO_COLUMNA);
-        if (!id) return;
+        if (!id || !arrastrado) return;
         e.preventDefault();
-        const destino = siguiente(e.clientX, e.clientY)?.dataset.lista ?? null;
+        const { entera } = arrastrado;
+        const d = destinoDe(zona, id, e.clientX, e.clientY, entera);
+        // Un temblor al soltar no es un movimiento.
+        const quieto = Math.hypot(e.clientX - arrastrado.x, e.clientY - arrastrado.y) < 12;
         limpiar();
-        accion(m.moverProyecto(id, destino));
+        arrastrado = null;
+        if (quieto) return;
+        if (entera) accion(m.moverPila(id, d.antesDe));
+        else accion(d.tipo === 'pila' ? m.apilarProyecto(id, d.con, d.antesDe) : m.moverAColumna(id, d.antesDe));
     });
 }
 
@@ -69,6 +97,7 @@ function icono(...formas) {
 const icoUsuario = () => icono(['circle', { cx: 8, cy: 5, r: 3 }], ['path', { d: 'M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5' }]);
 const icoMas = () => icono(['path', { d: 'M8 3v10M3 8h10' }]);
 const icoRegistrar = () => icono(['path', { d: 'M2.5 8h11M9 3.5 13.5 8 9 12.5' }]);
+const icoAsa = () => icono(...[5, 11].flatMap(cx => [3.5, 8, 12.5].map(cy => ['circle', { cx, cy, r: 1, class: 'punto-asa' }])));
 
 async function accion(p, ok) {
     try { await p; if (ok) aviso(ok, 'bien'); }
@@ -194,8 +223,7 @@ export const alRegistrar = fn => { registrar = fn; };
 
 // ── Detalle de una tarea ─────────────────────────────────────────────────
 function detalle(t, lista) {
-    const desc = h('div', { class: 'desc' }, 'Cargando la descripción…');
-    const pinta = () => cuerpo.replaceChildren(
+    const pinta = () => cab.replaceChildren(
         h('div', { class: 'det-ruta' }, `${lista.name} · ${m.rutaDe(t, lista)}`),
         h('div', { class: 'det-fila' },
             chipEstado(t, lista), chipEstimacion(t), chipImputado(t, lista, 'imputado '),
@@ -205,22 +233,38 @@ function detalle(t, lista) {
         h('div', { class: 'det-gente' }, (t.assignees || []).length
             ? `Asignada a: ${t.assignees.map(a => a.username || a.initials).join(', ')}`
             : 'Sin asignar'),
-        desc,
     );
-    const cuerpo = h('div', { class: 'detalle' });
+    const cab = h('div', { class: 'detalle' });
     pinta();
-    dialogo(t.name, cuerpo);
-    tareaPorId(t.id).then(r => {
-        const txt = (r.markdown_description || r.description || r.text_content || '').trim();
-        desc.textContent = txt || 'Esta tarea no tiene descripción.';
-        desc.classList.toggle('vacia', !txt);
-    }).catch(e => { desc.textContent = e.message; });
+    const paneles = panelesTarea(t.id);
+    dialogo(t.name, [cab, paneles.el], { clase: 'dlg-detalle', puedeCerrar: paneles.puedeCerrar });
     detalleAbierto = pinta;
 }
 let detalleAbierto = null;
 
 // ── Columnas ─────────────────────────────────────────────────────────────
-function columna(lista) {
+/** El asa para llevarse la pila entera. Va en la cabecera de arriba, para que todas las columnas sigan alineadas. */
+function asaPila(lista) {
+    const texto = 'Arrastra para mover toda la columna';
+    return h('span', {
+        class: 'asa-pila', draggable: 'true', title: texto, 'aria-label': texto,
+        ondragstart: e => {
+            // Sin esto, la cabecera lo tomaría por un arrastre de su proyecto.
+            e.stopPropagation();
+            const pila = e.currentTarget.closest('.pila');
+            e.dataTransfer.setData(TIPO_COLUMNA, lista.id);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setDragImage(pila, 16, 16);
+            arrastrado = { id: lista.id, x: e.clientX, y: e.clientY, entera: true };
+            // Después de crear la imagen del arrastre, que si no saldría atenuada.
+            setTimeout(() => pila.classList.add('col-movida'));
+        },
+        // Sube hasta el tablero, que borra las marcas y da por terminado el arrastre, también con Esc.
+        ondragend: e => e.currentTarget.closest('.pila')?.classList.remove('col-movida'),
+    }, icoAsa());
+}
+
+function columna(lista, conAsa) {
     const nodos = m.arbol(lista);
     const url = `https://app.clickup.com/${state.user.teamId}/v/li/${lista.id}`;
     return h('section', { class: 'col', 'data-lista': lista.id },
@@ -229,10 +273,12 @@ function columna(lista) {
             ondragstart: e => {
                 e.dataTransfer.setData(TIPO_COLUMNA, lista.id);
                 e.dataTransfer.effectAllowed = 'move';
+                arrastrado = { id: lista.id, x: e.clientX, y: e.clientY };
                 e.currentTarget.closest('.col').classList.add('col-movida');
             },
             ondragend: e => e.currentTarget.closest('.col')?.classList.remove('col-movida'),
         },
+            conAsa && asaPila(lista),
             h('a', { class: 'col-nombre', draggable: 'false', href: url, target: '_blank', rel: 'noopener', title: `${lista.carpeta ? `${lista.carpeta} · ` : ''}Abrir en ClickUp` }, lista.name),
             h('button', { class: 'icono', title: 'Crear tarea en este proyecto', onclick: e => composer(e.currentTarget, lista, null) }, '+'),
             h('button', { class: 'icono', title: 'Quitar esta columna del tablero', onclick: () => accion(m.ocultarProyecto(lista.id), `${lista.name} fuera del tablero. Vuelve con el botón +.`) }, '×'),
@@ -283,11 +329,8 @@ export function pintar() {
     const antesX = r.scrollLeft;
     const scrolls = new Map([...r.querySelectorAll('.col')].map(c => [c.dataset.lista, c.querySelector('.col-cuerpo')?.scrollTop]));
     const buscadorVivo = buscando ? r.querySelector('.col-buscar') : null;
-    const cols = m.columnas().map(columna);
+    const cols = m.columnas().map(grupo => h('div', { class: 'pila' }, grupo.map((l, i) => columna(l, i === 0 && grupo.length > 1))));
     r.replaceChildren(...cols, buscadorVivo || columnaMas());
-    const dosFilas = state.prefs.filas === 2;
-    r.classList.toggle('dos-filas', dosFilas);
-    r.style.gridTemplateColumns = dosFilas ? `repeat(${Math.ceil((cols.length + 1) / 2)}, auto)` : '';
     if (!cols.length && !buscando && !Object.keys(state.tablero).length) {
         r.prepend(h('p', { class: 'tablero-vacio' }, 'Aún no hay proyectos. Si acabas de conectar, se están cargando.'));
     }
@@ -300,10 +343,9 @@ export function pintar() {
     detalleAbierto?.();
 }
 
-/** Los botones globales de la vista: Mis cosas / Todas y filas de columnas. */
+/** Los botones globales de la vista: Mis cosas / Todas. */
 export function pintarControles() {
     const p = state.prefs;
     document.querySelectorAll('[data-vista]').forEach(b => b.classList.toggle('on', b.dataset.vista === p.vista));
-    document.querySelectorAll('[data-filas]').forEach(b => b.classList.toggle('on', +b.dataset.filas === p.filas));
 }
 

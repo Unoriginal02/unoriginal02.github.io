@@ -122,11 +122,6 @@ function iniciarControles() {
         guardar('prefs');
         pintar();
     }));
-    document.querySelectorAll('[data-filas]').forEach(b => b.addEventListener('click', () => {
-        state.prefs.filas = +b.dataset.filas;
-        guardar('prefs');
-        pintar();
-    }));
     document.getElementById('sincronizar').addEventListener('click', sincronizar);
     document.getElementById('ajustes').addEventListener('click', () => conexion(false));
 }

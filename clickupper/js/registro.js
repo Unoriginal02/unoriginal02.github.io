@@ -17,6 +17,8 @@ export function iniciar(alCambiar) {
         if (!e.dataTransfer.types.includes(TIPO_ARRASTRE)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
+        // Al entrar, se ve el hueco del final, que es donde cae.
+        if (!panel.classList.contains('soltar')) { const l = panel.querySelector('.reg-lista'); if (l) l.scrollTop = l.scrollHeight; }
         panel.classList.add('soltar');
     });
     panel.addEventListener('dragleave', e => { if (!panel.contains(e.relatedTarget)) panel.classList.remove('soltar'); });
@@ -33,6 +35,9 @@ function añadirTarea(id) {
     try {
         const e = m.añadirEntrada(fecha, m.datosTarea(hallada.t, hallada.lista));
         aviso(`${e.start} · ${e.taskName}`, 'bien');
+        redibujar();
+        document.querySelector(`[data-entrada="${CSS.escape(e.id)}"]`)?.scrollIntoView({ block: 'center' });
+        return;
     } catch (err) { error(err); }
     redibujar();
 }
@@ -117,7 +122,9 @@ export function pintar() {
     }
     const dia = m.delDia(fecha);
     const total = dia.reduce((s, e) => s + m.duracion(e, dia), 0);
-    document.getElementById('registro').replaceChildren(
+    const panel = document.getElementById('registro');
+    const antes = panel.querySelector('.reg-lista')?.scrollTop || 0;
+    panel.replaceChildren(
         h('header', { class: 'reg-cab' },
             h('span', { class: 'panel-titulo' }, 'Registro'),
             h('button', { class: 'icono', title: 'Día anterior', onclick: () => { fecha = addDays(fecha, -1); redibujar(); } }, '‹'),
@@ -127,11 +134,14 @@ export function pintar() {
             total > 0 && h('span', { class: 'reg-total' }, fmtMin(total)),
         ),
         h('div', { class: 'reg-lista' },
-            dia.length ? dia.map(e => fila(e, dia)) : h('p', { class: 'reg-vacio' }, 'Arrastra aquí una tarea para apuntar que estás con ella.')),
+            dia.length ? dia.map(e => fila(e, dia)) : h('p', { class: 'reg-vacio' }, 'Arrastra aquí una tarea para apuntar que estás con ella.'),
+            // Siempre queda sitio para una entrada más: el hueco donde soltar la siguiente tarea.
+            h('div', { class: 'reg-hueco', 'aria-hidden': 'true' })),
         h('footer', { class: 'reg-pie' },
             h('button', { class: 'btn', onclick: ev => elegirTarea(ev.currentTarget, d => { try { m.añadirEntrada(fecha, d); } catch (err) { error(err); } }) }, '+ buscar tarea'),
             h('button', { class: 'btn', onclick: () => { try { m.añadirEntrada(fecha); } catch (err) { error(err); } redibujar(); } }, '+ sin tarea'),
         ),
     );
+    panel.querySelector('.reg-lista').scrollTop = antes;
 }
 

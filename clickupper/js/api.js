@@ -19,8 +19,9 @@ async function pedir(metodo, ruta, cuerpo, token = state.token) {
         for (let intento = 0; ; intento++) {
             const r = await fetch(BASE + ruta, {
                 method: metodo,
-                headers: { Authorization: token, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
-                body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+                // Un archivo va como FormData, y es el navegador quien pone su Content-Type.
+                headers: { Authorization: token, ...(cuerpo && !(cuerpo instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) },
+                body: cuerpo instanceof FormData ? cuerpo : cuerpo ? JSON.stringify(cuerpo) : undefined,
             });
             if (r.status === 429 && intento < 4) { await new Promise(ok => setTimeout(ok, 15000)); continue; }
             if (r.status === 401) throw new Error('ClickUp no acepta el token.');
@@ -83,6 +84,25 @@ export async function catalogo() {
 
 export const crearTarea = (listId, cuerpo) => pedir('POST', `/list/${listId}/task`, cuerpo);
 export const cambiarTarea = (id, cuerpo) => pedir('PUT', `/task/${encodeURIComponent(id)}`, cuerpo);
+
+/** Todos los comentarios, del último al primero. ClickUp los da de 25 en 25. */
+export async function comentarios(id) {
+    const vistos = new Map();
+    for (let q = ''; ;) {
+        const { comments = [] } = await pedir('GET', `/task/${encodeURIComponent(id)}/comment${q}`);
+        const nuevos = comments.filter(c => !vistos.has(c.id));
+        nuevos.forEach(c => vistos.set(c.id, c));
+        if (comments.length < 25 || !nuevos.length) return [...vistos.values()];
+        const ult = comments.at(-1);
+        q = `?start=${ult.date}&start_id=${ult.id}`;
+    }
+}
+export const comentar = (id, comment) => pedir('POST', `/task/${encodeURIComponent(id)}/comment`, { comment, notify_all: false });
+export function subirAdjunto(id, archivo) {
+    const datos = new FormData();
+    datos.append('attachment', archivo, archivo.name);
+    return pedir('POST', `/task/${encodeURIComponent(id)}/attachment`, datos);
+}
 
 export async function entradasDeTiempo(desdeMs, hastaMs) {
     const d = await pedir('GET', `/team/${team()}/time_entries?start_date=${desdeMs}&end_date=${hastaMs}&assignee=${yo()}&include_location_names=true`);
