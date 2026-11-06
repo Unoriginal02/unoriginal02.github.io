@@ -1,5 +1,5 @@
 // Lo que se lee y se escribe de una tarea en su detalle: descripción, archivos y comentarios.
-import { h, pad, fechaCorta, toISO } from './util.js';
+import { h, pad, fechaCorta, toISO, capital } from './util.js';
 import * as api from './api.js';
 import { aviso, preguntar } from './ui.js';
 import { aComentario, aDescripcion, deComentario, deMarkdown, paraEditar, pintarBloques } from './formato.js';
@@ -103,7 +103,7 @@ export function panelesTarea(id) {
         cuerpoDesc.replaceChildren(...(bloques.length ? pintarBloques(bloques) : ['Esta tarea no tiene descripción.']));
         cuerpoDesc.classList.toggle('vacia', !bloques.length);
         seccionDesc.replaceChildren(cabDesc, cuerpoDesc);
-        accionDesc.replaceChildren(h('button', { class: 'btn', onclick: editarDescripcion }, 'editar'));
+        accionDesc.replaceChildren(h('button', { class: 'btn', onclick: editarDescripcion }, 'Editar'));
     }
 
     function editarDescripcion() {
@@ -124,10 +124,10 @@ export function panelesTarea(id) {
                     guardar.disabled = false;
                 }
             },
-        }, 'guardar');
+        }, 'Guardar');
         const e = editor({
             valor: inicial, filas: 14, placeholder: 'Descripción',
-            botones: [h('button', { class: 'btn', onclick: verDescripcion }, 'cancelar'), guardar],
+            botones: [h('button', { class: 'btn', onclick: verDescripcion }, 'Cancelar'), guardar],
         });
         const nota = h('div', { class: 'det-nota mal' });
         editando = { sucio: () => e.ta.value !== inicial };
@@ -167,7 +167,7 @@ export function panelesTarea(id) {
             cargarTarea({ soloAdjuntos: true }).catch(() => {});
         },
     });
-    const botonSubir = h('button', { class: 'btn', onclick: () => selector.click() }, '+ subir archivo');
+    const botonSubir = h('button', { class: 'btn', onclick: () => selector.click() }, '+ Subir archivo');
 
     // Comentarios: el más antiguo arriba y el último junto al cuadro para escribir.
     async function cargarComentarios() {
@@ -175,7 +175,7 @@ export function panelesTarea(id) {
             const cs = await api.comentarios(id);
             listaCom.classList.remove('dim');
             listaCom.replaceChildren(...(cs.length ? [...cs].reverse().map(c => h('article', { class: 'com' },
-                h('div', { class: 'com-cab' }, h('b', {}, c.user?.username || '—'), h('span', { class: 'dim' }, fechaHora(c.date))),
+                h('div', { class: 'com-cab' }, h('b', {}, c.user?.username || '—'), h('span', { class: 'dim' }, capital(fechaHora(c.date)))),
                 h('div', { class: 'md' }, pintarBloques(deComentario(c))),
                 +c.reply_count > 0 && h('div', { class: 'det-nota' }, `${c.reply_count} ${+c.reply_count === 1 ? 'respuesta' : 'respuestas'} en ClickUp`),
             )) : [h('span', { class: 'dim' }, 'Sin comentarios.')]));
@@ -197,7 +197,7 @@ export function panelesTarea(id) {
             } catch (err) { notaCom.textContent = err.message; }
             enviar.disabled = false;
         },
-    }, 'comentar');
+    }, 'Comentar');
     const nuevo = editor({ filas: 4, placeholder: 'Escribe un comentario', botones: [enviar] });
 
     async function cargarTarea({ soloAdjuntos = false } = {}) {
@@ -223,7 +223,7 @@ export function panelesTarea(id) {
         puedeCerrar: async () => {
             if (!editando?.sucio() && !nuevo.ta.value.trim()) return true;
             return await preguntar('Sin guardar', 'Hay texto sin guardar en esta tarea.', [
-                { texto: 'descartar', valor: 'si', clase: 'peligro' },
+                { texto: 'Descartar', valor: 'si', clase: 'peligro' },
             ]) === 'si';
         },
     };

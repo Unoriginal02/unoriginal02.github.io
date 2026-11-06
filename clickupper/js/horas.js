@@ -1,6 +1,6 @@
 // Vista Horas: la semana (como DWS) y el mes. Aquí solo se ajustan horas y se imputa:
 // proyecto, tarea y descripción se editan en el Tablero.
-import { h, fmtMin, toHHMM, toMin, toISO, hoyISO, addDays, lunesDe, fromISO, nombreDia, nombreMes, fechaCorta, colorDe, hexDeColor, pad } from './util.js';
+import { h, fmtMin, toHHMM, toMin, toISO, hoyISO, addDays, lunesDe, fromISO, nombreDia, nombreMes, fechaCorta, colorDe, hexDeColor, pad, capital } from './util.js';
 import { state } from './store.js';
 import * as m from './model.js';
 import { aviso, error, popover, cerrarPopover, preguntar } from './ui.js';
@@ -48,7 +48,7 @@ async function imputarYAvisar(fecha, taskId, etiqueta) {
                 return `${toHHMM(d.getHours() * 60 + d.getMinutes())} ${r.taskName} (${fmtMin(r.dur / 60000)})`;
             }).join(' · ');
             const si = await preguntar('Imputar y sustituir', `Estas imputaciones de ClickUp no tienen bloque aquí y se borrarán: ${lista}`, [
-                { texto: 'borrar e imputar', valor: 'si', clase: 'peligro' },
+                { texto: 'Borrar e imputar', valor: 'si', clase: 'peligro' },
             ]);
             if (si !== 'si') { aviso('No se ha imputado nada.'); return; }
         }
@@ -133,11 +133,11 @@ function zonaDuplicar(b, fecha) {
     });
     return h('div', { class: 'info-dup' },
         h('label', {}, 'Duplicar en otro día, o Shift + arrastrar en esta semana'),
-        h('div', { class: 'info-dup-fila' }, dia, h('button', { class: 'btn', onclick: () => duplicar(b, dia.value) }, 'duplicar')));
+        h('div', { class: 'info-dup-fila' }, dia, h('button', { class: 'btn', onclick: () => duplicar(b, dia.value) }, 'Duplicar')));
 }
 
 function botonEliminar(accion) {
-    return h('button', { class: 'btn peligro info-eliminar', onclick: () => { cerrarPopover(); accion(); } }, 'eliminar');
+    return h('button', { class: 'btn peligro info-eliminar', onclick: () => { cerrarPopover(); accion(); } }, 'Eliminar');
 }
 
 function info(ancla, b, fecha) {
@@ -168,12 +168,12 @@ function info(ancla, b, fecha) {
         e.cuId && h('button', {
             class: 'btn info-quitar', title: 'Solo cambia la marca en la app. Para cuando se ha borrado directamente en ClickUp.',
             onclick: () => { cerrarPopover(); m.quitarImputado(e); aviso('Ya no consta como imputada. ClickUp no ha cambiado.'); redibujar(); },
-        }, 'quitar imputado'),
+        }, 'Quitar imputado'),
         e.taskId
             ? h('button', {
                 class: 'btn primario', disabled: !pend.length,
                 onclick: () => { cerrarPopover(); imputarYAvisar(fecha, e.taskId, e.taskName); },
-            }, pend.length ? `imputar esta tarea · ${deLaTarea.length} ${deLaTarea.length === 1 ? 'bloque' : 'bloques'} · ${fmtMin(total)}` : 'tarea imputada')
+            }, pend.length ? `Imputar esta tarea · ${deLaTarea.length} ${deLaTarea.length === 1 ? 'bloque' : 'bloques'} · ${fmtMin(total)}` : 'Tarea imputada')
             : h('div', { class: 'info-pie' }, 'Sin tarea no se puede imputar. Elígela en el Tablero.'),
         zonaDuplicar(b, fecha),
         botonEliminar(() => quitar(e)),
@@ -383,7 +383,7 @@ function pintarSemana(raiz) {
                 class: 'btn imputar-dia', disabled: !pend.length || imputando,
                 title: 'Deja ClickUp como este día: imputa los bloques y borra las demás imputaciones tuyas de ese día',
                 onclick: () => imputarYAvisar(d, null, fechaCorta(d)),
-            }, pend.length ? `imputar día · ${pend.length}` : lista.length ? 'día imputado' : 'imputar día'),
+            }, pend.length ? `Imputar día · ${pend.length}` : lista.length ? 'Día imputado' : 'Imputar día'),
         );
     });
 
@@ -442,11 +442,11 @@ function pintarMes(raiz) {
             h('div', { class: 'mes-cab' }, h('span', {}, fromISO(d).getDate()), total > 0 && h('b', {}, fmtMin(total))),
             resumen.slice(0, 4).map(x => h('div', { class: `mes-proy ${x.pendiente > 0 ? 'pendiente' : ''}`, style: `--c:${colorDe(x.id || x.nombre)}`, title: x.pendiente > 0 ? `${fmtMin(x.pendiente)} sin imputar` : 'Imputado' },
                 h('span', {}, x.nombre), h('em', {}, fmtMin(x.min)))),
-            resumen.length > 4 && h('div', { class: 'mes-mas' }, `y ${resumen.length - 4} más`),
+            resumen.length > 4 && h('div', { class: 'mes-mas' }, `Y ${resumen.length - 4} más`),
         ));
     }
     raiz.replaceChildren(h('div', { class: 'mes' },
-        h('div', { class: 'mes-sem' }, ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map(x => h('span', {}, x))),
+        h('div', { class: 'mes-sem' }, ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(x => h('span', {}, x))),
         h('div', { class: 'mes-rejilla' }, celdas)));
     return totalMes;
 }
@@ -456,8 +456,8 @@ export function pintar() {
     if (enGesto) return;   // al soltar se repinta
     const raiz = document.getElementById('horas-cuerpo');
     const titulo = modo === 'semana'
-        ? `${fechaCorta(lunes)} – ${fechaCorta(addDays(lunes, 6))}`
-        : nombreMes(mes.y, mes.m);
+        ? `${capital(fechaCorta(lunes))} – ${fechaCorta(addDays(lunes, 6))}`
+        : capital(nombreMes(mes.y, mes.m));
     const paso = d => {
         if (modo === 'semana') lunes = addDays(lunes, d * 7);
         else { const x = new Date(mes.y, mes.m + d, 1); mes = { y: x.getFullYear(), m: x.getMonth() }; }
@@ -471,22 +471,22 @@ export function pintar() {
     const totalMes = modo === 'mes' ? pintarMes(raiz) : (pintarSemana(raiz), 0);
     document.getElementById('horas-barra').replaceChildren(...[
         h('div', { class: 'selector' },
-            h('button', { class: modo === 'semana' ? 'on' : '', onclick: () => { modo = 'semana'; redibujar(); } }, 'semana'),
+            h('button', { class: modo === 'semana' ? 'on' : '', onclick: () => { modo = 'semana'; redibujar(); } }, 'Semana'),
             h('button', { class: modo === 'mes' ? 'on' : '', onclick: () => {
                 modo = 'mes';
                 const x = fromISO(lunes); mes = { y: x.getFullYear(), m: x.getMonth() };
                 redibujar();
-            } }, 'mes')),
+            } }, 'Mes')),
         h('button', { class: 'icono', title: 'Anterior', onclick: () => paso(-1) }, '‹'),
         h('span', { class: 'horas-titulo' }, titulo),
         h('button', { class: 'icono', title: 'Siguiente', onclick: () => paso(1) }, '›'),
-        h('button', { class: 'btn', onclick: irHoy }, 'hoy'),
+        h('button', { class: 'btn', onclick: irHoy }, 'Hoy'),
         modo === 'mes' && totalMes > 0 && h('span', { class: 'horas-total' }, `Total ${fmtMin(totalMes)}`),
         h('span', { class: 'hueco' }),
         cargando && h('span', { class: 'dim' }, 'Leyendo ClickUp…'),
         h('button', { class: 'btn', title: 'Volver a leer lo imputado en ClickUp', onclick: () => {
             if (modo === 'semana') traer(lunes, addDays(lunes, 6), true);
             else traer(lunesDe(`${mes.y}-${pad(mes.m + 1)}-01`), addDays(lunesDe(toISO(new Date(mes.y, mes.m + 1, 0))), 6), true);
-        } }, '⟳ clickup'),
+        } }, '⟳ ClickUp'),
     ].filter(Boolean));
 }

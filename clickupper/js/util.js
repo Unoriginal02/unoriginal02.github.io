@@ -32,6 +32,7 @@ export function msDe(iso, hhmm) { const d = fromISO(iso); d.setHours(0, toMin(hh
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+export const capital = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
 export const nombreDia = iso => DIAS[fromISO(iso).getDay()];
 export const nombreMes = (y, m) => `${MESES[m]} ${y}`;
 export function fechaCorta(iso) { const d = fromISO(iso); return `${DIAS[d.getDay()].slice(0, 3)} ${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)}`; }

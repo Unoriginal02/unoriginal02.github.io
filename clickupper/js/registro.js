@@ -1,5 +1,5 @@
 // Panel de registro: lo que he ido haciendo en el día. Se rellena arrastrando una tarea o con +.
-import { h, fmtMin, toHHMM, hoyISO, addDays, fechaCorta, hexDeColor, GRIS } from './util.js';
+import { h, fmtMin, toHHMM, hoyISO, addDays, fechaCorta, hexDeColor, GRIS, capital } from './util.js';
 import { state, guardar } from './store.js';
 import * as m from './model.js';
 import { aviso, error, selectorHora, popover, cerrarPopover, buscador, tareaPorId } from './ui.js';
@@ -94,7 +94,7 @@ function fila(e, dia) {
         h('div', { class: 'reg-cuerpo' },
             e.taskId
                 ? [h('div', { class: 'reg-proyecto' }, e.listName), h('div', { class: 'reg-tarea', title: e.ruta }, e.ruta || e.taskName)]
-                : h('button', { class: 'accion aviso', onclick: ev => elegirTarea(ev.currentTarget, d => m.cambiarEntrada(e, d)) }, 'elegir tarea'),
+                : h('button', { class: 'accion aviso', onclick: ev => elegirTarea(ev.currentTarget, d => m.cambiarEntrada(e, d)) }, 'Elegir tarea'),
             h('input', {
                 class: 'reg-nota', value: e.nota, placeholder: 'Descripción', spellcheck: 'false',
                 oninput: ev => { e.nota = ev.target.value; },
@@ -128,7 +128,7 @@ export function pintar() {
         h('header', { class: 'reg-cab' },
             h('span', { class: 'panel-titulo' }, 'Registro'),
             h('button', { class: 'icono', title: 'Día anterior', onclick: () => { fecha = addDays(fecha, -1); redibujar(); } }, '‹'),
-            h('button', { class: 'reg-fecha', title: 'Ir a hoy', onclick: () => { fecha = hoyISO(); redibujar(); } }, fecha === hoyISO() ? `hoy · ${fechaCorta(fecha)}` : fechaCorta(fecha)),
+            h('button', { class: 'reg-fecha', title: 'Ir a hoy', onclick: () => { fecha = hoyISO(); redibujar(); } }, fecha === hoyISO() ? `Hoy · ${fechaCorta(fecha)}` : capital(fechaCorta(fecha))),
             h('button', { class: 'icono', title: 'Día siguiente', onclick: () => { fecha = addDays(fecha, 1); redibujar(); } }, '›'),
             h('span', { class: 'hueco' }),
             total > 0 && h('span', { class: 'reg-total' }, fmtMin(total)),
@@ -138,8 +138,8 @@ export function pintar() {
             // Siempre queda sitio para una entrada más: el hueco donde soltar la siguiente tarea.
             h('div', { class: 'reg-hueco', 'aria-hidden': 'true' })),
         h('footer', { class: 'reg-pie' },
-            h('button', { class: 'btn', onclick: ev => elegirTarea(ev.currentTarget, d => { try { m.añadirEntrada(fecha, d); } catch (err) { error(err); } }) }, '+ buscar tarea'),
-            h('button', { class: 'btn', onclick: () => { try { m.añadirEntrada(fecha); } catch (err) { error(err); } redibujar(); } }, '+ sin tarea'),
+            h('button', { class: 'btn', onclick: ev => elegirTarea(ev.currentTarget, d => { try { m.añadirEntrada(fecha, d); } catch (err) { error(err); } }) }, '+ Buscar tarea'),
+            h('button', { class: 'btn', onclick: () => { try { m.añadirEntrada(fecha); } catch (err) { error(err); } redibujar(); } }, '+ Sin tarea'),
         ),
     );
     panel.querySelector('.reg-lista').scrollTop = antes;

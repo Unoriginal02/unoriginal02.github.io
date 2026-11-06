@@ -1,5 +1,5 @@
 // Vista Tablero: una columna por proyecto, con tareas y subtareas, y la columna + al final.
-import { h, fmtMin, parseEstimacion, siguienteNombre } from './util.js';
+import { h, fmtMin, parseEstimacion, siguienteNombre, capital } from './util.js';
 import { state, guardar } from './store.js';
 import * as m from './model.js';
 import { aviso, error, popover, cerrarPopover, dialogo, buscador, tareaPorId } from './ui.js';
@@ -114,17 +114,17 @@ function chipEstado(t, lista) {
             const ops = [...(lista.statuses || [])].sort((a, b) => a.orderindex - b.orderindex);
             popover(e.currentTarget, h('div', { class: 'menu' }, ops.map(s => h('button', {
                 class: `menu-fila ${s.status === t.status?.status ? 'on' : ''}`, style: `--c:${s.color}`,
-                onclick: () => { cerrarPopover(); accion(m.cambiarEstado(t, s), `Estado: ${s.status}`); },
-            }, h('i', { class: 'punto' }), s.status))));
+                onclick: () => { cerrarPopover(); accion(m.cambiarEstado(t, s), `Estado: ${capital(s.status)}`); },
+            }, h('i', { class: 'punto' }), capital(s.status)))));
         },
-    }, t.status?.status || '—');
+    }, capital(t.status?.status) || '—');
 }
 
 function chipEstimacion(t) {
     return h('button', {
         class: `chip est ${t.time_estimate ? '' : 'vacio'}`, title: 'Cambiar el tiempo estimado',
         onclick: e => { e.stopPropagation(); editarEstimacion(e.currentTarget, t); },
-    }, t.time_estimate ? `estimado ${fmtMin(t.time_estimate / 60000)}` : '+ tiempo estimado');
+    }, t.time_estimate ? `Estimado ${fmtMin(t.time_estimate / 60000)}` : '+ Tiempo estimado');
 }
 
 function chipImputado(t, lista, etiqueta = '') {
@@ -226,10 +226,10 @@ function detalle(t, lista) {
     const pinta = () => cab.replaceChildren(
         h('div', { class: 'det-ruta' }, `${lista.name} · ${m.rutaDe(t, lista)}`),
         h('div', { class: 'det-fila' },
-            chipEstado(t, lista), chipEstimacion(t), chipImputado(t, lista, 'imputado '),
+            chipEstado(t, lista), chipEstimacion(t), chipImputado(t, lista, 'Imputado '),
             botonAsignar(t),
             h('span', { class: 'hueco' }),
-            h('a', { class: 'btn', href: t.url || `https://app.clickup.com/t/${t.id}`, target: '_blank', rel: 'noopener' }, 'abrir en clickup ↗')),
+            h('a', { class: 'btn', href: t.url || `https://app.clickup.com/t/${t.id}`, target: '_blank', rel: 'noopener' }, 'Abrir en ClickUp ↗')),
         h('div', { class: 'det-gente' }, (t.assignees || []).length
             ? `Asignada a: ${t.assignees.map(a => a.username || a.initials).join(', ')}`
             : 'Sin asignar'),

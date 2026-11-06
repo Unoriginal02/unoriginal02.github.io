@@ -63,7 +63,7 @@ export function selectorHora(ancla, valor, alElegir) {
         h('div', { class: 'ruedas' }, columna(hh, 60), h('span', {}, ':'), columna(mm, 15)),
         h('div', { class: 'cuartos' }, [0, 15, 30, 45].map(c =>
             h('button', { onclick: () => { min = min - (min % 60) + c; pinta(); } }, `:${pad(c)}`))),
-        h('button', { class: 'btn primario', onclick: aceptar }, 'aceptar'),
+        h('button', { class: 'btn primario', onclick: aceptar }, 'Aceptar'),
     ));
     pinta();
     pop.querySelector('.selector-hora').focus();
@@ -121,16 +121,16 @@ export function buscador({ proyectos = true, alElegir, placeholder }) {
                 .sort((a, b) => b.n - a.n).slice(0, 30);
             filas.push(...ts.map(({ t }) => ({ tipo: 'tarea', id: t.id, name: t.name, sub: t.listName, listId: t.listId, cerrada: t.cerrada })));
             const id = idDeTarea(q);
-            if (id && !filas.some(f => f.id === id)) filas.unshift({ tipo: 'porId', id, name: `Buscar la tarea ${id}`, sub: 'por ID o enlace' });
+            if (id && !filas.some(f => f.id === id)) filas.unshift({ tipo: 'porId', id, name: `Buscar la tarea ${id}`, sub: 'Por ID o enlace' });
         }
         marcada = Math.min(marcada, Math.max(0, filas.length - 1));
         lista.replaceChildren(...filas.map((f, i) => h('button', {
             class: `res-fila ${i === marcada ? 'on' : ''} ${f.cerrada ? 'apagada' : ''}`,
             onclick: () => elegir(f),
         },
-            h('span', { class: 'res-tipo' }, f.tipo === 'proyecto' ? 'proy' : 'tarea'),
+            h('span', { class: 'res-tipo' }, f.tipo === 'proyecto' ? 'Proy' : 'Tarea'),
             h('span', { class: 'res-nombre' }, f.name),
-            h('span', { class: 'res-sub' }, f.dentro ? 'ya en el tablero' : f.sub || ''),
+            h('span', { class: 'res-sub' }, f.dentro ? 'Ya en el tablero' : f.sub || ''),
         )));
         if (!filas.length && q) lista.append(h('div', { class: 'res-vacio' }, 'Nada coincide. También puedes pegar una ID o un enlace de tarea.'));
     }

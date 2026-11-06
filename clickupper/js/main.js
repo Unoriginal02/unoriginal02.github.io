@@ -16,7 +16,7 @@ function pintar() {
     document.getElementById('vista-tablero').hidden = pestana !== 'tablero';
     document.getElementById('vista-horas').hidden = pestana !== 'horas';
     document.querySelectorAll('[data-pestana]').forEach(b => b.classList.toggle('on', b.dataset.pestana === pestana));
-    document.getElementById('usuario').textContent = state.user?.nombre || 'sin conectar';
+    document.getElementById('usuario').textContent = state.user?.nombre || 'Sin conectar';
     if (pestana === 'tablero') {
         tablero.pintarControles();
         tablero.pintar();
@@ -68,16 +68,16 @@ function conexion(primeraVez = false) {
     };
     const d = dialogo(primeraVez ? 'Conectar con ClickUp' : 'Ajustes', [
         h('label', { class: 'dlg-etiqueta' }, 'Token de ClickUp'), entrada, nota,
-        h('div', { class: 'dlg-pie' }, h('button', { class: 'btn primario', onclick: enviar }, 'conectar')),
+        h('div', { class: 'dlg-pie' }, h('button', { class: 'btn primario', onclick: enviar }, 'Conectar')),
         !primeraVez && [
             h('hr'),
             h('label', { class: 'dlg-etiqueta' }, 'Copia de seguridad del registro'),
             h('p', { class: 'dim' }, 'El registro vive en este navegador. Sin el token, que no se copia.'),
             h('div', { class: 'dlg-pie' },
-                h('button', { class: 'btn', onclick: exportar }, 'guardar copia'),
-                h('button', { class: 'btn', onclick: importar }, 'recuperar copia')),
+                h('button', { class: 'btn', onclick: exportar }, 'Guardar copia'),
+                h('button', { class: 'btn', onclick: importar }, 'Recuperar copia')),
             h('hr'),
-            h('div', { class: 'dlg-pie' }, h('button', { class: 'btn peligro', onclick: salir }, 'desconectar')),
+            h('div', { class: 'dlg-pie' }, h('button', { class: 'btn peligro', onclick: salir }, 'Desconectar')),
         ],
     ], { alCerrar: () => { if (!state.user) conexion(true); } });
     setTimeout(() => entrada.focus());
@@ -97,7 +97,7 @@ function importar() {
             const datos = JSON.parse(await inp.files[0].text());
             if (datos.tipo !== 'clickupper' || !Array.isArray(datos.entradas)) throw new Error('Ese archivo no es una copia de ClickUpper.');
             const r = await preguntar('Recuperar copia', `Sustituye tu registro actual (${state.entradas.length} entradas) por el de la copia (${datos.entradas.length}).`, [
-                { texto: 'sustituir', valor: 'si', clase: 'peligro' },
+                { texto: 'Sustituir', valor: 'si', clase: 'peligro' },
             ]);
             if (r !== 'si') return;
             state.entradas = datos.entradas;
