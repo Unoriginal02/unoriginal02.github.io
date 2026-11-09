@@ -6,7 +6,7 @@ const TOKEN = 'clickupper_token', USER = 'clickupper_user';
 export const state = {
     token: localStorage.getItem(TOKEN) || '',
     user: JSON.parse(localStorage.getItem(USER) || 'null'),
-    prefs: { vista: 'mias', añadidos: [], ocultos: [], orden: [], plegadas: [] },
+    prefs: { todas: [], añadidos: [], ocultos: [], orden: [], plegadas: [], favoritas: [], alaFavoritas: false },
     entradas: [],                 // registro: ver model.js
     tablero: {},                  // listId → { id, name, carpeta, statuses, tasks }
     catalogo: null,               // { fecha, listas: [] }  todos los proyectos, para el buscador

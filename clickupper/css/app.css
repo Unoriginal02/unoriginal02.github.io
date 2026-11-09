@@ -63,8 +63,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 /* ── Tablero ── */
 #vista-tablero { display: flex; }
 #tablero-zona { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#tablero-barra { display: flex; align-items: center; gap: 14px; padding: 8px 12px; }
-#columnas { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 10px; padding: 0 12px 10px; overflow-x: auto; }
+#columnas { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 10px; padding: 10px 12px; overflow-x: auto; }
 .tablero-vacio { align-self: center; color: var(--fg-mute); padding: 0 20px; }
 
 .col { width: var(--col); flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border: 1px solid var(--border); }
@@ -128,6 +127,19 @@ a.col-nombre:hover { color: var(--accent); }
 .accion.on { color: var(--accent); }
 .accion.aviso { color: var(--yellow); }
 body.arrastrando #registro { outline: 1px dashed var(--accent); outline-offset: -3px; }
+.icono.todas { display: inline-flex; align-items: center; justify-content: center; }
+.icono.on:not(:hover) { color: var(--accent); }
+
+/* ── Favoritas: ala junto al registro ── */
+#favoritas { width: 280px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--border); }
+#favoritas[hidden] { display: none; }
+#favoritas.soltar { background: var(--bg-alt); }
+body.arrastrando #favoritas { outline: 1px dashed var(--accent); outline-offset: -3px; }
+#favoritas .reg-cab { min-height: 37px; }
+.fav-lista { flex: 1; min-height: 0; overflow-y: auto; }
+.fav-fila { display: flex; align-items: center; gap: 4px; padding: 7px 6px 7px 10px; border-bottom: 1px solid var(--bg-alt); cursor: grab; }
+.fav-fila:hover { background: var(--bg-alt); }
+.fav-cuerpo { flex: 1; min-width: 0; }
 
 /* ── Registro ── */
 #registro { width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--border); }

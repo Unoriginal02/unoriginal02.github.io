@@ -29,11 +29,13 @@ export function iniciar(alCambiar) {
     });
 }
 
-function añadirTarea(id) {
+export function añadirTarea(id) {
     const hallada = m.buscarTarea(id);
-    if (!hallada) { aviso('Esa tarea ya no está en el tablero.', 'mal'); return; }
+    // Una favorita sirve aunque su proyecto no esté en el tablero.
+    const datos = hallada ? m.datosTarea(hallada.t, hallada.lista) : state.prefs.favoritas.find(f => f.taskId === id);
+    if (!datos) { aviso('Esa tarea ya no está en el tablero.', 'mal'); return; }
     try {
-        const e = m.añadirEntrada(fecha, m.datosTarea(hallada.t, hallada.lista));
+        const e = m.añadirEntrada(fecha, datos);
         aviso(`${e.start} · ${e.taskName}`, 'bien');
         redibujar();
         document.querySelector(`[data-entrada="${CSS.escape(e.id)}"]`)?.scrollIntoView({ block: 'center' });
@@ -126,6 +128,11 @@ export function pintar() {
     const antes = panel.querySelector('.reg-lista')?.scrollTop || 0;
     panel.replaceChildren(
         h('header', { class: 'reg-cab' },
+            h('button', {
+                class: `icono ala-boton ${state.prefs.alaFavoritas ? 'on' : ''}`, 'aria-pressed': String(state.prefs.alaFavoritas),
+                title: state.prefs.alaFavoritas ? 'Recoger las favoritas' : 'Desplegar las tareas favoritas',
+                onclick: () => { state.prefs.alaFavoritas = !state.prefs.alaFavoritas; guardar('prefs'); redibujar(); },
+            }, '★'),
             h('span', { class: 'panel-titulo' }, 'Registro'),
             h('button', { class: 'icono', title: 'Día anterior', onclick: () => { fecha = addDays(fecha, -1); redibujar(); } }, '‹'),
             h('button', { class: 'reg-fecha', title: 'Ir a hoy', onclick: () => { fecha = hoyISO(); redibujar(); } }, fecha === hoyISO() ? `Hoy · ${fechaCorta(fecha)}` : capital(fechaCorta(fecha))),

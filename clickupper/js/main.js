@@ -5,6 +5,7 @@ import * as api from './api.js';
 import * as m from './model.js';
 import * as tablero from './board.js';
 import * as registro from './registro.js';
+import * as favoritas from './favoritas.js';
 import * as horas from './horas.js';
 import { aviso, error, dialogo, preguntar } from './ui.js';
 
@@ -18,8 +19,8 @@ function pintar() {
     document.querySelectorAll('[data-pestana]').forEach(b => b.classList.toggle('on', b.dataset.pestana === pestana));
     document.getElementById('usuario').textContent = state.user?.nombre || 'Sin conectar';
     if (pestana === 'tablero') {
-        tablero.pintarControles();
         tablero.pintar();
+        favoritas.pintar();
         registro.pintar();
     } else {
         horas.pintar();
@@ -117,11 +118,6 @@ function iniciarControles() {
         localStorage.setItem(CLAVE_VISTA, pestana);
         pintar();
     }));
-    document.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click', () => {
-        state.prefs.vista = b.dataset.vista;
-        guardar('prefs');
-        pintar();
-    }));
     document.getElementById('sincronizar').addEventListener('click', sincronizar);
     document.getElementById('ajustes').addEventListener('click', () => conexion(false));
 }
@@ -131,6 +127,7 @@ async function arrancar() {
     m.asegurarColores();
     tablero.iniciar(pintar);
     registro.iniciar(pintar);
+    favoritas.iniciar(pintar);
     horas.iniciar(pintar);
     iniciarControles();
     pintar();

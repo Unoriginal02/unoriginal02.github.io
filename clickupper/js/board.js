@@ -97,6 +97,7 @@ function icono(...formas) {
 const icoUsuario = () => icono(['circle', { cx: 8, cy: 5, r: 3 }], ['path', { d: 'M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5' }]);
 const icoMas = () => icono(['path', { d: 'M8 3v10M3 8h10' }]);
 const icoRegistrar = () => icono(['path', { d: 'M2.5 8h11M9 3.5 13.5 8 9 12.5' }]);
+const icoTodas = () => icono(['circle', { cx: 6, cy: 5, r: 2.5 }], ['path', { d: 'M1.5 13.5c.5-2.6 2.2-4 4.5-4s4 1.4 4.5 4' }], ['circle', { cx: 11.5, cy: 5.5, r: 2 }], ['path', { d: 'M11 9.6c1.9 0 3.2 1.2 3.6 3.4' }]);
 const icoAsa = () => icono(...[5, 11].flatMap(cx => [3.5, 8, 12.5].map(cy => ['circle', { cx, cy, r: 1, class: 'punto-asa' }])));
 
 async function accion(p, ok) {
@@ -264,6 +265,16 @@ function asaPila(lista) {
     }, icoAsa());
 }
 
+/** Todas / solo las mías, para este proyecto. */
+function botonTodas(lista) {
+    const todas = m.verTodas(lista.id);
+    const texto = todas ? 'Viendo todas: pulsa para ver solo las tuyas' : 'Viendo las tuyas: pulsa para ver todas';
+    return h('button', {
+        class: `icono todas ${todas ? 'on' : ''}`, title: texto, 'aria-label': texto, 'aria-pressed': String(todas),
+        onclick: () => accion(m.verTodasEn(lista.id, !todas)),
+    }, icoTodas());
+}
+
 function columna(lista, conAsa) {
     const nodos = m.arbol(lista);
     const url = `https://app.clickup.com/${state.user.teamId}/v/li/${lista.id}`;
@@ -280,12 +291,13 @@ function columna(lista, conAsa) {
         },
             conAsa && asaPila(lista),
             h('a', { class: 'col-nombre', draggable: 'false', href: url, target: '_blank', rel: 'noopener', title: `${lista.carpeta ? `${lista.carpeta} · ` : ''}Abrir en ClickUp` }, lista.name),
+            botonTodas(lista),
             h('button', { class: 'icono', title: 'Crear tarea en este proyecto', onclick: e => composer(e.currentTarget, lista, null) }, '+'),
             h('button', { class: 'icono', title: 'Quitar esta columna del tablero', onclick: () => accion(m.ocultarProyecto(lista.id), `${lista.name} fuera del tablero. Vuelve con el botón +.`) }, '×'),
         ),
         h('div', { class: 'col-cuerpo' },
             nodos.length ? nodos.map(n => tarjeta(n, lista)) : h('p', { class: 'col-vacia' },
-                state.prefs.vista === 'mias' ? 'Nada asignado a ti aquí. Cambia a Todas para verlo todo.' : 'Este proyecto no tiene tareas abiertas.')),
+                !m.verTodas(lista.id) ? 'Nada asignado a ti aquí. El botón de personas de arriba enseña todas.' : 'Este proyecto no tiene tareas abiertas.')),
     );
 }
 
@@ -341,11 +353,5 @@ export function pintar() {
     });
     detalleAbierto = document.querySelector('dialog.dlg') ? detalleAbierto : null;
     detalleAbierto?.();
-}
-
-/** Los botones globales de la vista: Mis cosas / Todas. */
-export function pintarControles() {
-    const p = state.prefs;
-    document.querySelectorAll('[data-vista]').forEach(b => b.classList.toggle('on', b.dataset.vista === p.vista));
 }
 

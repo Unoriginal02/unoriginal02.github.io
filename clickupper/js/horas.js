@@ -128,7 +128,7 @@ async function duplicar(b, destino) {
 
 function zonaDuplicar(b, fecha) {
     const dia = h('input', {
-        class: 'campo', type: 'date', value: addDays(fecha, 1), title: 'Día de la copia',
+        class: 'campo', type: 'date', value: hoyISO(), title: 'Día de la copia',
         onkeydown: e => { if (e.key === 'Enter') duplicar(b, dia.value); },
     });
     return h('div', { class: 'info-dup' },

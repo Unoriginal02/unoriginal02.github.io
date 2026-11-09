@@ -14,9 +14,18 @@ export const PASO = 15;
 export const esCerrada = t => ['closed', 'done'].includes(t.status?.type);
 export const esMia = t => (t.assignees || []).some(a => String(a.id) === String(state.user?.id));
 
-/** Una columna del tablero: tareas y subtareas en árbol, filtradas por la vista. */
+/** Proyectos que enseñan todas sus tareas; los demás, solo lo mío. */
+export const verTodas = id => state.prefs.todas.includes(id);
+
+export function verTodasEn(id, si) {
+    const p = state.prefs;
+    p.todas = si ? [...new Set([...p.todas, id])] : p.todas.filter(x => x !== id);
+    return guardar('prefs');
+}
+
+/** Una columna del tablero: tareas y subtareas en árbol, filtradas por la vista de su proyecto. */
 export function arbol(lista) {
-    const soloMias = state.prefs.vista === 'mias';
+    const soloMias = !verTodas(lista.id);
     const porId = new Map(lista.tasks.map(t => [t.id, t]));
     const hijos = new Map();
     for (const t of lista.tasks) {
@@ -161,14 +170,14 @@ export async function sincronizar() {
     if (fallos.length) throw new Error(`${fallos.length} proyecto(s) sin recargar: ${fallos[0].message}`);
 }
 
-/** Añadir un proyecto: entra al tablero y la vista pasa a Todas, para ver lo que hay y asignarse. */
+/** Añadir un proyecto: entra al tablero viendo Todas, para ver lo que hay y asignarse. */
 export async function añadirProyecto(id) {
     const p = state.prefs;
     if (!state.tablero[id]) state.tablero[id] = await traerLista(id);
     p.ocultos = p.ocultos.filter(x => x !== id);
     // Si solo tengo ahí cosas cerradas, sincronizar no lo traería: cuenta como añadido a mano.
     if (!state.tablero[id].tasks.some(t => esMia(t) && !esCerrada(t)) && !p.añadidos.includes(id)) p.añadidos.push(id);
-    p.vista = 'todas';
+    p.todas = [...new Set([...p.todas, id])];
     await guardar('prefs', 'tablero');
 }
 
