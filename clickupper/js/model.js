@@ -73,12 +73,19 @@ export function arbol(lista) {
         return memo.get(t.id);
     };
     const visible = t => soloMias ? llevaMia(t) : !esCerrada(t) || (hijos.get(t.id) || []).some(visible);
+    // Subtareas: se ven aunque estén cerradas; solo se ocultan las tareas cerradas.
+    const memoSub = new Map();
+    const llevaMiaSub = t => {
+        if (!memoSub.has(t.id)) memoSub.set(t.id, esMia(t) || (hijos.get(t.id) || []).some(llevaMiaSub));
+        return memoSub.get(t.id);
+    };
+    const visibleSub = t => !soloMias || llevaMiaSub(t);
     const orden = (a, b, nivel) => nivel === 0
         ? +b.date_created - +a.date_created        // lo más nuevo arriba
         : +a.date_created - +b.date_created;       // subtareas: como en ClickUp, por antigüedad
     const nodo = (t, nivel) => ({
         t, nivel,
-        hijos: (hijos.get(t.id) || []).filter(visible).sort((a, b) => orden(a, b, nivel + 1)).map(x => nodo(x, nivel + 1)),
+        hijos: (hijos.get(t.id) || []).filter(visibleSub).sort((a, b) => orden(a, b, nivel + 1)).map(x => nodo(x, nivel + 1)),
     });
     return (hijos.get(null) || []).filter(visible).sort((a, b) => orden(a, b, 0)).map(t => nodo(t, 0));
 }
