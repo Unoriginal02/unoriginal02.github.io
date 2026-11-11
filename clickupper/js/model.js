@@ -14,6 +14,40 @@ export const PASO = 15;
 export const esCerrada = t => ['closed', 'done'].includes(t.status?.type);
 export const esMia = t => (t.assignees || []).some(a => String(a.id) === String(state.user?.id));
 
+// ── Novedades ────────────────────────────────────────────────────────────
+// vistas: id de tarea → date_updated que ya he visto. Un comentario o una mención también lo mueven
+// (probado en ClickUp real el 2026-11-11). Una tarea es nueva si ha cambiado después.
+const vistas = () => (state.prefs.vistas ||= {});
+export const esNueva = t => +t.date_updated > (vistas()[t.id] ?? Infinity);
+
+/** Abrir el detalle: lo que hay ya está visto. */
+export function visto(id, fecha) {
+    if (!fecha) return;
+    vistas()[id] = Math.max(vistas()[id] || 0, +fecha);
+    return guardar('prefs');
+}
+
+/** Lo que cambio yo desde la app no cuenta como novedad, salvo que la tarea ya tuviera alguna sin ver. */
+function escritoPorMi(t, fecha) {
+    if (!t || !fecha || esNueva(t)) return;
+    t.date_updated = String(fecha);
+    vistas()[t.id] = +fecha;
+}
+
+/** Tras sincronizar: las tareas de un proyecto que ya estaba cuentan desde que aparecen (las nuevas, sin ver);
+ *  las de un proyecto recién llegado, como vistas. Se olvidan las que ya no están. */
+function anotarVistas(previo) {
+    const v = vistas(), vivas = new Set();
+    for (const l of Object.values(state.tablero)) {
+        const antes = previo[l.id] && new Set(previo[l.id].tasks.map(t => t.id));
+        for (const t of l.tasks) {
+            vivas.add(t.id);
+            if (!(t.id in v)) v[t.id] = antes && !antes.has(t.id) ? 0 : +t.date_updated || 0;
+        }
+    }
+    for (const id of Object.keys(v)) if (!vivas.has(id)) delete v[id];
+}
+
 /** Proyectos que enseñan todas sus tareas; los demás, solo lo mío. */
 export const verTodas = id => state.prefs.todas.includes(id);
 
@@ -127,7 +161,10 @@ export function imputadoDe(t, lista) {
 async function refrescarImputado(ids) {
     await Promise.all([...new Set(ids)].map(async id => {
         const hallada = buscarTarea(id);
-        if (hallada) hallada.t.time_spent = (await api.tarea(id)).time_spent;
+        if (!hallada) return;
+        const r = await api.tarea(id);
+        hallada.t.time_spent = r.time_spent;
+        escritoPorMi(hallada.t, r.date_updated);
     })).catch(() => {});
     await guardar('tablero');
 }
@@ -172,7 +209,9 @@ export async function sincronizar() {
             if (state.tablero[id]) nuevo[id] = state.tablero[id];
         }
     });
+    const previo = state.tablero;
     state.tablero = nuevo;
+    anotarVistas(previo);
     const vuelven = reabrirCambiadas();
     await guardar('tablero', 'prefs');
     if (fallos.length) throw new Error(`${fallos.length} proyecto(s) sin recargar: ${fallos[0].message}`);
@@ -222,7 +261,7 @@ export function ocultarProyecto(id) {
 async function optimista(t, cambios, enviar) {
     const antes = Object.fromEntries(Object.keys(cambios).map(k => [k, t[k]]));
     Object.assign(t, cambios);
-    try { await enviar(); } catch (e) { Object.assign(t, antes); throw e; }
+    try { escritoPorMi(t, (await enviar())?.date_updated); } catch (e) { Object.assign(t, antes); throw e; }
     await guardar('tablero');
 }
 
@@ -251,7 +290,8 @@ export async function crearTarea(lista, nombre, padre = null) {
     cuerpo.assignees = [...asignados];
     const nueva = await api.crearTarea(lista.id, cuerpo);
     lista.tasks.push(compacta(nueva));
-    await guardar('tablero');
+    vistas()[nueva.id] = +nueva.date_updated || Date.now();
+    await guardar('tablero', 'prefs');
     return nueva;
 }
 

@@ -204,7 +204,8 @@ function tarjeta(nodo, lista) {
                     },
                 }, plegada ? '▸' : '▾')
                 : nodo.nivel === 0 && h('span', { class: 'plegar' }),
-            h('button', { class: 'tarea-nombre', title: 'Ver el detalle', onclick: () => detalle(t, lista) }, t.name),
+            h('button', { class: 'tarea-nombre', title: 'Ver el detalle', onclick: () => detalle(t, lista) },
+                m.esNueva(t) && h('span', { class: 'punto-nuevo', title: 'Ha cambiado desde la última vez que la abriste' }), t.name),
         ),
         h('div', { class: 'tarea-l2' },
             chipEstado(t, lista), chipImputado(t, lista),
@@ -237,7 +238,9 @@ function detalle(t, lista) {
     );
     const cab = h('div', { class: 'detalle' });
     pinta();
-    const paneles = panelesTarea(t.id);
+    m.visto(t.id, t.date_updated);
+    redibujar();
+    const paneles = panelesTarea(t.id, { alLeer: fecha => { m.visto(t.id, fecha); redibujar(); } });
     paneles.aceptarArchivos(dialogo(t.name, [cab, paneles.el], { clase: 'dlg-detalle', puedeCerrar: paneles.puedeCerrar }));
     detalleAbierto = pinta;
 }
@@ -275,6 +278,8 @@ function botonTodas(lista) {
     }, icoTodas());
 }
 
+const conNovedades = nodos => nodos.some(n => m.esNueva(n.t) || conNovedades(n.hijos));
+
 function columna(lista, conAsa) {
     const nodos = m.arbol(lista);
     const url = `https://app.clickup.com/${state.user.teamId}/v/li/${lista.id}`;
@@ -291,6 +296,7 @@ function columna(lista, conAsa) {
         },
             conAsa && asaPila(lista),
             h('a', { class: 'col-nombre', draggable: 'false', href: url, target: '_blank', rel: 'noopener', title: `${lista.carpeta ? `${lista.carpeta} · ` : ''}Abrir en ClickUp` }, lista.name),
+            conNovedades(nodos) && h('span', { class: 'punto-nuevo', title: 'Hay tareas que han cambiado desde la última vez que las abriste' }),
             botonTodas(lista),
             h('button', { class: 'icono', title: 'Crear tarea en este proyecto', onclick: e => composer(e.currentTarget, lista, null) }, '+'),
             h('button', { class: 'icono', title: 'Quitar esta columna del tablero', onclick: () => accion(m.ocultarProyecto(lista.id), `${lista.name} fuera del tablero. Vuelve con el botón +.`) }, '×'),
