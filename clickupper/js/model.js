@@ -134,7 +134,7 @@ async function refrescarImputado(ids) {
 
 /** Solo lo que usa la app: el tablero se guarda entero cada vez que cambia una tarea. */
 const compacta = t => ({
-    id: t.id, name: t.name, parent: t.parent, url: t.url, date_created: t.date_created,
+    id: t.id, name: t.name, parent: t.parent, url: t.url, date_created: t.date_created, date_updated: t.date_updated,
     time_estimate: t.time_estimate, time_spent: t.time_spent, status: t.status, tags: t.tags,
     assignees: (t.assignees || []).map(a => ({ id: a.id, username: a.username, initials: a.initials })),
 });
@@ -148,26 +148,53 @@ async function traerLista(id, carpeta = '') {
     };
 }
 
-/** Recarga el tablero: mira en qué proyectos tengo algo y trae todas sus tareas. */
+/** Recarga el tablero: mira en qué proyectos tengo algo y trae todas sus tareas.
+ *  Devuelve los nombres de las columnas quitadas que vuelven porque han cambiado. */
 export async function sincronizar() {
     const mias = await api.misTareas();
     const ids = new Map();
     // Sin cerrar de verdad: ClickUp también da aquí las de estado «completado».
     for (const t of mias) if (t.list?.id && !esCerrada(t)) ids.set(t.list.id, t.folder?.hidden ? '' : t.folder?.name);
     for (const id of state.prefs.añadidos) if (!ids.has(id)) ids.set(id, '');
+    // Las quitadas también se leen, para saber si han cambiado.
+    const cerradoEn = state.prefs.cerradoEn ||= {};
+    for (const id of state.prefs.ocultos) {
+        cerradoEn[id] ||= Date.now();   // quitadas antes de existir esto: cuentan desde ahora
+        if (!ids.has(id)) ids.set(id, '');
+    }
     const res = await Promise.allSettled([...ids].map(([id, carpeta]) => traerLista(id, carpeta)));
     const nuevo = {}, fallos = [];
     [...ids.keys()].forEach((id, i) => {
         if (res[i].status === 'fulfilled') nuevo[id] = res[i].value;
         else {
-            fallos.push(res[i].reason);
+            if (!state.prefs.ocultos.includes(id)) fallos.push(res[i].reason);
             // Un proyecto que no ha cargado conserva lo que había: mejor viejo que desaparecido.
             if (state.tablero[id]) nuevo[id] = state.tablero[id];
         }
     });
     state.tablero = nuevo;
-    await guardar('tablero');
+    const vuelven = reabrirCambiadas();
+    await guardar('tablero', 'prefs');
     if (fallos.length) throw new Error(`${fallos.length} proyecto(s) sin recargar: ${fallos[0].message}`);
+    return vuelven;
+}
+
+/** Una columna quitada vuelve al tablero si alguna tarea de las que enseña (las mías, o todas si ve Todas)
+ *  ha cambiado en ClickUp después de quitarla. */
+function reabrirCambiadas() {
+    const p = state.prefs, vuelven = [];
+    for (const id of [...p.ocultos]) {
+        const lista = state.tablero[id];
+        if (!lista) continue;
+        const cuenta = lista.tasks.filter(t => verTodas(id) || esMia(t));
+        if (!cuenta.some(t => +t.date_updated > p.cerradoEn[id])) continue;
+        p.ocultos = p.ocultos.filter(x => x !== id);
+        delete p.cerradoEn[id];
+        // Sin nada mío abierto, sincronizar no lo traería: cuenta como añadido a mano.
+        if (!lista.tasks.some(t => esMia(t) && !esCerrada(t)) && !p.añadidos.includes(id)) p.añadidos.push(id);
+        vuelven.push(lista.name);
+    }
+    return vuelven;
 }
 
 /** Añadir un proyecto: entra al tablero viendo Todas, para ver lo que hay y asignarse. */
@@ -175,6 +202,7 @@ export async function añadirProyecto(id) {
     const p = state.prefs;
     if (!state.tablero[id]) state.tablero[id] = await traerLista(id);
     p.ocultos = p.ocultos.filter(x => x !== id);
+    delete p.cerradoEn?.[id];
     // Si solo tengo ahí cosas cerradas, sincronizar no lo traería: cuenta como añadido a mano.
     if (!state.tablero[id].tasks.some(t => esMia(t) && !esCerrada(t)) && !p.añadidos.includes(id)) p.añadidos.push(id);
     p.todas = [...new Set([...p.todas, id])];
@@ -185,6 +213,7 @@ export function ocultarProyecto(id) {
     const p = state.prefs;
     p.añadidos = p.añadidos.filter(x => x !== id);
     p.ocultos = [...new Set([...p.ocultos, id])];
+    (p.cerradoEn ||= {})[id] = Date.now();
     p.orden = p.orden.map(c => [c].flat().filter(x => x !== id)).filter(c => c.length);
     return guardar('prefs');
 }

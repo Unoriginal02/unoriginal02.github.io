@@ -7,6 +7,7 @@ import * as tablero from './board.js';
 import * as registro from './registro.js';
 import * as favoritas from './favoritas.js';
 import * as horas from './horas.js';
+import * as copia from './copia.js';
 import { aviso, error, dialogo, preguntar } from './ui.js';
 
 const CLAVE_VISTA = 'clickupper_pestana';
@@ -18,6 +19,7 @@ function pintar() {
     document.getElementById('vista-horas').hidden = pestana !== 'horas';
     document.querySelectorAll('[data-pestana]').forEach(b => b.classList.toggle('on', b.dataset.pestana === pestana));
     document.getElementById('usuario').textContent = state.user?.nombre || 'Sin conectar';
+    document.getElementById('copia').hidden = copia.estado() !== 'en-pausa';
     if (pestana === 'tablero') {
         tablero.pintar();
         favoritas.pintar();
@@ -34,8 +36,8 @@ async function sincronizar() {
     b.disabled = true;
     aviso('Leyendo ClickUp…');
     try {
-        await m.sincronizar();
-        aviso(`Tablero al día · ${new Date().toTimeString().slice(0, 5)}`, 'bien');
+        const vuelven = await m.sincronizar();
+        aviso(`Tablero al día · ${new Date().toTimeString().slice(0, 5)}${vuelven.length ? ` · Vuelve${vuelven.length > 1 ? 'n' : ''} con cambios: ${vuelven.join(', ')}` : ''}`, 'bien');
         m.asegurarIndice().catch(() => {});   // para que el buscador esté listo cuando haga falta
     } catch (e) { error(e); }
     sincronizando = false;
@@ -72,6 +74,18 @@ function conexion(primeraVez = false) {
         h('div', { class: 'dlg-pie' }, h('button', { class: 'btn primario', onclick: enviar }, 'Conectar')),
         !primeraVez && [
             h('hr'),
+            h('label', { class: 'dlg-etiqueta' }, 'Copia automática'),
+            h('p', { class: 'dim' }, {
+                'no-disponible': 'Solo funciona en Chrome o Edge.',
+                'sin-archivo': 'Elige un archivo de tu ordenador y el registro se guardará ahí solo, cada vez que cambie.',
+                'en-pausa': `En pausa: Chrome necesita permiso para seguir escribiendo en ${copia.nombre()}.`,
+                'activa': `Activa: cada cambio se guarda en ${copia.nombre()}.`,
+            }[copia.estado()]),
+            copia.disponible && h('div', { class: 'dlg-pie' },
+                copia.estado() === 'en-pausa' && h('button', { class: 'btn primario', onclick: () => { d.close(); copia.reactivar().catch(error); } }, 'Reactivar'),
+                h('button', { class: 'btn', onclick: () => { d.close(); copia.elegir().then(pintar).catch(error); } },
+                    copia.estado() === 'sin-archivo' ? 'Elegir archivo' : 'Cambiar archivo')),
+            h('hr'),
             h('label', { class: 'dlg-etiqueta' }, 'Copia de seguridad del registro'),
             h('p', { class: 'dim' }, 'El registro vive en este navegador. Sin el token, que no se copia.'),
             h('div', { class: 'dlg-pie' },
@@ -96,15 +110,12 @@ function importar() {
     inp.addEventListener('change', async () => {
         try {
             const datos = JSON.parse(await inp.files[0].text());
-            if (datos.tipo !== 'clickupper' || !Array.isArray(datos.entradas)) throw new Error('Ese archivo no es una copia de ClickUpper.');
+            if (!copia.esCopia(datos)) throw new Error('Ese archivo no es una copia de ClickUpper.');
             const r = await preguntar('Recuperar copia', `Sustituye tu registro actual (${state.entradas.length} entradas) por el de la copia (${datos.entradas.length}).`, [
                 { texto: 'Sustituir', valor: 'si', clase: 'peligro' },
             ]);
             if (r !== 'si') return;
-            state.entradas = datos.entradas;
-            state.prefs = { ...state.prefs, ...datos.prefs };
-            m.asegurarColores();
-            await guardar('entradas', 'prefs');
+            await copia.recuperar(datos);
             aviso('Copia recuperada', 'bien');
             pintar();
         } catch (e) { error(e); }
@@ -120,11 +131,13 @@ function iniciarControles() {
     }));
     document.getElementById('sincronizar').addEventListener('click', sincronizar);
     document.getElementById('ajustes').addEventListener('click', () => conexion(false));
+    document.getElementById('copia').addEventListener('click', () => copia.reactivar().catch(error));
 }
 
 async function arrancar() {
     await cargar(pintar);
     m.asegurarColores();
+    await copia.iniciar(pintar).catch(() => {});
     tablero.iniciar(pintar);
     registro.iniciar(pintar);
     favoritas.iniciar(pintar);
