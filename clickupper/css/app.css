@@ -60,6 +60,15 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 #estado.bien { color: var(--green); }
 #estado.mal { color: var(--red); }
 
+/* ── Buscador de proyectos ── */
+.buscar { display: flex; align-items: center; gap: 2px; }
+#buscar { width: 220px; padding: 2px 8px; }
+#buscar.sin-nada { border-color: var(--red); }
+.buscar-cuenta { min-width: 5ch; padding: 0 4px; font-size: var(--fs-micro); color: var(--fg-dim); text-align: right; }
+.brilla { background: var(--yellow) !important; color: var(--term-bg) !important; box-shadow: 0 0 10px 2px var(--yellow); }
+.brilla-actual { background: var(--red) !important; box-shadow: 0 0 14px 4px var(--red); outline: 2px solid var(--fg); outline-offset: 1px; animation: brilla 0.9s ease-in-out infinite alternate; }
+@keyframes brilla { to { box-shadow: 0 0 4px 1px var(--red); } }
+
 /* ── Tablero ── */
 #vista-tablero { display: flex; }
 #tablero-zona { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -110,7 +119,7 @@ a.col-nombre:hover { color: var(--accent); }
 .tarea-nombre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .tarea-nombre:hover { color: var(--accent); }
 /* Cambió en ClickUp desde la última vez que se abrió. */
-.punto-nuevo { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; flex: none; }
+.punto-nuevo { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-right: 6px; vertical-align: 1px; flex: none; }
 .col-cab .punto-nuevo { align-self: center; margin: 0 4px 0 0; }
 .tarea-l2 { display: flex; align-items: center; gap: 6px; margin: 3px 0 0 18px; min-height: 20px; font-size: var(--fs-micro); }
 .chip { padding: 0 5px; white-space: nowrap; border: 1px solid var(--border); color: var(--fg-dim); }

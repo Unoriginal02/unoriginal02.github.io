@@ -8,6 +8,7 @@ import * as registro from './registro.js';
 import * as favoritas from './favoritas.js';
 import * as horas from './horas.js';
 import * as copia from './copia.js';
+import * as buscar from './buscar.js';
 import { aviso, error, dialogo, preguntar } from './ui.js';
 
 const CLAVE_VISTA = 'clickupper_pestana';
@@ -143,6 +144,7 @@ async function arrancar() {
     favoritas.iniciar(pintar);
     horas.iniciar(pintar);
     iniciarControles();
+    buscar.iniciar();
     pintar();
     if (state.user && state.token) sincronizar();
     else conexion(true);
