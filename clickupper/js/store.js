@@ -6,7 +6,7 @@ const TOKEN = 'clickupper_token', USER = 'clickupper_user';
 export const state = {
     token: localStorage.getItem(TOKEN) || '',
     user: JSON.parse(localStorage.getItem(USER) || 'null'),
-    prefs: { todas: [], añadidos: [], ocultos: [], cerradoEn: {}, vistas: {}, orden: [], plegadas: [], favoritas: [], alaFavoritas: false },
+    prefs: { todas: [], añadidos: [], ocultos: [], cerradoEn: {}, orden: [], plegadas: [], favoritas: [], alaFavoritas: false },
     entradas: [],                 // registro: ver model.js
     tablero: {},                  // listId → { id, name, carpeta, statuses, tasks }
     catalogo: null,               // { fecha, listas: [] }  todos los proyectos, para el buscador
@@ -39,6 +39,7 @@ async function leerTodo() {
         const v = await leer(c);
         if (v !== undefined) state[c] = c === 'prefs' ? { ...state.prefs, ...v } : v;
     }
+    delete state.prefs.vistas;   // del antiguo aviso de tareas cambiadas, ya quitado
 }
 
 export async function cargar(alCambiarFuera) {

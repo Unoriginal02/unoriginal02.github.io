@@ -84,7 +84,7 @@ function tamaño(b) {
 
 // ── Paneles ───────────────────────────────────────────────────────────────
 /** Devuelve { el, puedeCerrar }. Son nodos estables: repintar el resto del detalle no pierde lo que se está escribiendo. */
-export function panelesTarea(id, { alLeer } = {}) {
+export function panelesTarea(id) {
     const cuerpoDesc = h('div', { class: 'desc md vacia' }, 'Cargando la descripción…');
     const accionDesc = h('span');
     const cabDesc = cabecera('Descripción', accionDesc);
@@ -201,7 +201,6 @@ export function panelesTarea(id, { alLeer } = {}) {
                 await api.comentar(id, aComentario(texto));
                 nuevo.ta.value = '';
                 await cargarComentarios();
-                cargarTarea({ soloAdjuntos: true }).catch(() => {});   // para dar por visto el propio comentario
                 aviso('Comentario añadido', 'bien');
             } catch (err) { notaCom.textContent = err.message; }
             enviar.disabled = false;
@@ -211,7 +210,6 @@ export function panelesTarea(id, { alLeer } = {}) {
 
     async function cargarTarea({ soloAdjuntos = false } = {}) {
         const r = await api.tarea(id);
-        alLeer?.(r.date_updated);
         pintarAdjuntos(r.attachments);
         if (soloAdjuntos) return;
         descripcion = (r.markdown_description || r.description || r.text_content || '').trim();

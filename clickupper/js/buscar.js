@@ -1,8 +1,8 @@
-// Buscador de la barra: ilumina, mientras se escribe, cada nombre de proyecto que coincide en la vista abierta.
+// Buscador de la barra: ilumina, mientras se escribe, cada nombre de proyecto, tarea o subtarea que coincide en la vista abierta.
 // Enter / ↓ salta a la siguiente coincidencia, Mayús+Enter / ↑ a la anterior, Esc lo borra.
 import { h } from './util.js';
 
-const NOMBRES = '.col-nombre, .reg-proyecto, .info-proy, .bq-proy';
+const NOMBRES = '.col-nombre, .reg-proyecto, .info-proy, .bq-proy, .tarea-nombre, .reg-tarea, .info-tarea, .bq-tarea';
 const VISTAS = ['vista-tablero', 'vista-horas'];
 
 let texto = '';
@@ -40,7 +40,7 @@ function saltar(paso) {
 
 export function iniciar() {
     campo = h('input', {
-        id: 'buscar', class: 'campo', type: 'search', placeholder: 'Buscar proyecto…', spellcheck: 'false', autocomplete: 'off',
+        id: 'buscar', class: 'campo', type: 'search', placeholder: 'Buscar proyecto o tarea…', spellcheck: 'false', autocomplete: 'off',
         oninput: () => { texto = campo.value; actual = 0; aplicar(true); },
         onkeydown: e => {
             if (e.key === 'Enter') { e.preventDefault(); saltar(e.shiftKey ? -1 : 1); }
