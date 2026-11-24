@@ -173,6 +173,8 @@ body.arrastrando #favoritas { outline: 1px dashed var(--accent); outline-offset:
 .nota.hecha .nota-texto { color: var(--fg-mute); text-decoration: line-through; }
 .nota-edicion { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .nota-barra { display: flex; gap: 1px; }
+/* Dentro de la columna el cuadro no se estira: su alto lo pone el texto. */
+.nota-edicion .nota-editor { flex: none; }
 .nota-barra button { min-width: 20px; height: 18px; padding: 0 4px; text-align: center; line-height: 1; color: var(--fg-dim); font-size: var(--fs-micro); }
 .nota-barra button:hover { background: var(--fg); color: var(--term-bg); }
 .nota-barra .negrita { font-weight: 700; }

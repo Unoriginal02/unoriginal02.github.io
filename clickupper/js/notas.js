@@ -209,7 +209,7 @@ function editor(n) {
         onmousedown: sinRobarFoco, onpointerdown: sinRobarFoco,
         onclick: () => accion(ta),
     }, txt)));
-    return h('div', { class: 'nota-edicion' }, barra, ta);
+    return h('div', { class: 'nota-edicion' }, ta, barra);
 }
 
 // ── Ancho: se cambia arrastrando el borde derecho ───────────────────────
