@@ -5,6 +5,7 @@ import { h } from './util.js';
 import { state, guardar } from './store.js';
 import { deMarkdown, pintarBloques } from './formato.js';
 import { popover, cerrarPopover } from './ui.js';
+import { envolver, reemplazar } from './detalle.js';
 
 const TIPO = 'application/x-clickupper-nota';
 const ANCHO = { min: 200, max: 640, inicial: 280 };
@@ -123,6 +124,66 @@ function ajustarAlto(ta) {
     ta.style.height = `${ta.scrollHeight + 2}px`;
 }
 
+// ── Listas: Enter sigue la viñeta, Enter en una viñeta vacía la quita, Tab / Mayús+Tab sangran ──
+const VIÑETA = /^(\s*)([-*+])\s+(.*)$/;
+
+/** Inicio y fin de las líneas que toca la selección. */
+function lineas(ta) {
+    const { selectionStart: a, selectionEnd: b, value } = ta;
+    const ini = value.lastIndexOf('\n', a - 1) + 1;
+    const f = value.indexOf('\n', b);
+    return { ini, fin: f < 0 ? value.length : f };
+}
+
+/** Pone o quita "- " en las líneas tocadas: si todas son ya viñetas, las vuelve texto. */
+function alternarLista(ta) {
+    const { ini, fin } = lineas(ta);
+    const filas = ta.value.slice(ini, fin).split('\n');
+    const todas = filas.every(l => VIÑETA.test(l));
+    const texto = filas.map(l => todas ? l.replace(/^(\s*)[-*+]\s+/, '') : `- ${l}`).join('\n');
+    reemplazar(ta, ini, fin, texto, ini + texto.length, ini + texto.length);
+}
+
+function enter(ta, e) {
+    const { ini } = lineas(ta);
+    const { selectionStart: a, selectionEnd: b, value } = ta;
+    const finLinea = value.indexOf('\n', a);
+    const linea = value.slice(ini, finLinea < 0 ? value.length : finLinea);
+    const m = linea.match(VIÑETA);
+    if (!m || a - ini < m[1].length + 2) return;   // no es viñeta, o el cursor está antes de la marca
+    e.preventDefault();
+    if (!m[3].trim() && a === b) {
+        // Viñeta vacía: vuelve a ser texto normal.
+        reemplazar(ta, ini, ini + linea.length, '', ini, ini);
+        return;
+    }
+    const nueva = `\n${m[1]}- `;
+    reemplazar(ta, a, b, nueva, a + nueva.length, a + nueva.length);
+}
+
+function sangrar(ta, e) {
+    const { ini, fin } = lineas(ta);
+    const filas = ta.value.slice(ini, fin).split('\n');
+    if (!filas.some(l => VIÑETA.test(l))) return;   // fuera de una lista, Tab hace lo de siempre
+    e.preventDefault();
+    const { selectionStart: a, selectionEnd: b } = ta;
+    let primera = 0;
+    const texto = filas.map((l, i) => {
+        if (!VIÑETA.test(l)) return l;
+        const nueva = e.shiftKey ? l.replace(/^ {1,2}/, '') : `  ${l}`;
+        if (i === 0) primera = nueva.length - l.length;
+        return nueva;
+    }).join('\n');
+    const dif = texto.length - (fin - ini);
+    reemplazar(ta, ini, fin, texto, Math.max(ini, a + primera), Math.max(ini, b + dif));
+}
+
+const BOTONES = [
+    ['B', 'Negrita: **texto**', ta => envolver(ta, '**'), 'negrita'],
+    ['I', 'Cursiva: _texto_', ta => envolver(ta, '_'), 'cursiva'],
+    ['•', 'Lista: - texto', alternarLista, ''],
+];
+
 function editor(n) {
     const ta = h('textarea', {
         class: 'nota-editor', rows: 1, spellcheck: 'false', value: n.texto, placeholder: 'Descripción',
@@ -135,12 +196,20 @@ function editor(n) {
         },
         onkeydown: e => {
             if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); ta.blur(); }
+            else if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing) enter(ta, e);
+            else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey) sangrar(ta, e);
         },
         // Cambiar de ventana no cierra la nota: al volver sigue abierta.
         onblur: () => { if (document.hasFocus()) terminar(n.id); },
     });
     requestAnimationFrame(() => ajustarAlto(ta));
-    return ta;
+    const barra = h('div', { class: 'nota-barra' }, BOTONES.map(([txt, titulo, accion, clase]) => h('button', {
+        type: 'button', class: clase, title: titulo, 'aria-label': titulo,
+        // El foco se queda en el texto, y con él la selección.
+        onmousedown: sinRobarFoco, onpointerdown: sinRobarFoco,
+        onclick: () => accion(ta),
+    }, txt)));
+    return h('div', { class: 'nota-edicion' }, barra, ta);
 }
 
 // ── Ancho: se cambia arrastrando el borde derecho ───────────────────────

@@ -5,7 +5,7 @@ import { aviso, preguntar } from './ui.js';
 import { aComentario, aDescripcion, deComentario, deMarkdown, paraEditar, pintarBloques } from './formato.js';
 
 // ── Editor: un cuadro de texto con las marcas de ClickUp y botones que las ponen ──
-function reemplazar(ta, ini, fin, texto, selIni, selFin) {
+export function reemplazar(ta, ini, fin, texto, selIni, selFin) {
     ta.focus();
     ta.setSelectionRange(ini, fin);
     // Así Ctrl+Z sigue funcionando; si el navegador no lo admite, se escribe igual.
@@ -13,7 +13,7 @@ function reemplazar(ta, ini, fin, texto, selIni, selFin) {
     ta.setSelectionRange(selIni, selFin);
 }
 
-function envolver(ta, marca) {
+export function envolver(ta, marca) {
     const { selectionStart: a, selectionEnd: b, value } = ta;
     reemplazar(ta, a, b, `${marca}${value.slice(a, b)}${marca}`, a + marca.length, b + marca.length);
 }
