@@ -7,6 +7,7 @@ import { deMarkdown, pintarBloques } from './formato.js';
 import { popover, cerrarPopover } from './ui.js';
 
 const TIPO = 'application/x-clickupper-nota';
+const ANCHO = { min: 200, max: 640, inicial: 280 };
 const IMPORTANCIA = [
     { valor: '', nombre: 'Sin importancia', color: 'var(--border)' },
     { valor: 'baja', nombre: 'Baja', color: 'var(--green)' },
@@ -125,7 +126,6 @@ function ajustarAlto(ta) {
 function editor(n) {
     const ta = h('textarea', {
         class: 'nota-editor', rows: 1, spellcheck: 'false', value: n.texto,
-        placeholder: 'Escribe… **negrita**, _cursiva_, - lista',
         oninput: () => {
             const actual = deId(n.id);
             if (actual) actual.texto = ta.value;
@@ -141,6 +141,37 @@ function editor(n) {
     });
     requestAnimationFrame(() => ajustarAlto(ta));
     return ta;
+}
+
+// ── Ancho: se cambia arrastrando el borde derecho ───────────────────────
+const limitar = px => Math.round(Math.min(ANCHO.max, Math.max(ANCHO.min, px)));
+
+function borde() {
+    return h('div', {
+        class: 'notas-borde', title: 'Arrastra para cambiar el ancho',
+        onpointerdown: e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            const p = panel(), asa = e.currentTarget;
+            const x0 = e.clientX, w0 = p.getBoundingClientRect().width;
+            asa.setPointerCapture(e.pointerId);
+            document.body.classList.add('ajustando-ancho');
+            const mover = ev => { p.style.width = `${limitar(w0 + ev.clientX - x0)}px`; };
+            const soltar = () => {
+                asa.removeEventListener('pointermove', mover);
+                asa.removeEventListener('pointerup', soltar);
+                asa.removeEventListener('pointercancel', soltar);
+                document.body.classList.remove('ajustando-ancho');
+                state.prefs.anchoNotas = limitar(p.getBoundingClientRect().width);
+                guardar('prefs');
+            };
+            asa.addEventListener('pointermove', mover);
+            asa.addEventListener('pointerup', soltar);
+            asa.addEventListener('pointercancel', soltar);
+        },
+        // Doble clic vuelve al ancho de siempre.
+        ondblclick: () => { delete state.prefs.anchoNotas; panel().style.width = `${ANCHO.inicial}px`; guardar('prefs'); },
+    });
 }
 
 // ── Pintar ───────────────────────────────────────────────────────────────
@@ -168,9 +199,9 @@ function tarjeta(n) {
         abierta
             ? editor(n)
             : h('div', {
-                class: `nota-texto md ${n.texto.trim() ? '' : 'nota-vacia'}`, title: 'Pulsa para editar',
+                class: 'nota-texto md', title: 'Pulsa para editar',
                 onclick: e => { if (!e.target.closest('a')) editar(n.id); },
-            }, n.texto.trim() ? pintarBloques(deMarkdown(n.texto)) : 'Nota vacía'),
+            }, pintarBloques(deMarkdown(n.texto))),
         h('button', { class: 'icono', title: 'Borrar nota', onmousedown: sinRobarFoco, onclick: () => borrar(n.id) }, '×'),
     );
 }
@@ -231,12 +262,14 @@ export function pintar() {
     boton.title = abierta ? 'Recoger las notas' : 'Desplegar las notas';
     p.hidden = !abierta;
     if (!abierta) { editando = null; return; }
+    p.style.width = `${limitar(state.prefs.anchoNotas || ANCHO.inicial)}px`;
     // Mientras se escribe una nota no se repinta: se perdería el cursor.
     if (document.activeElement?.classList.contains('nota-editor')) return;
     if (editando && !deId(editando)) editando = null;
     const antes = p.querySelector('.notas-lista')?.scrollTop || 0;
     p.replaceChildren(
         h('header', { class: 'reg-cab' }, h('span', { class: 'panel-titulo' }, 'Notas')),
-        lista());
+        lista(),
+        borde());
     p.querySelector('.notas-lista').scrollTop = antes;
 }
