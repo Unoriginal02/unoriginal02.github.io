@@ -1,6 +1,6 @@
 // Piezas de interfaz compartidas: barra de estado, desplegables, diálogos, selector de hora y buscador.
 import { h, pad, toHHMM, toMin, parecido, idDeTarea } from './util.js';
-import { state } from './store.js';
+import { state, guardar } from './store.js';
 import * as api from './api.js';
 import { asegurarCatalogo, asegurarIndice } from './model.js';
 
@@ -171,3 +171,35 @@ export function buscador({ proyectos = true, alElegir, placeholder }) {
 
 /** Datos de una tarea elegida por ID: la pide a ClickUp. */
 export const tareaPorId = id => api.tarea(id);
+
+// ── Ancho de un ala: se cambia arrastrando su borde ───────────────────────
+export const limitarAncho = (px, ancho) => Math.round(Math.min(ancho.max, Math.max(ancho.min, px)));
+
+/** Asa en el borde `lado` ('der' | 'izq') del panel. Guarda el ancho en prefs[pref]; doble clic vuelve a ancho.inicial. */
+export function bordeAncho(panel, ancho, pref, lado) {
+    const signo = lado === 'izq' ? -1 : 1;   // en el borde izquierdo, ir a la izquierda ensancha
+    return h('div', {
+        class: `borde-ancho ${lado}`, title: 'Arrastra para cambiar el ancho',
+        onpointerdown: e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            const asa = e.currentTarget;
+            const x0 = e.clientX, w0 = panel.getBoundingClientRect().width;
+            asa.setPointerCapture(e.pointerId);
+            document.body.classList.add('ajustando-ancho');
+            const mover = ev => { panel.style.width = `${limitarAncho(w0 + signo * (ev.clientX - x0), ancho)}px`; };
+            const soltar = () => {
+                asa.removeEventListener('pointermove', mover);
+                asa.removeEventListener('pointerup', soltar);
+                asa.removeEventListener('pointercancel', soltar);
+                document.body.classList.remove('ajustando-ancho');
+                state.prefs[pref] = limitarAncho(panel.getBoundingClientRect().width, ancho);
+                guardar('prefs');
+            };
+            asa.addEventListener('pointermove', mover);
+            asa.addEventListener('pointerup', soltar);
+            asa.addEventListener('pointercancel', soltar);
+        },
+        ondblclick: () => { delete state.prefs[pref]; panel.style.width = `${ancho.inicial}px`; guardar('prefs'); },
+    });
+}

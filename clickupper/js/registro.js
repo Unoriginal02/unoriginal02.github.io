@@ -2,12 +2,13 @@
 import { h, fmtMin, toHHMM, hoyISO, addDays, fechaCorta, hexDeColor, GRIS, capital } from './util.js';
 import { state, guardar } from './store.js';
 import * as m from './model.js';
-import { aviso, error, selectorHora, popover, cerrarPopover, buscador, tareaPorId } from './ui.js';
+import { aviso, error, selectorHora, popover, cerrarPopover, buscador, tareaPorId, bordeAncho, limitarAncho } from './ui.js';
 import { TIPO_ARRASTRE, alRegistrar } from './board.js';
 
 let fecha = hoyISO();
 let redibujar = () => {};
 const diasLeidos = new Set();
+const ANCHO = { min: 300, max: 720, inicial: 400 };
 
 export function iniciar(alCambiar) {
     redibujar = alCambiar;
@@ -126,6 +127,7 @@ export function pintar() {
     const total = dia.reduce((s, e) => s + m.duracion(e, dia), 0);
     const panel = document.getElementById('registro');
     const antes = panel.querySelector('.reg-lista')?.scrollTop || 0;
+    panel.style.width = `${limitarAncho(state.prefs.anchoRegistro || ANCHO.inicial, ANCHO)}px`;
     panel.replaceChildren(
         h('header', { class: 'reg-cab' },
             h('button', {
@@ -148,6 +150,8 @@ export function pintar() {
             h('button', { class: 'btn', onclick: ev => elegirTarea(ev.currentTarget, d => { try { m.añadirEntrada(fecha, d); } catch (err) { error(err); } }) }, '+ Buscar tarea'),
             h('button', { class: 'btn', onclick: () => { try { m.añadirEntrada(fecha); } catch (err) { error(err); } redibujar(); } }, '+ Sin tarea'),
         ),
+        // Ancho: se cambia arrastrando el borde izquierdo.
+        bordeAncho(panel, ANCHO, 'anchoRegistro', 'izq'),
     );
     panel.querySelector('.reg-lista').scrollTop = antes;
 }

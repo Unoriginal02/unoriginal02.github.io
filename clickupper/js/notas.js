@@ -4,7 +4,7 @@
 import { h } from './util.js';
 import { state, guardar } from './store.js';
 import { deMarkdown, pintarBloques } from './formato.js';
-import { popover, cerrarPopover } from './ui.js';
+import { popover, cerrarPopover, bordeAncho, limitarAncho } from './ui.js';
 import { envolver, reemplazar } from './detalle.js';
 
 const TIPO = 'application/x-clickupper-nota';
@@ -212,37 +212,6 @@ function editor(n) {
     return h('div', { class: 'nota-edicion' }, ta, barra);
 }
 
-// ── Ancho: se cambia arrastrando el borde derecho ───────────────────────
-const limitar = px => Math.round(Math.min(ANCHO.max, Math.max(ANCHO.min, px)));
-
-function borde() {
-    return h('div', {
-        class: 'notas-borde', title: 'Arrastra para cambiar el ancho',
-        onpointerdown: e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const p = panel(), asa = e.currentTarget;
-            const x0 = e.clientX, w0 = p.getBoundingClientRect().width;
-            asa.setPointerCapture(e.pointerId);
-            document.body.classList.add('ajustando-ancho');
-            const mover = ev => { p.style.width = `${limitar(w0 + ev.clientX - x0)}px`; };
-            const soltar = () => {
-                asa.removeEventListener('pointermove', mover);
-                asa.removeEventListener('pointerup', soltar);
-                asa.removeEventListener('pointercancel', soltar);
-                document.body.classList.remove('ajustando-ancho');
-                state.prefs.anchoNotas = limitar(p.getBoundingClientRect().width);
-                guardar('prefs');
-            };
-            asa.addEventListener('pointermove', mover);
-            asa.addEventListener('pointerup', soltar);
-            asa.addEventListener('pointercancel', soltar);
-        },
-        // Doble clic vuelve al ancho de siempre.
-        ondblclick: () => { delete state.prefs.anchoNotas; panel().style.width = `${ANCHO.inicial}px`; guardar('prefs'); },
-    });
-}
-
 // ── Pintar ───────────────────────────────────────────────────────────────
 function tarjeta(n) {
     const imp = importancia(n);
@@ -331,7 +300,7 @@ export function pintar() {
     boton.title = abierta ? 'Recoger las notas' : 'Desplegar las notas';
     p.hidden = !abierta;
     if (!abierta) { editando = null; return; }
-    p.style.width = `${limitar(state.prefs.anchoNotas || ANCHO.inicial)}px`;
+    p.style.width = `${limitarAncho(state.prefs.anchoNotas || ANCHO.inicial, ANCHO)}px`;
     // Mientras se escribe una nota no se repinta: se perdería el cursor.
     if (document.activeElement?.classList.contains('nota-editor')) return;
     if (editando && !deId(editando)) editando = null;
@@ -339,6 +308,7 @@ export function pintar() {
     p.replaceChildren(
         h('header', { class: 'reg-cab' }, h('span', { class: 'panel-titulo' }, 'Notas')),
         lista(),
-        borde());
+        // Ancho: se cambia arrastrando el borde derecho.
+        bordeAncho(p, ANCHO, 'anchoNotas', 'der'));
     p.querySelector('.notas-lista').scrollTop = antes;
 }

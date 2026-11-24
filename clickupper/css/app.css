@@ -180,15 +180,17 @@ body.arrastrando #favoritas { outline: 1px dashed var(--accent); outline-offset:
 .nota-barra .negrita { font-weight: 700; }
 .nota-barra .cursiva { font-style: italic; }
 .nota-editor { flex: 1; min-width: 0; display: block; min-height: 20px; padding: 0 2px; resize: none; overflow: hidden; line-height: 1.4; background: var(--bg-input); border: 1px solid var(--accent); outline: 0; }
-.notas-borde { position: absolute; top: 0; bottom: 0; right: -4px; width: 7px; z-index: 6; cursor: ew-resize; touch-action: none; }
-.notas-borde:hover, body.ajustando-ancho .notas-borde { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.borde-ancho { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 6; cursor: ew-resize; touch-action: none; }
+.borde-ancho.der { right: -4px; }
+.borde-ancho.izq { left: -4px; }
+.borde-ancho:hover, body.ajustando-ancho .borde-ancho { background: color-mix(in srgb, var(--accent) 45%, transparent); }
 body.ajustando-ancho { cursor: ew-resize; user-select: none; }
 .nota-editor::placeholder { color: var(--fg-mute); }
 .nota-mas { flex: none; width: 100%; height: 40px; font-size: 24px; text-align: center; color: var(--fg-mute); border: 1px dashed var(--border); }
 .nota-mas:hover { background: var(--bg-sel); color: var(--fg); }
 
 /* ── Registro ── */
-#registro { width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--border); }
+#registro { position: relative; width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--border); }
 #registro.soltar { background: var(--bg-alt); }
 .reg-cab { display: flex; align-items: center; gap: 4px; padding: 7px 10px; background: var(--bg-alt); border-bottom: 1px solid var(--border); }
 .panel-titulo { font-weight: 700; margin-right: 8px; }
