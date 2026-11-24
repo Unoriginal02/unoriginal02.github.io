@@ -125,7 +125,7 @@ function ajustarAlto(ta) {
 
 function editor(n) {
     const ta = h('textarea', {
-        class: 'nota-editor', rows: 1, spellcheck: 'false', value: n.texto,
+        class: 'nota-editor', rows: 1, spellcheck: 'false', value: n.texto, placeholder: 'Descripción',
         oninput: () => {
             const actual = deId(n.id);
             if (actual) actual.texto = ta.value;
