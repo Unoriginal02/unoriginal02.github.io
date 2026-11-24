@@ -9,6 +9,7 @@ import * as favoritas from './favoritas.js';
 import * as horas from './horas.js';
 import * as copia from './copia.js';
 import * as buscar from './buscar.js';
+import * as notas from './notas.js';
 import { aviso, error, dialogo, preguntar } from './ui.js';
 
 const CLAVE_VISTA = 'clickupper_pestana';
@@ -21,6 +22,7 @@ function pintar() {
     document.querySelectorAll('[data-pestana]').forEach(b => b.classList.toggle('on', b.dataset.pestana === pestana));
     document.getElementById('usuario').textContent = state.user?.nombre || 'Sin conectar';
     document.getElementById('copia').hidden = copia.estado() !== 'en-pausa';
+    notas.pintar();
     if (pestana === 'tablero') {
         tablero.pintar();
         favoritas.pintar();
@@ -143,6 +145,7 @@ async function arrancar() {
     registro.iniciar(pintar);
     favoritas.iniciar(pintar);
     horas.iniciar(pintar);
+    notas.iniciar();
     iniciarControles();
     buscar.iniciar();
     pintar();

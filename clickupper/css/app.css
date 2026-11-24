@@ -19,7 +19,8 @@ body {
     font-variant-ligatures: none; -webkit-font-smoothing: antialiased;
     overflow: hidden;
 }
-main { flex: 1; min-height: 0; }
+#cuerpo { flex: 1; min-height: 0; display: flex; }
+main { flex: 1; min-height: 0; min-width: 0; }
 main[hidden] { display: none !important; }
 button, input, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
@@ -40,6 +41,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 .btn.primario { color: var(--accent); border-color: var(--accent); }
 .btn.primario:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--term-bg); }
 .btn.primario:disabled { color: var(--fg-mute); border-color: var(--bg-alt); }
+.btn.on { color: var(--accent); border-color: var(--accent); }
 .btn.peligro { color: var(--red); border-color: var(--red); }
 .btn.peligro:hover { background: var(--red); border-color: var(--red); }
 .icono { width: 22px; height: 22px; font-size: 16px; line-height: 1; text-align: center; color: var(--fg-mute); flex: none; }
@@ -150,6 +152,30 @@ body.arrastrando #favoritas { outline: 1px dashed var(--accent); outline-offset:
 .fav-fila { display: flex; align-items: center; gap: 4px; padding: 7px 6px 7px 10px; border-bottom: 1px solid var(--bg-alt); cursor: grab; }
 .fav-fila:hover { background: var(--bg-alt); }
 .fav-cuerpo { flex: 1; min-width: 0; }
+
+/* ── Notas: ala a la izquierda ── */
+#notas { width: 280px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-right: 1px solid var(--border); }
+#notas[hidden] { display: none; }
+#notas .reg-cab { min-height: 37px; }
+.notas-lista { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+/* Cada nota abraza su texto: crece y encoge con él. */
+.nota { position: relative; flex: none; display: flex; align-items: flex-start; gap: 4px; padding: 4px 2px 4px 0; background: var(--bg-alt); border: 1px solid var(--border); cursor: grab; }
+.nota.movida { opacity: .45; }
+.nota.ins-arriba::before, .nota.ins-abajo::after { content: ''; position: absolute; left: -1px; right: -1px; height: 2px; background: var(--accent); z-index: 3; }
+.nota.ins-arriba::before { top: -5px; }
+.nota.ins-abajo::after { bottom: -5px; }
+.nota-tira { align-self: stretch; width: 5px; flex: none; margin: -4px 0; background: var(--c); cursor: pointer; }
+.nota-tira:hover { box-shadow: 0 0 0 1px var(--fg); }
+.nota-casilla { width: 14px; height: 14px; margin: 3px 2px 0 3px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--term-bg); border: 1px solid var(--border-hi); }
+.nota-casilla:hover { border-color: var(--fg); }
+.nota.hecha .nota-casilla { background: var(--accent); border-color: var(--accent); }
+.nota-texto { flex: 1; min-width: 0; min-height: 20px; padding: 1px 3px; cursor: text; }
+.nota-texto.nota-vacia { color: var(--fg-mute); }
+.nota.hecha .nota-texto { color: var(--fg-mute); text-decoration: line-through; }
+.nota-editor { flex: 1; min-width: 0; display: block; min-height: 20px; padding: 0 2px; resize: none; overflow: hidden; line-height: 1.4; background: var(--bg-input); border: 1px solid var(--accent); outline: 0; }
+.nota-editor::placeholder { color: var(--fg-mute); }
+.nota-mas { flex: none; width: 100%; height: 40px; font-size: 24px; text-align: center; color: var(--fg-mute); border: 1px dashed var(--border); }
+.nota-mas:hover { background: var(--bg-sel); color: var(--fg); }
 
 /* ── Registro ── */
 #registro { width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--border); }

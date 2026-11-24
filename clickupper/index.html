@@ -14,12 +14,16 @@
             <button data-pestana="tablero">Tablero</button>
             <button data-pestana="horas">Horas</button>
         </div>
+        <button id="notas-boton" class="btn" aria-pressed="false">Notas</button>
         <span class="hueco"></span>
         <span id="usuario" class="dim"></span>
         <button id="sincronizar" class="btn" title="Volver a leer tareas de ClickUp">⟳ Sincronizar</button>
         <button id="copia" class="btn" title="Chrome necesita un clic para seguir guardando la copia" hidden>Reactivar copia</button>
         <button id="ajustes" class="btn">Ajustes</button>
     </nav>
+
+    <div id="cuerpo">
+    <aside id="notas" hidden></aside>
 
     <main id="vista-tablero" hidden>
         <div id="tablero-zona">
@@ -33,6 +37,7 @@
         <div id="horas-barra"></div>
         <div id="horas-cuerpo"></div>
     </main>
+    </div>
 
     <footer id="pie"><span id="estado"></span></footer>
 

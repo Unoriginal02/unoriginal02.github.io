@@ -1,0 +1,242 @@
+// Bloc de notas: ala a la izquierda con notas sueltas. Cada nota es texto con formato (las mismas marcas que la descripción),
+// con casilla de hecha, tira de color de importancia y borrar; se reordenan arrastrándolas. Se guardan en este navegador,
+// dentro de prefs, así que van también en la copia.
+import { h } from './util.js';
+import { state, guardar } from './store.js';
+import { deMarkdown, pintarBloques } from './formato.js';
+import { popover, cerrarPopover } from './ui.js';
+
+const TIPO = 'application/x-clickupper-nota';
+const IMPORTANCIA = [
+    { valor: '', nombre: 'Sin importancia', color: 'var(--border)' },
+    { valor: 'baja', nombre: 'Baja', color: 'var(--green)' },
+    { valor: 'media', nombre: 'Media', color: 'var(--yellow)' },
+    { valor: 'alta', nombre: 'Alta', color: 'var(--red)' },
+];
+
+let editando = null;      // id de la nota abierta para escribir
+let pendiente = null;     // guardado diferido mientras se escribe
+let movida = null;        // id de la nota que se arrastra
+
+const panel = () => document.getElementById('notas');
+const notas = () => state.prefs.notas;
+const deId = id => notas().find(n => n.id === id);
+const tarjetaDe = id => panel().querySelector(`[data-nota="${CSS.escape(id)}"]`);
+const importancia = n => IMPORTANCIA.find(i => i.valor === (n.importancia || '')) || IMPORTANCIA[0];
+const nuevoId = () => `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+// Los botones de la tarjeta no le quitan el foco al texto que se está escribiendo.
+const sinRobarFoco = e => e.preventDefault();
+
+export function iniciar() {
+    document.getElementById('notas-boton').addEventListener('click', () => {
+        state.prefs.alaNotas = !state.prefs.alaNotas;
+        guardar('prefs');
+        pintar();
+    });
+}
+
+// ── Cambios ──────────────────────────────────────────────────────────────
+function nueva() {
+    const n = { id: nuevoId(), texto: '', hecha: false, importancia: '' };
+    notas().push(n);
+    editando = n.id;
+    guardar('prefs');
+    pintar();
+    const ta = tarjetaDe(n.id)?.querySelector('textarea');
+    ta?.scrollIntoView({ block: 'nearest' });
+    ta?.focus();
+}
+
+function borrar(id) {
+    if (editando === id) editando = null;
+    state.prefs.notas = notas().filter(n => n.id !== id);
+    tarjetaDe(id)?.remove();
+    guardar('prefs');
+}
+
+function marcar(id) {
+    const n = deId(id);
+    if (!n) return;
+    n.hecha = !n.hecha;
+    // Se cambia en su sitio, sin rehacer la tarjeta: así no se cierra el texto si se está escribiendo.
+    const t = tarjetaDe(id), casilla = t?.querySelector('.nota-casilla');
+    t?.classList.toggle('hecha', n.hecha);
+    if (casilla) {
+        casilla.textContent = n.hecha ? '✓' : '';
+        casilla.setAttribute('aria-checked', String(n.hecha));
+        casilla.title = n.hecha ? 'Marcar como pendiente' : 'Marcar como hecha';
+    }
+    guardar('prefs');
+}
+
+function elegirImportancia(ancla, id) {
+    const n = deId(id);
+    if (!n) return;
+    popover(ancla, h('div', { class: 'menu' }, IMPORTANCIA.map(i => h('button', {
+        class: `menu-fila ${i === importancia(n) ? 'on' : ''}`, style: `--c:${i.color}`,
+        onmousedown: sinRobarFoco,
+        onclick: () => {
+            cerrarPopover();
+            const actual = deId(id);
+            if (!actual) return;
+            actual.importancia = i.valor;
+            const t = tarjetaDe(id);
+            t?.style.setProperty('--c', i.color);
+            t?.querySelector('.nota-tira')?.setAttribute('title', `Importancia: ${i.nombre}`);
+            guardar('prefs');
+        },
+    }, h('i', { class: 'punto' }), i.nombre))));
+}
+
+// ── Escribir ─────────────────────────────────────────────────────────────
+function enfocar(id) {
+    const ta = tarjetaDe(id)?.querySelector('textarea');
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function editar(id) {
+    const n = deId(id);
+    if (!n) return;
+    editando = id;
+    tarjetaDe(id)?.replaceWith(tarjeta(n));
+    enfocar(id);
+}
+
+/** Al salir del texto se vuelve a ver con formato. Una nota que se queda vacía desaparece. */
+function terminar(id) {
+    if (editando !== id) return;
+    editando = null;
+    clearTimeout(pendiente);
+    const n = deId(id);
+    if (n && !n.texto.trim()) borrar(id);
+    else {
+        if (n) tarjetaDe(id)?.replaceWith(tarjeta(n));
+        guardar('prefs');
+    }
+}
+
+function ajustarAlto(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight + 2}px`;
+}
+
+function editor(n) {
+    const ta = h('textarea', {
+        class: 'nota-editor', rows: 1, spellcheck: 'false', value: n.texto,
+        placeholder: 'Escribe… **negrita**, _cursiva_, - lista',
+        oninput: () => {
+            const actual = deId(n.id);
+            if (actual) actual.texto = ta.value;
+            ajustarAlto(ta);
+            clearTimeout(pendiente);
+            pendiente = setTimeout(() => guardar('prefs'), 400);
+        },
+        onkeydown: e => {
+            if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); ta.blur(); }
+        },
+        // Cambiar de ventana no cierra la nota: al volver sigue abierta.
+        onblur: () => { if (document.hasFocus()) terminar(n.id); },
+    });
+    requestAnimationFrame(() => ajustarAlto(ta));
+    return ta;
+}
+
+// ── Pintar ───────────────────────────────────────────────────────────────
+function tarjeta(n) {
+    const imp = importancia(n);
+    const abierta = editando === n.id;
+    return h('div', {
+        class: `nota ${n.hecha ? 'hecha' : ''}`, style: `--c:${imp.color}`, 'data-nota': n.id,
+        draggable: abierta ? 'false' : 'true',
+        ondragstart: e => {
+            if (editando === n.id) { e.preventDefault(); return; }
+            movida = n.id;
+            e.dataTransfer.setData(TIPO, n.id);
+            e.dataTransfer.effectAllowed = 'move';
+            const t = e.currentTarget;
+            requestAnimationFrame(() => t.classList.add('movida'));
+        },
+        ondragend: e => { movida = null; e.currentTarget.classList.remove('movida'); limpiarMarca(); },
+    },
+        h('button', { class: 'nota-tira', title: `Importancia: ${imp.nombre}`, onmousedown: sinRobarFoco, onclick: e => elegirImportancia(e.currentTarget, n.id) }),
+        h('button', {
+            class: 'nota-casilla', role: 'checkbox', 'aria-checked': String(!!n.hecha),
+            title: n.hecha ? 'Marcar como pendiente' : 'Marcar como hecha', onmousedown: sinRobarFoco, onclick: () => marcar(n.id),
+        }, n.hecha ? '✓' : ''),
+        abierta
+            ? editor(n)
+            : h('div', {
+                class: `nota-texto md ${n.texto.trim() ? '' : 'nota-vacia'}`, title: 'Pulsa para editar',
+                onclick: e => { if (!e.target.closest('a')) editar(n.id); },
+            }, n.texto.trim() ? pintarBloques(deMarkdown(n.texto)) : 'Nota vacía'),
+        h('button', { class: 'icono', title: 'Borrar nota', onmousedown: sinRobarFoco, onclick: () => borrar(n.id) }, '×'),
+    );
+}
+
+// ── Reordenar ────────────────────────────────────────────────────────────
+function limpiarMarca() {
+    panel().querySelectorAll('.ins-arriba, .ins-abajo').forEach(el => el.classList.remove('ins-arriba', 'ins-abajo'));
+}
+
+/** Posición donde caería la nota arrastrada, según la altura del puntero: antes de la primera cuya mitad queda por debajo. */
+function hueco(lista, y) {
+    const tarjetas = [...lista.querySelectorAll('.nota')];
+    const i = tarjetas.findIndex(t => { const r = t.getBoundingClientRect(); return y < r.top + r.height / 2; });
+    return { tarjetas, i: i < 0 ? tarjetas.length : i };
+}
+
+function lista() {
+    const el = h('div', { class: 'notas-lista' },
+        notas().map(tarjeta),
+        h('button', { class: 'nota-mas', title: 'Añadir nota', onclick: nueva }, '+'));
+    el.addEventListener('dragover', e => {
+        if (!e.dataTransfer.types.includes(TIPO)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        limpiarMarca();
+        const { tarjetas, i } = hueco(el, e.clientY);
+        const desde = tarjetas.findIndex(t => t.dataset.nota === movida);
+        if (i === desde || i === desde + 1) return;   // se quedaría donde está
+        if (i < tarjetas.length) tarjetas[i].classList.add('ins-arriba');
+        else tarjetas.at(-1)?.classList.add('ins-abajo');
+    });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) limpiarMarca(); });
+    el.addEventListener('drop', e => {
+        const id = e.dataTransfer.getData(TIPO);
+        if (!id) return;
+        e.preventDefault();
+        limpiarMarca();
+        const { i } = hueco(el, e.clientY);
+        const todas = notas();
+        const desde = todas.findIndex(n => n.id === id);
+        if (desde < 0) return;
+        const destino = i > desde ? i - 1 : i;
+        if (destino === desde) return;
+        const [n] = todas.splice(desde, 1);
+        todas.splice(destino, 0, n);
+        guardar('prefs');
+        pintar();
+    });
+    return el;
+}
+
+export function pintar() {
+    const p = panel();
+    const abierta = !!state.prefs.alaNotas;
+    const boton = document.getElementById('notas-boton');
+    boton.classList.toggle('on', abierta);
+    boton.setAttribute('aria-pressed', String(abierta));
+    boton.title = abierta ? 'Recoger las notas' : 'Desplegar las notas';
+    p.hidden = !abierta;
+    if (!abierta) { editando = null; return; }
+    // Mientras se escribe una nota no se repinta: se perdería el cursor.
+    if (document.activeElement?.classList.contains('nota-editor')) return;
+    if (editando && !deId(editando)) editando = null;
+    const antes = p.querySelector('.notas-lista')?.scrollTop || 0;
+    p.replaceChildren(
+        h('header', { class: 'reg-cab' }, h('span', { class: 'panel-titulo' }, 'Notas')),
+        lista());
+    p.querySelector('.notas-lista').scrollTop = antes;
+}
