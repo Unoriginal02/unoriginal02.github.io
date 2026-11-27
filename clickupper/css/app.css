@@ -3,8 +3,8 @@
    el color es dato (proyecto, estado) y una barra de estado abajo. */
 :root {
     --term-bg: #13141c; --bg: #1a1b26; --bg-alt: #23273a; --bg-sel: #343b5b; --bg-input: #0e0f17;
-    --fg: #d7ddf8; --fg-dim: #a6aed2; --fg-mute: #7681a9;
-    --border: #3a4060; --border-hi: #58628c;
+    --fg: #d7ddf8; --fg-dim: rgba(255, 255, 255, .7); --fg-mute: rgba(255, 255, 255, .45);
+    --border: rgba(255, 255, 255, .16); --border-hi: rgba(255, 255, 255, .3);
     --red: #f7768e; --yellow: #e0af68; --green: #9ece6a; --cyan: #7dcfff;
     --accent: var(--cyan);
     --fs-body: 14px; --fs-ui: 13px; --fs-micro: 11px;
@@ -238,10 +238,10 @@ body.arrastrando .reg-hueco { border-color: var(--accent); background: color-mix
 .imputar-dia { width: 100%; text-align: center; font-size: var(--fs-micro); }
 .imputar-dia:not(:disabled) { color: var(--accent); border-color: var(--accent); }
 .sem-cuerpo { display: grid; min-width: fit-content; }
-.sem-hora { padding: 0 8px; text-align: right; color: var(--fg-mute); font-size: var(--fs-micro); border-top: 1px solid rgba(215, 221, 248, .15); }
+.sem-hora { padding: 0 8px; text-align: right; color: var(--fg-mute); font-size: var(--fs-micro); border-top: 1px solid rgba(255, 255, 255, .15); }
 .sem-dia-cuerpo {
     position: relative; border-left: 1px solid var(--border);
-    background-image: linear-gradient(rgba(215, 221, 248, .15) 1px, transparent 1px), linear-gradient(rgba(215, 221, 248, .05) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(255, 255, 255, .15) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px);
 }
 .sem-dia-cuerpo.hoy { background-color: rgba(122, 162, 247, .07); }
 .ahora { position: absolute; left: 0; right: 0; border-top: 2px solid var(--red); z-index: 4; pointer-events: none; }
@@ -253,7 +253,7 @@ body.arrastrando .reg-hueco { border-color: var(--accent); background: color-mix
 .bq.sombra { pointer-events: none; z-index: 10; box-shadow: inset 0 0 0 1px var(--accent); background-image: repeating-linear-gradient(45deg, rgba(125, 207, 255, .12) 0 2px, transparent 2px 6px); }
 .bq.sombra.recortada { box-shadow: inset 0 0 0 1px var(--yellow); }
 .bq.sombra.recortada::after { content: '\2702'; position: absolute; right: .5ch; bottom: 0; color: var(--yellow); }
-.bq.sin-tarea { --c: #565f89; background: var(--bg-alt); box-shadow: inset 0 0 0 1px var(--border); }
+.bq.sin-tarea { --c: rgba(255, 255, 255, .3); background: var(--bg-alt); box-shadow: inset 0 0 0 1px var(--border); }
 .bq.remoto { display: flex; flex-direction: column; justify-content: flex-start; background: color-mix(in srgb, var(--c) 9%, var(--bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); color: var(--fg-dim); z-index: 1; }
 .bq.remoto { cursor: grab; touch-action: none; }
 .bq.remoto:hover { background: color-mix(in srgb, var(--c) 18%, var(--bg)); }

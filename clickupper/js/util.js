@@ -104,7 +104,7 @@ export const COLORES = {
     red: '#f7768e', orange: '#ff9e64', yellow: '#e0af68', lime: '#cfe86b', green: '#9ece6a', teal: '#73daca',
     cyan: '#7dcfff', blue: '#7aa2f7', purple: '#9d7cd8', magenta: '#bb9af7', pink: '#ff9ec3',
 };
-export const GRIS = '#565f89';
+export const GRIS = 'rgba(255, 255, 255, .3)';
 export const hexDeColor = nombre => COLORES[nombre] || GRIS;
 
 /** Color estable por proyecto, para lo que no es una entrada del registro: lo imputado fuera y el resumen del mes. */
